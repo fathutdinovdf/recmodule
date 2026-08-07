@@ -185,6 +185,14 @@
 }
 .wzcheck .prev__i { background: var(--bg-card); border-color: transparent; }
 
+/* Заголовок группы внутри списка аналогов: «в работе» и «завершённые» —
+   разные по силе сигналы, и глазом их надо разделять сразу. */
+.wzcheck__g {
+  font: var(--font-weight-subtitle) var(--font-size-text-small) / 1.2 var(--font-family-text);
+  color: var(--text-tertiary);
+  margin-top: var(--item-gap-vertical-s);
+}
+
 /* ------------------------------ приоритет ------------------------------
    Приоритет выбирается не списком, а тремя карточками: сам по себе номер
    ничего не сообщает, а норматив ответа — это то, о чём эксперт принимает

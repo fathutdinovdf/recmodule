@@ -172,7 +172,6 @@ function renderHead() {
       <div class="meta"><span class="meta__k">Направление</span><span class="meta__v">${rec.direction}</span></div>
       <div class="meta"><span class="meta__k">Ответственный Исполнителя</span><span class="meta__v">${rec.executor}</span></div>
       <div class="meta"><span class="meta__k">Ответственный Заказчика</span><span class="meta__v">${rec.customer || '—'}</span></div>
-      <div class="meta"><span class="meta__k">Источник</span><span class="meta__v">${rec.source}</span></div>
       <div class="meta"><span class="meta__k">Первичность</span><span class="meta__v">${rec.isPrimary ? 'Первичная' : 'Повторная'}</span></div>
     </div>
 
@@ -225,14 +224,10 @@ function renderForecast() {
       const better = f.good === 'up' ? v > 0 : v < 0;
       tone = better ? 'is-good' : 'is-bad';
     }
-    /* Подпись у ЭЭ обязательна: «−29 кВт·ч» без слова «экономия» читается как
-       потеря, хотя это ровно наоборот. */
-    const note = f.v === 'expectEE' && typeof v === 'number' && v !== 0
-      ? `<span class="fc__n">${v < 0 ? 'экономия' : 'рост потребления'}</span>` : '';
     return `<div class="fc">
       <div class="fc__k">${f.k}</div>
       <div class="fc__v ${tone}">${fcNum(v)}<span class="fc__u">${f.u}</span></div>
-      ${note}</div>`;
+    </div>`;
   }).join('');
 
   $('#forecast').innerHTML = `

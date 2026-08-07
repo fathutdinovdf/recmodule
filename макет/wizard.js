@@ -76,21 +76,26 @@ function rnd32(seed) {
    ЦИТС в дереве нет: в ВМАП такого узла не существует, «Ягун» — суффикс «(Я)»
    в названии цеха. Уровень «месторождение» здесь — пара месторождение × цех,
    название узла берётся как есть, поэтому Южно-Ягунское присутствует четырьмя
-   значениями. */
+   значениями.
+
+   Куст в каскаде не участвует: он не сужает выбор осмысленно — эксперт знает
+   номер скважины, а не куст, на котором она стоит, и куст всё равно подтянется
+   из ВМАП вместе со скважиной. Лишний обязательный шаг между месторождением и
+   скважиной только удлинял путь. */
 const TREE = (() => {
   const t = new Map();
   for (const r of DATA) {
-    if (!t.has(r.field)) t.set(r.field, new Map());
-    const kusts = t.get(r.field);
-    if (!kusts.has(r.kust)) kusts.set(r.kust, new Set());
-    kusts.get(r.kust).add(r.well);
+    if (!t.has(r.field)) t.set(r.field, new Set());
+    t.get(r.field).add(r.well);
   }
   return t;
 })();
 
 const fieldList = FIELDS.filter((f) => TREE.has(f));
-const kustList = (f) => (TREE.has(f) ? [...TREE.get(f).keys()].sort((a, b) => a - b) : []);
-const wellList = (f, k) => (TREE.has(f) && TREE.get(f).has(k) ? [...TREE.get(f).get(k)].sort() : []);
+const wellList = (f) => (TREE.has(f) ? [...TREE.get(f)].sort() : []);
+
+/* Куст показывается справочно, как атрибут выбранной скважины. */
+const kustOfWell = (w) => (DATA.find((r) => r.well === w) || {}).kust || '';
 
 /* ------------------------------ состояние ------------------------------ */
 
@@ -105,8 +110,8 @@ const STEPS = [
 const ACTION_OTHER = 'Иное — сформулировать вручную';
 
 const draft = {
-  field: '', kust: '', well: '',
-  direction: '', problem: '', priority: '', source: '', alertId: '',
+  field: '', well: '',
+  direction: '', problem: '', priority: '', alertId: '',
   actionRef: '', action: '', rationale: '', files: 0,
   dQzh: '', dQn: '', dEE: '', resultNote: '', forecast: '',
   executor: '', customer: '', comment: '',
@@ -125,18 +130,10 @@ let issued = null;     // { number, at, analogsSeen } — результат р�
    независимых перечня разошлись бы при первой же правке формы. */
 const REQUIRED = [
   { step: 0, key: 'field', label: 'месторождение', sel: '#fField' },
-  { step: 0, key: 'kust', label: 'куст', sel: '#fKust' },
   { step: 0, key: 'well', label: 'скважина', sel: '#fWell' },
   { step: 1, key: 'direction', label: 'направление', sel: '#fDirection' },
   { step: 1, key: 'problem', label: 'описание проблемы', sel: '#fProblem' },
   { step: 1, key: 'priority', label: 'приоритет', sel: '#fPrio' },
-  { step: 1, key: 'source', label: 'источник рекомендации', sel: '#fSource' },
-  /* Идентификатор предупреждения обязателен только когда источником объявлен
-     машинный анализ ВМАП: источник без ссылки на конкретное предупреждение
-     нечем проверить, а на нём держится вход в мастер из ВМАП. При любом
-     другом источнике поля нет вовсе — и в счётчике его тоже нет. */
-  { step: 1, key: 'alertId', label: 'предупреждение ВМАП', sel: '#fAlert',
-    when: () => draft.source === 'Анализ отклонений ВМАП' },
   { step: 2, key: 'action', label: 'рекомендуемое мероприятие', sel: '#fAction' },
   { step: 2, key: 'rationale', label: 'технологическое обоснование', sel: '#fRationale' },
   { step: 3, key: 'dQzh', label: 'Δ Qж, м³/сут', sel: '#fQzh' },
@@ -190,7 +187,7 @@ function byWell() {
    заодно работает сводкой, и на пятом шаге не приходится листать назад,
    чтобы вспомнить, какая скважина. */
 function railSummary(i) {
-  if (i === 0) return draft.well ? `скв. ${draft.well} · куст ${draft.kust}` : '';
+  if (i === 0) return draft.well ? `скв. ${draft.well} · ${draft.field.split(' /')[0]}` : '';
   if (i === 1) return draft.direction || (draft.priority ? `приоритет ${draft.priority}` : '');
   if (i === 2) return draft.action ? draft.action.slice(0, 42) : '';
   if (i === 3) return filled('dQzh') ? `Δ Qж ${draft.dQzh} м³/сут` : '';
@@ -264,67 +261,65 @@ function wellAside() {
     </div>`;
 }
 
-/* Предварительная проверка — справка, а не запрет: она показывает, что по
-   скважине уже есть, пока эксперт ещё думает. Блокирует только окончательная,
-   в момент регистрации: черновик может пролежать, и за это время появятся
-   новые рекомендации. */
-function preCheck() {
-  if (!draft.well) return '';
-  const all = byWell();
+/* Проверка на аналоги переехала на шаг 2: раньше она стояла на шаге 1, где
+   направление ещё не выбрано, и потому могла показать только «сколько всего
+   по этой скважине» — счёт, который ни о чём не говорит. Аналог определяется
+   парой «скважина + направление», значит и показывать его можно не раньше,
+   чем выбрано направление.
+
+   Если аналогов нет, блок не показывается вовсе: сообщать «дубликатов не
+   найдено» на каждой регистрации — шум, который перестают читать, а именно
+   его потом надо будет читать внимательно. */
+function analogBlock() {
   const same = analogs();
-  const primary = same.length === 0;
+  if (!same.length) return '';
+
+  /* Список разделён: в работе — сильный сигнал дублирования, здесь эксперт
+     скорее всего пишет то же самое второй раз. Завершённые — контекст: работа
+     по этому направлению уже была и, возможно, не помогла. */
+  const FINAL = ['windowClosed', 'rejected', 'cancelled'];
+  const active = same.filter((r) => !FINAL.includes(r.status));
+  const closed = same.filter((r) => FINAL.includes(r.status));
+
+  const list = (arr) => `<div class="prev">${arr.map((p) => `
+    <a class="prev__i" href="card.html?id=${p.id}" target="_blank">
+      <div class="prev__t"><b>${p.number}</b> · ${fmt(p.regDate, false)} · ${p.statusLabel}</div>
+      <div class="prev__p">${esc(p.problem)}</div></a>`).join('')}</div>`;
 
   return `
     <div class="wzcheck">
       <div class="wzcheck__h">
-        Предварительная проверка на аналоги
-        <span class="tag ${primary ? 'tag--ok' : 'tag--warning'}">${
-          primary ? 'первичная' : 'повторная'}</span>
+        Аналоги по этой скважине и направлению
+        <span class="tag tag--warning">${same.length}</span>
       </div>
-      <div class="form__hint">${prose(`По скважине ${draft.well} в реестре ${all.length}
-        ${plural(all.length, ['рекомендация', 'рекомендации', 'рекомендаций'])}${draft.direction
-          ? `, по выбранному направлению — ${same.length}`
-          : '; направление выбирается на шаге 2, после него счёт сузится'}.
-        Признак первичности предварительный: окончательная проверка выполняется
-        в момент регистрации и требует подтверждения.`)}</div>
-      ${all.length ? `<div class="prev">${all.slice(0, 3).map((p) => `
-        <a class="prev__i" href="card.html?id=${p.id}" target="_blank">
-          <div class="prev__t"><b>${p.number}</b> · ${fmt(p.regDate, false)} · ${p.statusLabel}</div>
-          <div class="prev__p">${esc(p.direction)} · ${esc(p.problem)}</div></a>`).join('')}
-        ${all.length > 3 ? `<div class="form__hint">…и ещё ${all.length - 3}</div>` : ''}
-      </div>` : ''}
+      <div class="form__hint">${prose(`Регистрация потребует подтвердить, что это отдельное
+        мероприятие, а не повтор. Подтверждение записывается в историю — оно и есть защита
+        в спорной ситуации по разделу 10 договора.`)}</div>
+      ${active.length ? `<div class="wzcheck__g">В работе — ${active.length}</div>${list(active)}` : ''}
+      ${closed.length ? `<div class="wzcheck__g">Завершённые — ${closed.length}</div>${list(closed)}` : ''}
     </div>`;
 }
 
 function paneObject() {
-  const kusts = kustList(draft.field);
-  const wells = wellList(draft.field, draft.kust);
+  const wells = wellList(draft.field);
+  const kust = draft.well ? kustOfWell(draft.well) : '';
 
   return `
     <div class="wzcols">
       <div class="wzcols__main">
         <div class="form form--plain">
           <label class="form__f"><span class="form__l">Месторождение</span>
-            <select class="inp" id="fField" data-k="field">${
-              opts(fieldList, draft.field, 'Выберите месторождение')}</select></label>
-          <div class="form__hint">${prose(`Дерево ВМАП: ДО «ЛУКОЙЛ-Западная Сибирь» → ТПП
-            «Когалымнефтегаз» → ЦДНГ → месторождение → куст → скважина. Месторождение в ВМАП —
-            пара месторождение × цех, поэтому Южно-Ягунское присутствует четырьмя значениями;
-            название узла показано как есть.`)}</div>
+            <input class="inp" id="fField" data-k="field" list="dlFields" autocomplete="off"
+              value="${esc(draft.field)}" placeholder="Начните вводить название"></label>
+          <datalist id="dlFields">${fieldList.map((f) => `<option value="${esc(f)}">`).join('')}</datalist>
 
-          <div class="form__row">
-            <label class="form__f"><span class="form__l">Куст</span>
-              <select class="inp" id="fKust" data-k="kust" ${draft.field ? '' : 'disabled'}>${
-                opts(kusts, draft.kust, draft.field ? 'Выберите куст' : 'Сначала месторождение')}</select></label>
-            <label class="form__f"><span class="form__l">Скважина</span>
-              <select class="inp" id="fWell" data-k="well" ${draft.kust ? '' : 'disabled'}>${
-                opts(wells, draft.well, draft.kust ? 'Выберите скважину' : 'Сначала куст')}</select></label>
-          </div>
-          <div class="form__hint">${prose(`Куст и месторождение берутся из ВМАП, а не из Формы 2:
-            по части скважин они расходятся. Номер скважины по компании не уникален, поэтому
-            выбор всегда идёт в контексте цеха, а связь внутри модуля — по WellId.`)}</div>
+          <label class="form__f"><span class="form__l">Скважина${
+            kust ? ` <i>куст ${esc(kust)}</i>` : ''}</span>
+            <input class="inp" id="fWell" data-k="well" list="dlWells" autocomplete="off"
+              ${draft.field ? '' : 'disabled'} value="${esc(draft.well)}"
+              placeholder="${draft.field ? 'Номер скважины' : 'Сначала месторождение'}"></label>
+          <datalist id="dlWells">${wells.map((w) => `<option value="${esc(w)}">`).join('')}</datalist>
         </div>
-        ${preCheck()}
       </div>
       <aside class="wzaside">${wellAside()}</aside>
     </div>`;
@@ -333,8 +328,6 @@ function paneObject() {
 /* ------------------------------ шаг 2: проблема ------------------------------ */
 
 function paneProblem() {
-  const isVmap = draft.source === 'Анализ отклонений ВМАП';
-
   return `
     <div class="form form--plain">
       <label class="form__f"><span class="form__l">Направление</span>
@@ -358,19 +351,16 @@ function paneProblem() {
           регистрации, а с передачи Заказчику: рабочее окно — пн–пт 09:00–24:00 по Когалыму.`)}</div>
       </div>
 
-      <label class="form__f"><span class="form__l">Источник рекомендации</span>
-        <select class="inp" id="fSource" data-k="source">${
-          opts(SOURCES, draft.source, 'Выберите источник')}</select></label>
+      <label class="form__f"><span class="form__l">Предупреждение ВМАП
+          <i>необязательно</i></span>
+        <input class="inp inp--date" id="fAlert" data-k="alertId" value="${esc(draft.alertId)}"
+          placeholder="ALR-2026-08-04-1187"></label>
+      <div class="form__hint">${prose(`Заполняется, если рекомендация выросла из конкретного
+        предупреждения. Этой же связкой мастер открывается прямо из ВМАП: шаги 1 и 2 приходят
+        предзаполненными, идентификатор подставляется сам.`)}</div>
+    </div>
 
-      ${isVmap ? `
-        <label class="form__f"><span class="form__l">Предупреждение ВМАП
-            <i>идентификатор</i></span>
-          <input class="inp inp--date" id="fAlert" data-k="alertId" value="${esc(draft.alertId)}"
-            placeholder="ALR-2026-08-04-1187"></label>
-        <div class="form__hint">${prose(`Поле появилось потому, что источником объявлен машинный
-          анализ отклонений. Этой же связкой мастер открывается прямо из ВМАП: шаги 1 и 2
-          приходят предзаполненными, идентификатор подставляется сам.`)}</div>` : ''}
-    </div>`;
+    ${analogBlock()}`;
 }
 
 /* ------------------------------ шаг 3: рекомендация ------------------------------ */
@@ -468,7 +458,7 @@ function sumRow(step, k, v) {
 
 function paneHandover() {
   const prio = PRIORITIES.find((p) => p.code === draft.priority);
-  const object = draft.well ? `${draft.field} · куст ${draft.kust} · скважина ${draft.well}` : '';
+  const object = draft.well ? `${draft.field} · куст ${kustOfWell(draft.well)} · скважина ${draft.well}` : '';
 
   return `
     <div class="form form--plain">
@@ -498,7 +488,7 @@ function paneHandover() {
       ${sumRow(1, 'Направление', draft.direction)}
       ${sumRow(1, 'Проблема', draft.problem)}
       ${sumRow(1, 'Приоритет', prio ? `${prio.label} · ответ ${prio.sla} ч` : '')}
-      ${sumRow(1, 'Источник', draft.source + (draft.alertId ? ` · ${draft.alertId}` : ''))}
+      ${draft.alertId ? sumRow(1, 'Предупреждение ВМАП', draft.alertId) : ''}
       ${sumRow(2, 'Мероприятие', draft.action)}
       ${sumRow(2, 'Обоснование', draft.rationale)}
       ${sumRow(3, 'Ожидаемый результат', [
@@ -586,7 +576,7 @@ function paneDone() {
         <span class="status"><i class="status__d status__d--neutral"></i>Зарегистрировано</span>
         <span class="wzdone__dt">${fmt(issued.at)}</span>
       </div>
-      <div class="wzdone__b">${prose(`${draft.field} · куст ${draft.kust} · скважина ${draft.well} ·
+      <div class="wzdone__b">${prose(`${draft.field} · куст ${kustOfWell(draft.well)} · скважина ${draft.well} ·
         ${draft.direction} · приоритет ${prio.code}, норматив ответа ${prio.sla} рабочих часов.`)}</div>
 
       <div class="wzdone__next">
@@ -826,8 +816,8 @@ document.addEventListener('change', (e) => {
 
   /* Смена верхнего уровня каскада обнуляет нижние: куст 18 существует не в
      каждом месторождении, и оставленное значение молча указывало бы в пустоту. */
-  if (k === 'field') { draft.kust = ''; draft.well = ''; }
-  if (k === 'kust') { draft.well = ''; }
+  /* Смена месторождения обнуляет скважину: список скважин у другого узла свой. */
+  if (k === 'field') { draft.well = ''; }
 
   /* Смена скважины или направления сбрасывает подтверждение дублирования:
      подтверждали пару «скважина × направление», а она стала другой. */
@@ -858,11 +848,10 @@ document.addEventListener('keydown', (e) => {
 function applyDemo(mode) {
   const seed = DATA.find((r) => r.well === '1071') || DATA[0];
   Object.assign(draft, {
-    field: seed.field, kust: seed.kust, well: seed.well,
+    field: seed.field, well: seed.well,
     direction: 'Стабилизация режимов работы ГНО',
     problem: 'Остановки по ЗСП: срыв подачи при достижении 53 атм на приёме после увеличения оборотов с 2950 до 3000 об/мин.',
     priority: 'I',
-    source: 'Анализ отклонений ВМАП',
     alertId: 'ALR-2026-08-05-0431',
     actionRef: 'Перезапуск на пониженной частоте с постепенным выводом на режим.',
     action: 'Перезапуск на 2700 об/мин со ступенчатым повышением до 2950 об/мин и контролем Тм. При повторном срыве подачи — остановка на накопление 4 часа и повторный вывод на режим.',
