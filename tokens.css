@@ -1,0 +1,430 @@
+/* ============================================================================
+   Дизайн-токены ВМАП для модуля управления мероприятиями
+   ----------------------------------------------------------------------------
+   Источник: Figma «VMAP», файл sDHYCwcTO7VEiBFDIQ2Z2Y.
+   Светлая тема снята с узла 16059:150932 («Фильтры», табличные экраны),
+   тёмная — с узла 10848:137537 («Информация о скважине»).
+   Снято 2026-08-04.
+
+   Правило именования: путь переменной Figma → kebab-case, «/» → «-».
+   Например  itemPadding/horizontalS  →  --item-padding-horizontal-s.
+   Соответствие один в один, чтобы повторная выгрузка была механической.
+
+   Тема по умолчанию — светлая. Тёмная включается атрибутом на <html>:
+       <html data-theme="dark">
+
+   ВАЖНО: значения с пометкой «+доп» в дампе Figma по этим узлам не
+   встретились и достроены по аналогии. Их надо подтвердить при следующей
+   выгрузке — см. «ВМАП — визуальный язык.md», раздел о пробелах.
+
+   Комментарии в CSS не вкладываются. Внутри этого блока не должно быть
+   ни одного открывающего или закрывающего маркера комментария, иначе блок
+   закроется раньше времени и парсер проглотит следующий за ним :root целиком.
+   ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   1. Примитивы, не зависящие от темы
+   -------------------------------------------------------------------------- */
+
+:root {
+  /* Шрифты */
+  --font-family-text: Roboto, system-ui, sans-serif;
+  --font-family-headline: Roboto, system-ui, sans-serif;
+  --font-weight-text: 400;
+  --font-weight-subtitle: 500;
+  --font-weight-headline: 500;
+
+  /* Кегли и интерлиньяж */
+  --font-size-text-caption: 10px;
+  --line-height-text-caption: 14px;
+  --letter-spacing-text-caption: 0.8px;
+
+  --font-size-text-short-description: 10px;
+  --line-height-text-short-description: 14px;
+  --letter-spacing-text-short-description: 2px;
+
+  --font-size-text-small: 12px;
+  --line-height-text-small: 16px;
+
+  --font-size-text-small-medium: 12px;
+  --line-height-text-small-medium: 16px;
+
+  --font-size-text-medium: 14px;
+  --line-height-text-medium: 20px;
+
+  --font-size-text-large: 16px;
+  --line-height-text-large: 24px;
+
+  --font-size-text-link-underline: 12px;
+  --line-height-text-link-underline: 16px;
+
+  --font-size-h6: 14px;
+  --line-height-h6: 20px;
+  --font-size-h5: 16px;
+  --line-height-h5: 24px;
+  --font-size-h3: 20px;
+  --line-height-h3: 28px;
+
+  /* Радиусы */
+  --corner-radius-s: 4px;
+  --corner-radius-m: 6px;
+  --corner-radius-l: 8px;
+  --corner-radius-component: 4px;
+  --corner-radius-medium-component: 4px;
+  --corner-radius-large-component: 6px;
+  --corner-radius-section: 12px;
+
+  /* Внутренние отступы элемента */
+  --item-padding-horizontal-2xs: 2px;
+  --item-padding-horizontal-xs: 4px;
+  --item-padding-horizontal-s: 8px;
+  --item-padding-horizontal-m: 12px;
+  --item-padding-vertical-min: 0px;
+  --item-padding-vertical-2xs: 2px;
+  --item-padding-vertical-xs: 4px;
+  --item-padding-vertical-s: 6px;
+  --item-padding-vertical-m: 8px;
+  --item-padding-btn-icon-only-text: 4px;
+  --item-padding-medium-btn-icon-only-text: 6px;
+  --item-padding-medium-horizontal-2xs: 4px;
+  --item-padding-medium-horizontal-s: 10px;
+  --item-padding-medium-vertical-xs: 6px;
+  --item-padding-medium-vertical-m: 10px;
+
+  /* Зазоры между элементами */
+  --item-gap-horizontal-xs: 2px;
+  --item-gap-horizontal-s: 4px;
+  --item-gap-horizontal-m: 8px;
+  --item-gap-vertical-xs: 2px;
+  --item-gap-vertical-s: 4px;
+  --item-gap-medium-horizontal-s: 6px;
+  --item-gap-medium-horizontal-m: 8px;
+
+  /* Группа */
+  --group-gap-2xs: 2px;
+  --group-gap-xs: 4px;
+  --group-gap-s: 8px;
+  --group-gap-m: 12px;
+  --group-padding-xs: 4px;
+  --group-padding-s: 8px;
+  --group-padding-m: 12px;
+  --group-padding-l: 16px;
+  --group-padding-vertical-s: 8px;
+  --group-padding-vertical-m: 12px;
+
+  /* Блок */
+  --block-gap-compact: 4px;
+  --block-gap-default: 8px;
+  --block-padding-compact: 4px;
+
+  /* Секция */
+  --section-gap-compact: 8px;
+  --section-gap-default: 12px;
+  --section-padding-compact: 8px;
+  --section-padding-default: 16px;
+  --section-padding-extra-wide: 24px;
+
+  /* Экран */
+  --screen-gap-compact: 8px;
+  --screen-gap-default: 12px;
+  --screen-padding-default: 16px;
+  --screen-padding-wide: 24px;
+
+  /* Размеры */
+  --sizing-element-xs: 6px;
+  --sizing-element-s: 8px;
+  --sizing-element-m: 12px;
+  --sizing-element-l: 16px;
+  --sizing-element-xl: 24px;
+  --sizing-icon-in-component: 12px;
+  --sizing-icon-icon-only: 16px;
+  --sizing-icon-medium-icon-only: 16px;
+  --sizing-icon-large: 20px;      /* +доп */
+
+  /* Предельная ширина правой колонки контекста (Figma: Max) */
+  --sizing-context-column-max: 340px;
+
+  /* Прочее, не выражено переменными Figma, снято с макетов — см. .md */
+  --layout-header-height: 48px;   /* +доп */
+  --layout-sidebar-width: 264px;  /* +доп */
+}
+
+/* ---------------------------------------------------------------------------
+   2. Светлая тема — по умолчанию
+   -------------------------------------------------------------------------- */
+
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  /* Подложки */
+  --layout-default: #edf0f7;
+  --bg-default: #ffffff;
+  --bg-card: #ffffff;
+  --bg-secondary: #eff1fa;
+  --bg-tertiary: #f7f8fc;        /* +доп */
+  --bg-popover: #ffffff;
+
+  /* Поверхности компонентов */
+  --component-default: #ffffff;
+  --component-table: #ffffff;
+  --component-segmented: #ffffff;
+  --component-accent: #3f5edb;
+  --component-accent-secondary: #3f5edb1f;
+  --component-inverse: #00155333;
+  --component-inverse-secondary: #00155314;
+  --component-inverse-tertiary: #0015530a;
+
+  /* Границы */
+  --border-component-default: #00155333;
+  --border-divider: #15182133;
+  --border-divider-light: #15182114;
+  --border-table: #e2e2e2;
+
+  /* Текст */
+  --text-primary: #151821;
+  --text-heading: #151821;
+  --text-secondary: #1a1a1ad1;
+  --text-tertiary: #1a1a1a85;
+  --text-quaternary: #1a1a1a6b;
+  --text-placeholder: #1518216b;
+  --text-accent: #3f5edb;
+  --text-link: #3f4edd;
+  --text-on-accent: #ffffff;
+
+  /* Иконки */
+  --icon-default: #151821a3;
+  --icon-light: #15182152;
+  --icon-accent: #3f5edb;
+  --icon-disabled: #15182133;
+  --icon-on-accent: #ffffff;
+  --icon-color: #6a6a6a;
+
+  /* Статусы */
+  --status-default: #15182161;         /* +доп */
+  --status-default-text: #6a6a6a;      /* +доп */
+  --status-default-light-bg: #1518210a; /* +доп */
+  --status-success: #3dd27b;
+  --status-success-text: #0b9043;
+  --status-success-light-bg: #3dd27b1f;
+  --status-warning: #ffab48;
+  --status-warning-text: #f86800;
+  --status-warning-light-bg: #ffab481f; /* +доп */
+  --status-error: #ff6e6e;
+  --status-error-text: #eb0707;
+  --status-error-bg: #ff6e6e47;
+  --status-error-light-bg: #ff6e6e1a;
+  --status-processing: #4d91ff;
+  --status-processing-text: #1c6ed0;      /* +доп */
+  --status-processing-light-bg: #4d91ff1f; /* +доп */
+
+  /* Состояния */
+  --state-hover: #3f5edb0f;
+  --state-selected: #3f5edb1f;
+  --state-selected-light: #3f5edb0f;
+  --state-pressed: #3f5edb2e;          /* +доп */
+
+  /* Инфографика */
+  --infografic-accent: #7991f0;
+  --infografic-accent-pair-1: #00d7fd;
+  --infografic-blue-dark: #3f4edd;     /* +доп */
+  --infografic-blue-light: #45aaf2;    /* +доп */
+  --infografic-orange: #ffaa66;        /* +доп */
+  --infografic-green-blue: #35d79a;    /* +доп */
+
+  /* Тени */
+  --shadow-elevation-1: #00155314;
+  --shadow-elevation-2: #00155329;
+  --shadow-elevation-3: #00155333;
+  --shadow-color-default-1: #3f5edb59;
+  --shadow-color-default-2: #3f5edb80;
+
+  --elevation-1: 0 1px 4px 1px var(--shadow-elevation-1),
+                 0 0 2px 0 var(--shadow-elevation-3);
+  --elevation-2: 0 2px 6px 2px var(--shadow-elevation-1),
+                 0 1px 2px 0 var(--shadow-elevation-2);
+  --elevation-3: 0 1px 2px 0 var(--shadow-elevation-3),
+                 0 2px 10px 2px var(--shadow-elevation-3); /* +доп */
+  --elevation-fix-header-footer: 0 0 2px 0 var(--shadow-elevation-1),
+                                 0 0 16px 2px var(--shadow-elevation-1);
+  --focus-component: 0 0 3px 1px var(--shadow-color-default-1),
+                     0 0 2px 0 var(--shadow-color-default-2);
+}
+
+/* ---------------------------------------------------------------------------
+   3. Тёмная тема
+   -------------------------------------------------------------------------- */
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Подложки */
+  --layout-default: #111117;
+  --bg-default: #1e1d29;
+  --bg-card: #2b293b;
+  --bg-secondary: #35334a;
+  --bg-tertiary: #2b293b;
+  --bg-popover: #35334a;
+  --bg-component-base: #ffffff;
+  --bg-accent-secondary: #0078d21f;
+
+  /* Поверхности компонентов */
+  --component-default: #d8d8ff1f;
+  --component-default-opaque: #2a2938;
+  --component-table: #2b293b;          /* +доп */
+  --component-segmented: #35334a;      /* +доп */
+  --component-accent: #5454e3;
+  --component-accent-2: #5454e3;
+  --component-accent-secondary: #5454e34d;
+  --component-inverse: #d8d8ff52;
+  --component-inverse-secondary: #d8d8ff24;
+  --component-inverse-tertiary: #d8d8ff0a;
+
+  /* Границы */
+  --border-component-default: #ffffff00;
+  --border-divider: #d8d8ff33;
+  --border-divider-light: #d8d8ff1a;
+  --border-table: #d8d8ff33;           /* +доп */
+
+  /* Текст.
+     ВНИМАНИЕ: в тёмной теме Figma text/primary остаётся ТЁМНЫМ (#002033) —
+     он предназначен для белой подложки bg/componentBase, а не для полотна.
+     Основной текст на тёмном фоне — text-secondary. См. .md. */
+  --text-primary: #002033;
+  --text-heading: #ffffffc7;           /* +доп */
+  --text-secondary: #ffffffc7;
+  --text-tertiary: #00203385;
+  --text-quaternary: #0020336b;
+  --text-placeholder: #ffffff6b;
+  --text-accent: #a8b9ff;
+  --text-link: #8099ff;
+  --text-on-accent: #ffffff;
+
+  /* Иконки */
+  --icon-default: #ffffffa3;
+  --icon-light: #ffffff52;
+  --icon-accent: #a8b9ff;              /* +доп */
+  --icon-disabled: #ffffff52;          /* +доп */
+  --icon-on-accent: #ffffff;
+  --icon-color: #cacaca;               /* +доп */
+
+  /* Статусы */
+  --status-default: #ffffff61;
+  --status-default-text: #cacaca;
+  --status-default-light-bg: #ffffff1a;
+  --status-success: #00b24a;
+  --status-success-text: #3dd27b;      /* +доп */
+  --status-success-light-bg: #0fd6622e;
+  --status-warning: #f1a040;
+  --status-warning-text: #ffaa66;      /* +доп */
+  --status-warning-light-bg: #f1a0402e; /* +доп */
+  --status-error: #ff6e6e;
+  --status-error-text: #ff8585;
+  --status-error-bg: #ff6e6e47;        /* +доп */
+  --status-error-light-bg: #ff6e6e2e;  /* +доп */
+  --status-processing: #4d91ff;
+  --status-processing-text: #94c2ff;
+  --status-processing-light-bg: #4d91ff42;
+
+  /* Состояния */
+  --state-hover: #5454e329;
+  --state-selected: #5454e34d;
+  --state-selected-light: #5454e34d;
+  --state-hover-light: #5454e329;
+  --state-pressed: #5454e380;
+
+  /* Инфографика */
+  --infografic-accent: #5b79f0;
+  --infografic-accent-pair-1: #2fb5af;
+  --infografic-blue-dark: #3f4edd;
+  --infografic-blue-light: #45aaf2;
+  --infografic-orange: #ffaa66;
+  --infografic-green-blue: #35d79a;
+
+  /* Тени */
+  --shadow-elevation-1: #0000001a;
+  --shadow-elevation-2: #00000033;
+  --shadow-elevation-3: #466aff33;
+  --shadow-color-default-1: #5454e373;
+  --shadow-color-default-2: #5454e399;
+
+  --elevation-1: 0 1px 4px 1px var(--shadow-elevation-1),
+                 0 0 2px 0 var(--shadow-elevation-2);
+  --elevation-2: 0 2px 6px 2px var(--shadow-elevation-1),
+                 0 1px 2px 0 var(--shadow-elevation-2); /* +доп */
+  --elevation-3: 0 1px 2px 0 var(--shadow-elevation-3),
+                 0 2px 10px 2px var(--shadow-elevation-3);
+  --elevation-fix-header-footer: 0 0 2px 0 var(--shadow-elevation-1),
+                                 0 0 16px 2px var(--shadow-elevation-1); /* +доп */
+  --focus-component: 0 0 3px 1px var(--shadow-color-default-1),
+                     0 0 2px 0 var(--shadow-color-default-2);
+}
+
+/* ---------------------------------------------------------------------------
+   4. Готовые текстовые стили
+   -------------------------------------------------------------------------- */
+
+.text-caption {
+  font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-caption) var(--font-family-text);
+  letter-spacing: var(--letter-spacing-text-caption);
+}
+
+.text-short-description {
+  font: var(--font-weight-text) var(--font-size-text-short-description) / var(--line-height-text-short-description) var(--font-family-text);
+  letter-spacing: var(--letter-spacing-text-short-description);
+}
+
+.text-small {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+}
+
+.text-small-md {
+  font: var(--font-weight-subtitle) var(--font-size-text-small-medium) / var(--line-height-text-small-medium) var(--font-family-text);
+}
+
+.text-medium {
+  font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+}
+
+.text-large {
+  font: var(--font-weight-text) var(--font-size-text-large) / var(--line-height-text-large) var(--font-family-text);
+}
+
+.text-link-underline {
+  font: var(--font-weight-text) var(--font-size-text-link-underline) / var(--line-height-text-link-underline) var(--font-family-text);
+  color: var(--text-link);
+  text-decoration: underline;
+}
+
+.headline-h6 {
+  font: var(--font-weight-headline) var(--font-size-h6) / var(--line-height-h6) var(--font-family-headline);
+}
+
+.headline-h5 {
+  font: var(--font-weight-headline) var(--font-size-h5) / var(--line-height-h5) var(--font-family-headline);
+}
+
+.headline-h3 {
+  font: var(--font-weight-headline) var(--font-size-h3) / var(--line-height-h3) var(--font-family-headline);
+}
+
+/* ---------------------------------------------------------------------------
+   5. База документа
+   -------------------------------------------------------------------------- */
+
+body {
+  margin: 0;
+  background: var(--layout-default);
+  color: var(--text-primary);
+  font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+:root[data-theme="dark"] body {
+  color: var(--text-secondary);
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-component);
+}
