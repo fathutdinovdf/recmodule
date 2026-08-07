@@ -1,0 +1,399 @@
+/* Мастер регистрации рекомендации. Дополняет registry.css и card.css, ничего
+   из них не переопределяет без нужды. Все цвета, кегли, радиусы и отступы —
+   через переменные tokens.css. */
+
+/* ------------------------------ подложка стенда ------------------------------
+   Реестр здесь не воспроизводится: мастер открывается поверх него, и подробная
+   таблица под затемнением только отвлекала бы от того, что обсуждается. */
+
+/* Подпись прижата к верху, а не к центру: по центру она оказалась бы ровно
+   под модалкой и её никто бы не увидел. */
+.stage { align-items: center; justify-content: flex-start; }
+.stage__note {
+  max-width: 62ch; text-align: center;
+  padding: var(--section-padding-extra-wide);
+  font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+.stage__note b {
+  display: block; margin-bottom: var(--item-gap-vertical-s);
+  font: var(--font-weight-headline) var(--font-size-h6) / var(--line-height-h6) var(--font-family-headline);
+  color: var(--text-quaternary);
+}
+.stage__note a { color: var(--text-link); }
+
+/* ------------------------------ модальное окно ------------------------------ */
+
+/* Вуаль. В светлой теме это полупрозрачная тёмная поверхность component-inverse.
+   В тёмной тот же токен становится светлым (он задуман как «инверсия к фону»),
+   и вуаль вместо затемнения высветляла бы полотно — поэтому там берётся
+   тень второго уровня, тоже токен, но чёрная. */
+.scrim {
+  position: fixed; inset: 0; z-index: 50;
+  background: var(--component-inverse);
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--screen-padding-default);
+}
+:root[data-theme="dark"] .scrim { background: var(--shadow-elevation-2); }
+
+/* Ширина 960 — из решения по дизайну модуля. Высота фиксирована намеренно:
+   при высоте по содержимому подвал прыгал бы между шагами, а он — единственная
+   опора при свободной навигации. 640 подобрано под самый длинный шаг
+   («Рекомендация») при ширине 960; на низких экранах окно сжимается. */
+.wz {
+  width: 960px; height: 640px;
+  max-width: 100%; max-height: 100%;
+  display: flex; flex-direction: column;
+  background: var(--bg-popover);
+  border-radius: var(--corner-radius-section);
+  box-shadow: var(--elevation-3);
+  overflow: hidden;
+}
+
+.wz__head {
+  flex: 0 0 auto;
+  display: flex; align-items: center; gap: var(--group-gap-m);
+  padding: var(--group-padding-m) var(--section-padding-default);
+  border-bottom: 1px solid var(--border-divider-light);
+  box-shadow: var(--elevation-fix-header-footer);
+  position: relative; z-index: 2;
+}
+.wz__titles { flex: 1 1 auto; min-width: 0; }
+.wz__title {
+  margin: 0;
+  font: var(--font-weight-headline) var(--font-size-h5) / var(--line-height-h5) var(--font-family-headline);
+  color: var(--text-heading);
+}
+.wz__sub {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+
+.wz__body { flex: 1 1 auto; min-height: 0; display: flex; }
+
+/* ------------------------------ рельс шагов ------------------------------
+   Все пять шагов кликабельны с самого начала: эксперт заполняет то, что знает,
+   в том порядке, в каком смотрит телеметрию. Ширина 248 — под самый длинный
+   заголовок («Ожидаемый результат») вместе со счётчиком в одну строку. */
+
+.wz__rail {
+  flex: 0 0 248px; width: 248px;
+  border-right: 1px solid var(--border-divider-light);
+  background: var(--bg-tertiary);
+  padding: var(--group-padding-s);
+  display: flex; flex-direction: column; gap: var(--item-gap-vertical-xs);
+  overflow-y: auto;
+}
+
+.wzstep {
+  display: flex; align-items: flex-start; gap: var(--item-gap-horizontal-m);
+  width: 100%; text-align: left;
+  padding: var(--item-padding-vertical-m) var(--item-padding-horizontal-s);
+  border: 0; border-radius: var(--corner-radius-component);
+  background: transparent; cursor: pointer;
+}
+.wzstep:hover { background: var(--state-hover); }
+.wzstep.is-on { background: var(--state-selected); }
+
+/* Номер шага несёт и состояние: пусто — контур, частично — акцентный контур,
+   заполнено — сплошная зелёная галочка. Тот же приём, что у кружка статуса в
+   реестре: форма кодирует «доведено ли до конца», цвет — чем кончилось. */
+.wzstep__n {
+  flex: 0 0 auto;
+  width: 20px; height: 20px; margin-top: 1px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--border-component-default);
+  background: var(--bg-card);
+  color: var(--text-tertiary);
+  font: var(--font-weight-subtitle) var(--font-size-text-caption) / 1 var(--font-family-text);
+}
+.wzstep.is-part .wzstep__n { border-color: var(--component-accent); color: var(--text-accent); }
+.wzstep.is-full .wzstep__n {
+  border-color: transparent; background: var(--status-success); color: var(--text-on-accent);
+}
+
+.wzstep__b { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.wzstep__t {
+  font: var(--font-weight-subtitle) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  color: var(--text-secondary);
+}
+.wzstep.is-on .wzstep__t { color: var(--text-accent); }
+.wzstep__s {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-quaternary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Счётчик незаполненных обязательных полей. Без него свободная навигация
+   превращается в блуждание: чего не хватает, видно только по нажатию
+   «Зарегистрировать». Тон предупреждающий, а не ошибочный — пустое поле в
+   черновике ещё не нарушение. */
+.wzstep__c {
+  flex: 0 0 auto; margin-top: 2px;
+  min-width: 18px; height: 16px; padding: 0 var(--item-padding-horizontal-xs);
+  display: grid; place-items: center;
+  border-radius: var(--corner-radius-component);
+  background: var(--status-warning-light-bg); color: var(--status-warning-text);
+  font: var(--font-weight-subtitle) var(--font-size-text-caption) / 1 var(--font-family-text);
+}
+
+/* ------------------------------ область полей ------------------------------ */
+
+.wz__pane {
+  flex: 1 1 auto; min-width: 0;
+  overflow-y: auto;
+  padding: var(--section-padding-default);
+}
+.wzpane__h {
+  font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-caption) var(--font-family-text);
+  letter-spacing: var(--letter-spacing-text-caption);
+  text-transform: uppercase;
+  color: var(--text-quaternary);
+  margin-bottom: var(--group-gap-s);
+}
+
+/* .form в card.css отделяется от блока выше линией — там она раскрывается
+   внутри «Сводки». В мастере форма и есть содержимое панели, отделять её не
+   от чего. */
+.form--plain { margin-top: 0; padding-top: 0; border-top: 0; }
+
+.wzcols { display: flex; gap: var(--screen-gap-default); align-items: flex-start; }
+.wzcols__main { flex: 1 1 auto; min-width: 0; }
+.wzaside {
+  flex: 0 0 260px; width: 260px;
+  display: flex; flex-direction: column; gap: var(--block-gap-default);
+}
+.wzaside__empty {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-quaternary);
+}
+
+/* ------------------------------ предварительная проверка ------------------------------ */
+
+.wzcheck {
+  margin-top: var(--group-gap-m);
+  padding: var(--group-padding-m);
+  border-radius: var(--corner-radius-l);
+  background: var(--bg-secondary);
+  display: flex; flex-direction: column; gap: var(--item-gap-vertical-s);
+}
+.wzcheck__h {
+  display: flex; align-items: center; gap: var(--item-gap-horizontal-m);
+  font: var(--font-weight-headline) var(--font-size-h6) / var(--line-height-h6) var(--font-family-headline);
+  color: var(--text-heading);
+}
+.wzcheck .prev__i { background: var(--bg-card); border-color: transparent; }
+
+/* ------------------------------ приоритет ------------------------------
+   Приоритет выбирается не списком, а тремя карточками: сам по себе номер
+   ничего не сообщает, а норматив ответа — это то, о чём эксперт принимает
+   решение. Пилюли те же, что в реестре и в шапке карточки. */
+
+.wzprio { display: flex; gap: var(--block-gap-default); }
+.wzprio:focus-visible { outline: none; box-shadow: var(--focus-component); }
+.wzprio__i {
+  flex: 1 1 0; min-width: 0;
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--item-gap-vertical-xs);
+  padding: var(--group-padding-s) var(--group-padding-m);
+  border: 1px solid var(--border-component-default);
+  border-radius: var(--corner-radius-m);
+  background: var(--component-default);
+  cursor: pointer; text-align: left;
+}
+.wzprio__i:hover { background: var(--state-hover); }
+.wzprio__i.is-on { border-color: var(--component-accent); background: var(--state-selected-light); }
+.wzprio__t {
+  font: var(--font-weight-subtitle) var(--font-size-text-medium) / 1.2 var(--font-family-text);
+  color: var(--text-primary);
+}
+.wzprio__d {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+
+/* ------------------------------ нередактируемое значение ------------------------------
+   Горизонт 90 суток показан явно, а не спрятан: он определяет, когда считаются
+   деньги по договору. Замок объясняет, почему поля нет. */
+
+.wzfixed {
+  display: flex; align-items: flex-start; gap: var(--item-gap-horizontal-m);
+  padding: var(--group-padding-m);
+  border-radius: var(--corner-radius-m);
+  background: var(--component-inverse-tertiary);
+  color: var(--icon-default);
+}
+.wzfixed__v {
+  font: var(--font-weight-subtitle) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  color: var(--text-primary);
+}
+.wzfixed__d {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+
+/* ------------------------------ сводка на шаге 5 ------------------------------ */
+
+.wzsum {
+  margin-top: var(--section-gap-default);
+  border: 1px solid var(--border-divider-light);
+  border-radius: var(--corner-radius-l);
+  overflow: hidden;
+}
+.wzsum__h {
+  padding: var(--item-padding-vertical-s) var(--group-padding-m);
+  background: var(--bg-secondary);
+  font: var(--font-weight-headline) var(--font-size-h6) / var(--line-height-h6) var(--font-family-headline);
+  color: var(--text-heading);
+}
+.wzsum__r {
+  display: grid; grid-template-columns: 160px 1fr auto;
+  gap: var(--item-gap-horizontal-m);
+  align-items: baseline;
+  padding: var(--item-padding-vertical-s) var(--group-padding-m);
+  border-top: 1px solid var(--border-divider-light);
+}
+.wzsum__k {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-quaternary);
+}
+.wzsum__v {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-primary);
+  white-space: pre-wrap;
+}
+.wzsum__v.is-miss { color: var(--status-error-text); }
+.wzsum__a {
+  border: 0; background: transparent; cursor: pointer; padding: 0;
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-link);
+}
+.wzsum__a:hover { text-decoration: underline; }
+
+/* ------------------------------ сводка валидации ------------------------------
+   Живёт над подвалом, а не внутри области полей: ссылки должны оставаться на
+   экране, пока человек ходит по шагам и закрывает пробелы один за другим. */
+
+.wz__alert {
+  flex: 0 0 auto;
+  padding: var(--group-padding-s) var(--section-padding-default);
+  background: var(--status-error-light-bg);
+  border-top: 1px solid var(--border-divider-light);
+  display: flex; flex-direction: column; gap: var(--item-gap-vertical-s);
+}
+/* Подтверждение сохранения черновика — та же полоса, но зелёная: сообщение
+   не об ошибке, а о том, что действие прошло. */
+.wz__alert--ok { background: var(--status-success-light-bg); }
+.wz__alert--ok .wzalert__h { color: var(--status-success-text); font-weight: var(--font-weight-text); }
+
+.wzalert__h {
+  font: var(--font-weight-subtitle) var(--font-size-text-small-medium) / var(--line-height-text-small-medium) var(--font-family-text);
+  color: var(--status-error-text);
+}
+.wzalert__l { display: flex; flex-wrap: wrap; gap: var(--item-gap-horizontal-m); }
+.wzalert__i {
+  border: 0; background: transparent; cursor: pointer; padding: 0;
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-link); text-decoration: underline;
+}
+.wzalert__i:hover { color: var(--status-error-text); }
+
+/* ------------------------------ подвал ------------------------------ */
+
+.wz__foot {
+  flex: 0 0 auto;
+  display: flex; align-items: center; gap: var(--group-gap-m);
+  padding: var(--group-padding-m) var(--section-padding-default);
+  border-top: 1px solid var(--border-divider-light);
+  box-shadow: var(--elevation-fix-header-footer);
+  background: var(--bg-popover);
+  position: relative; z-index: 2;
+}
+.wz__foot-l { display: flex; align-items: center; gap: var(--item-gap-horizontal-m); min-width: 0; }
+.wz__foot-r { margin-left: auto; display: flex; align-items: center; gap: var(--item-gap-horizontal-m); }
+.wz__foot .btn { flex: 0 0 auto; white-space: nowrap; }
+.wz__foot .btn:disabled { color: var(--icon-disabled); cursor: default; background: var(--component-default); }
+.wz__foot a.btn { text-decoration: none; }
+
+/* ------------------------------ проверка на аналоги ------------------------------
+   Экран забирает всё окно: подтверждение «это отдельное мероприятие» уходит в
+   историю как защита в спорной ситуации по разделу 10 договора, и поставить
+   его, не прочитав список, не должно получаться. */
+
+.wzgate { display: flex; flex-direction: column; gap: var(--group-gap-m); }
+.wzgate__h {
+  display: flex; align-items: flex-start; gap: var(--item-gap-horizontal-m);
+  font: var(--font-weight-headline) var(--font-size-h5) / var(--line-height-h5) var(--font-family-headline);
+  color: var(--text-heading);
+}
+.wzgate__h svg { flex: 0 0 auto; margin-top: 2px; color: var(--status-warning-text); }
+.wzgate__d {
+  font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  color: var(--text-secondary);
+}
+.wzgate__list { display: flex; flex-direction: column; gap: var(--item-gap-vertical-s); }
+.wzgate__i {
+  display: grid; grid-template-columns: 108px 210px 92px 1fr;
+  gap: var(--item-gap-horizontal-m); align-items: baseline;
+  padding: var(--item-padding-vertical-s) var(--item-padding-horizontal-s);
+  border: 1px solid var(--border-divider-light);
+  border-radius: var(--corner-radius-component);
+  text-decoration: none;
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-secondary);
+}
+.wzgate__i:hover { background: var(--state-hover); }
+.wzgate__n { color: var(--text-link); font-variant-numeric: tabular-nums; }
+.wzgate__dt { color: var(--text-quaternary); font-variant-numeric: tabular-nums; }
+.wzgate__p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.wzgate__ok {
+  display: flex; align-items: flex-start; gap: var(--item-gap-horizontal-m);
+  padding: var(--group-padding-m);
+  border: 1px solid var(--component-accent);
+  border-radius: var(--corner-radius-m);
+  background: var(--state-selected-light);
+  cursor: pointer;
+  font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  color: var(--text-primary);
+}
+.wzgate__ok input { accent-color: var(--component-accent); margin: 0; }
+
+/* ------------------------------ результат ------------------------------ */
+
+.wzdone { display: flex; flex-direction: column; gap: var(--group-gap-s); max-width: 68ch; }
+.wzdone__n {
+  font: var(--font-weight-headline) var(--font-size-h3) / var(--line-height-h3) var(--font-family-headline);
+  color: var(--text-heading);
+  font-variant-numeric: tabular-nums;
+}
+.wzdone__h { display: flex; align-items: center; gap: var(--group-gap-m); }
+.wzdone__dt {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-quaternary); font-variant-numeric: tabular-nums;
+}
+.wzdone__b {
+  font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  color: var(--text-secondary);
+}
+.wzdone__next, .wzdone__log {
+  padding: var(--group-padding-m);
+  border-radius: var(--corner-radius-l);
+  background: var(--bg-secondary);
+  display: flex; flex-direction: column; gap: var(--item-gap-vertical-s);
+}
+.wzdone__nh {
+  font: var(--font-weight-headline) var(--font-size-h6) / var(--line-height-h6) var(--font-family-headline);
+  color: var(--text-heading);
+}
+
+/* ------------------------------ узкий экран ------------------------------
+   Ниже 1280 модалка перестаёт помещаться вместе с левой панелью приложения.
+   Рельс шагов при этом не сворачивается — он и есть навигация; сжимается
+   правая колонка с телеметрией, она справочная. */
+
+@media (max-width: 1280px) {
+  .wzaside { flex-basis: 220px; width: 220px; }
+  .wzsum__r { grid-template-columns: 132px 1fr auto; }
+  .wzgate__i { grid-template-columns: 100px 190px 84px 1fr; }
+}
