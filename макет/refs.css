@@ -174,9 +174,13 @@
 .cell-use { text-align: right; }
 .tbl thead th.th--right .th { justify-content: flex-end; }
 
+/* Кнопки строки не гасятся: недоступное действие остаётся кликабельным и по
+   нажатию объясняет, почему оно недоступно. Серая кнопка сообщает «нельзя», но
+   не сообщает «почему», а спрашивают здесь именно это — про удаление
+   используемого значения и про код месторождения. Поэтому правила
+   `:disabled` на этом экране нет вовсе. */
 .rowact { display: flex; gap: var(--item-gap-horizontal-xs); }
 .iconbtn--xs { width: 20px; height: 20px; }
-.iconbtn:disabled { color: var(--icon-disabled); cursor: default; background: transparent; }
 .ic12 { width: var(--sizing-icon-in-component); height: var(--sizing-icon-in-component); }
 
 /* Замок в колонке кода месторождения: код участвует в уже выданных номерах
