@@ -566,7 +566,7 @@
     const head = `<thead><tr>
       <th>Скважина</th><th>Приор.</th><th>Передано</th><th>Ответ</th>
       <th>Срок по Форме 2</th><th>Вердикт Формы 2</th>
-      <th>Срок по модулю</th><th>Вердикт модуля</th><th>Расхождение</th></tr></thead>`;
+      <th>Срок по модулю</th><th>Вердикт модуля</th><th>Форма 2 раньше на</th></tr></thead>`;
 
     const body = rows.map((x) => {
       const bad = x.vM.k !== x.vF.k;
@@ -580,7 +580,7 @@
         <td><span class="tag tag--${x.vF.k}">${x.vF.t}</span></td>
         <td class="num">${fmtDT(x.mod)}</td>
         <td><span class="tag tag--${x.vM.k}">${x.vM.t}</span></td>
-        <td>${bad ? `<b class="cmp__bad">вердикт неверен</b>` : (Math.abs(gap) > 0.01 ? `<span class="mark">срок раньше на ${fmtH(Math.abs(gap))}</span>` : '<span class="mark">совпадает</span>')}</td>
+        <td>${bad ? '<b class="cmp__bad">вердикт неверен</b>' : (Math.abs(gap) > 0.01 ? `<span class="mark">${fmtH(Math.abs(gap))}</span>` : '<span class="mark">совпадает</span>')}</td>
       </tr>`;
     }).join('');
 
