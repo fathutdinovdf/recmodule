@@ -29,8 +29,15 @@ const esc = (s) => String(s ?? '')
    исходного кода — прогоняем их через prose. Тот же приём, что в card.js. */
 const prose = (s) => s.replace(/\s+/g, ' ').trim();
 
+/* Дата без времени по стандарту читается как UTC и в местном поясе съезжает.
+   Тот же приём, что в card.js: такие строки разбираем как локальную полночь. */
+function toDate(d) {
+  if (d instanceof Date) return d;
+  return new Date(/^\d{4}-\d{2}-\d{2}$/.test(d) ? `${d}T00:00` : d);
+}
+
 function fmt(d, withTime = true) {
-  const x = d instanceof Date ? d : new Date(d);
+  const x = toDate(d);
   if (isNaN(x)) return '—';
   const date = `${pad(x.getDate())}.${pad(x.getMonth() + 1)}.${x.getFullYear()}`;
   return withTime ? `${date} ${pad(x.getHours())}:${pad(x.getMinutes())}` : date;

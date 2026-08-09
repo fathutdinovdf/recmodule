@@ -123,17 +123,22 @@ const esc = (s) => String(s ?? '').replace(/"/g, '&quot;');
 
 function fmtDateTime(d) {
   if (!d) return '';
-  const x = d instanceof Date ? d : new Date(d);
+  const x = toDate(d);
   if (isNaN(x)) return String(d);
   return `${pad(x.getDate())}.${pad(x.getMonth() + 1)}.${x.getFullYear()} ${pad(x.getHours())}:${pad(x.getMinutes())}`;
 }
 
 /* Дата без времени по стандарту читается как UTC и в местном поясе съезжает,
-   поэтому такие строки разбираем как локальную полночь. */
+   поэтому такие строки разбираем как локальную полночь. Один помощник на файл:
+   разные способы разбора в соседних строках рано или поздно разойдутся. */
+function toDate(d) {
+  if (d instanceof Date) return d;
+  return new Date(/^\d{4}-\d{2}-\d{2}$/.test(d) ? `${d}T00:00` : d);
+}
+
 function fmtDate(d) {
   if (!d) return '';
-  const x = d instanceof Date ? d
-    : new Date(/^\d{4}-\d{2}-\d{2}$/.test(d) ? `${d}T00:00` : d);
+  const x = toDate(d);
   if (isNaN(x)) return String(d);
   return `${pad(x.getDate())}.${pad(x.getMonth() + 1)}.${x.getFullYear()}`;
 }
@@ -190,7 +195,7 @@ function matchesAlert(rec) {
   if (state.alert === 'soon') return rec.controlKind === 'waiting' && rec.controlDelta <= 2 * 3600 * 1000;
   if (state.alert === 'window') {
     if (!rec.windowCloseAt) return false;
-    const d = new Date(rec.windowCloseAt) - NOW;
+    const d = toDate(rec.windowCloseAt) - NOW;
     return d >= 0 && d <= 7 * 86400000;
   }
   return true;
@@ -437,7 +442,7 @@ function openTextPopover(anchor, key) {
   const col = COLUMNS.find((c) => c.key === key);
   openPopover(anchor, `
     <label class="field"><svg class="ic16 field__icon"><use href="#i-search"/></svg>
-      <input type="search" id="ptq" placeholder="${col.key === 'number' ? 'Номер мероприятия…' : 'Поиск по тексту…'}"
+      <input type="search" id="ptq" placeholder="${col.key === 'number' ? 'Номер рекомендации…' : 'Поиск по тексту…'}"
              value="${esc(state.textFilters[key] || '')}"></label>
     <div class="popover__foot">
       <button class="btn btn--accent" id="ptApply">Применить</button>

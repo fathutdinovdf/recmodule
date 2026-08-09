@@ -433,7 +433,11 @@ function inWindow(d) {
 
 /** Ближайший момент внутри рабочего окна: сам момент либо начало ближайшего дня. */
 function toWindow(d) {
-  const x = new Date(d);
+  /* Дата без времени («2026-07-03») по стандарту разбирается как UTC и в
+     местном поясе съезжает. Сюда такие строки сегодня не попадают, но защита
+     дешевле, чем разбирательство, почему срок уехал на сутки. */
+  const x = new Date(d instanceof Date ? d
+    : (/^\d{4}-\d{2}-\d{2}$/.test(d) ? `${d}T00:00` : d));
   if (inWindow(x)) return x;
   if (isWorkday(x) && x.getHours() < WORK_FROM) {
     x.setHours(WORK_FROM, 0, 0, 0);

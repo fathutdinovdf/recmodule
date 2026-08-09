@@ -36,7 +36,7 @@ function dur(ms) {
   return `${mm} мин`;
 }
 
-const days = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
+const days = (a, b) => Math.round((toDate(b) - toDate(a)) / 86400000);
 
 /* В .block__b стоит pre-wrap — он нужен, чтобы сохранять переносы в тексте
    рекомендации, введённом человеком. Собственные пояснения интерфейса из-за
@@ -819,7 +819,7 @@ function submit(what) {
     const compl = (document.querySelector('input[name=compl]:checked') || {}).value || 'full';
 
     if (!date) { error = 'Укажите дату фактической реализации.'; renderPane(); return; }
-    if (new Date(date) > NOW) { error = 'Дата реализации не может быть в будущем.'; renderPane(); return; }
+    if (toDate(date) > NOW) { error = 'Дата реализации не может быть в будущем.'; renderPane(); return; }
     if (compl === 'partial' && !val('#fPartial')) {
       error = 'При частичной реализации обязательно описать, что не выполнено.';
       renderPane(); return;
@@ -833,7 +833,7 @@ function submit(what) {
     rec.factNote = compl === 'partial' ? val('#fPartial') : '';
     rec.factFiles = 0;
     rec.windowOpenAt = date;
-    rec.windowCloseAt = day(new Date(new Date(date).getTime() + 90 * 86400000));
+    rec.windowCloseAt = day(new Date(toDate(date).getTime() + 90 * 86400000));
     setStatus('windowOpen');
     if (val('#fText')) addComment(val('#fText'), 'exec');
     form = null; refresh(); return;
@@ -852,7 +852,7 @@ function submit(what) {
        нашей БД, поэтому смена даты просто сдвигает 90 суток по сохранённым суткам. */
     rec.factDate = rec.dispute.proposedDate;
     rec.windowOpenAt = rec.factDate;
-    rec.windowCloseAt = day(new Date(new Date(rec.factDate).getTime() + 90 * 86400000));
+    rec.windowCloseAt = day(new Date(toDate(rec.factDate).getTime() + 90 * 86400000));
     rec.dispute.state = 'accepted';
     rec.dispute.resolvedAt = NOW;
     form = null; refresh(); return;
