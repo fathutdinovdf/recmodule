@@ -14,8 +14,8 @@ const { МАКЕТ, исходник, загрузитьДанные, Отчёт
 
 const отчёт = new Отчёт('Исходники макета');
 
-const ФАЙЛЫ_JS = ['app.js', 'card.js', 'data.js', 'wizard.js'];
-const ФАЙЛЫ_HTML = ['index.html', 'card.html', 'wizard.html'];
+const ФАЙЛЫ_JS = ['app.js', 'card.js', 'data.js', 'wizard.js', 'inbox.js'];
+const ФАЙЛЫ_HTML = ['index.html', 'card.html', 'wizard.html', 'inbox.html'];
 
 /** Убирает комментарии, сохраняя переводы строк, чтобы номера строк не съехали. */
 function безКомментариев(текст) {
