@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <title>Стенд проверок вычисленного стиля</title>
+  <!-- Стенд подключает ровно те же файлы стилей, что и макет, и проверяет то,
+       что видно только браузеру: какое значение свойства получилось после
+       каскада и раскрытия переменных. Ни разметка макета, ни его скрипты сюда
+       не тянутся — проверяются именно стили. -->
+  <link rel="stylesheet" href="../tokens.css">
+  <link rel="stylesheet" href="../макет/registry.css">
+  <link rel="stylesheet" href="../макет/card.css">
+</head>
+<body>
+<div id="песочница"></div>
+<pre id="итог">стенд не отработал</pre>
+
+<script>
+/* Результат кладётся в #итог как JSON: страницу снимает headless Chrome
+   через --dump-dom, а разбирает уже проверка на node. */
+
+const итог = { доступ: true, проверено: 0, hidden: [], переменные: [], ошибки: [] };
+
+function правила() {
+  const список = [];
+  итог.листов = document.styleSheets.length;
+  for (const лист of document.styleSheets) {
+    let набор;
+    try { набор = лист.cssRules; } catch (e) { итог.доступ = false; continue; }
+    /* Порядок веток важен: в современном Chrome у обычного CSSStyleRule тоже
+       есть свойство cssRules (пустой список — под вложенные правила), и
+       проверка «есть cssRules — значит это группа» уводила обход в пустоту,
+       а сами правила не попадали в список вовсе. */
+    const обход = (набор) => {
+      for (const п of набор) {
+        if (п.selectorText) список.push(п);
+        if (п.cssRules && п.cssRules.length) обход(п.cssRules);
+      }
+    };
+    обход(набор);
+  }
+  return список;
+}
+
+const все = правила();
+
+/* ---------- 1. атрибут hidden против классов с display ----------
+   У правила браузера для hidden минимальная специфичность. Любой класс с
+   display: flex перебивает его молча — элемент остаётся на экране. Проверяем
+   не наличие защитного правила в тексте CSS, а результат: берём каждый класс,
+   который задаёт display, вешаем на элемент вместе с hidden и смотрим, что
+   получилось на самом деле. */
+for (const п of все) {
+  const display = п.style && п.style.getPropertyValue('display');
+  if (!display || display === 'none') continue;
+  for (const селектор of п.selectorText.split(',')) {
+    const классы = (селектор.match(/\.[a-z0-9_-]+/gi) || []).map((s) => s.slice(1));
+    if (!классы.length) continue;
+    const э = document.createElement('div');
+    э.className = классы.join(' ');
+    э.hidden = true;
+    document.getElementById('песочница').appendChild(э);
+    итог.проверено++;
+    const факт = getComputedStyle(э).display;
+    if (факт !== 'none') {
+      итог.hidden.push({ селектор: селектор.trim(), объявлено: display, вычислено: факт });
+    }
+    э.remove();
+  }
+}
+
+/* ---------- 2. переменные, раскрывшиеся в пустоту ----------
+   Опечатка в имени переменной не ломает ничего заметного: свойство просто
+   выпадает. Спрашиваем у браузера значение каждой переменной, на которую
+   ссылается макет, в обеих темах — в тёмной часть переменных переопределена,
+   и пропасть может именно там. */
+const имена = new Set();
+for (const п of все) {
+  const текст = п.cssText || '';
+  for (const m of текст.matchAll(/var\(\s*(--[a-z0-9-]+)/gi)) имена.add(m[1]);
+}
+for (const тема of ['light', 'dark']) {
+  document.documentElement.setAttribute('data-theme', тема);
+  const стиль = getComputedStyle(document.documentElement);
+  for (const имя of имена) {
+    if (!стиль.getPropertyValue(имя).trim()) итог.переменные.push({ тема, имя });
+  }
+}
+document.documentElement.setAttribute('data-theme', 'light');
+
+итог.правил = все.length;
+итог.переменныхИспользовано = имена.size;
+document.getElementById('итог').textContent = JSON.stringify(итог, null, 1);
+</script>
+</body>
+</html>
