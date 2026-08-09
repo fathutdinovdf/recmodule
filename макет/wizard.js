@@ -129,9 +129,9 @@ let issued = null;     // { number, at, analogsSeen } — результат р�
    служит и счётчиком у шага, и сводкой валидации со ссылками на поле. Два
    независимых перечня разошлись бы при первой же правке формы. */
 const REQUIRED = [
-  { step: 0, key: 'field', label: 'месторождение', sel: '#fField' },
-  { step: 0, key: 'well', label: 'скважина', sel: '#fWell' },
-  { step: 1, key: 'direction', label: 'направление', sel: '#fDirection' },
+  { step: 0, key: 'field', label: 'месторождение', sel: '#c-field' },
+  { step: 0, key: 'well', label: 'скважина', sel: '#c-well' },
+  { step: 1, key: 'direction', label: 'направление', sel: '#c-direction' },
   { step: 1, key: 'problem', label: 'описание проблемы', sel: '#fProblem' },
   { step: 1, key: 'priority', label: 'приоритет', sel: '#fPrio' },
   { step: 2, key: 'action', label: 'рекомендуемое мероприятие', sel: '#fAction' },
@@ -139,7 +139,7 @@ const REQUIRED = [
   { step: 3, key: 'dQzh', label: 'Δ Qж, м³/сут', sel: '#fQzh' },
   { step: 3, key: 'dQn', label: 'Δ Qн, т/сут', sel: '#fQn' },
   { step: 3, key: 'dEE', label: 'Δ ЭЭ, кВт·ч', sel: '#fEE' },
-  { step: 4, key: 'executor', label: 'ответственный Исполнителя', sel: '#fExecutor' },
+  { step: 4, key: 'executor', label: 'ответственный Исполнителя', sel: '#c-executor' },
 ];
 
 const active = (r) => !r.when || r.when();
@@ -160,6 +160,169 @@ function stateOf(i) {
   if (done === req.length) return 'full';
   if (done > 0 || extra) return 'part';
   return 'empty';
+}
+
+/* ------------------------------ выпадающий список ------------------------------
+
+   Свой компонент вместо `select` и `datalist`. Причина не в красоте: и то и
+   другое рисуется средствами операционной системы — список выпадает чужим
+   шрифтом, своей палитрой и своими отступами, поверх которых CSS не властен.
+   На экране, где всё остальное собрано из токенов, это выглядит вставкой из
+   другого приложения.
+
+   Своя реализация даёт три вещи, которых у нативных нет: поиск по подстроке
+   с подсветкой совпадения (в списке 17 месторождений и десятки скважин),
+   управление с клавиатуры и анимацию раскрытия.
+
+   Значение в draft пишется только при выборе. Пока список открыт, поле
+   работает строкой поиска: недописанное «Южно-Яг» — не значение, и попасть
+   в черновик оно не должно. */
+
+const COMBOS = {
+  field: { list: () => fieldList, ph: 'Начните вводить название',
+           /* Сколько скважин за узлом — помогает не перепутать четыре
+              Южно-Ягунских, разрезанных между цехами. */
+           note: (v) => `${wellList(v).length} ${plural(wellList(v).length,
+             ['скважина', 'скважины', 'скважин'])}` },
+  well: { list: () => wellList(draft.field), ph: 'Номер скважины',
+          off: () => !draft.field, offPh: 'Сначала месторождение',
+          /* Куст рядом с номером: номера скважин похожи, и подтверждение
+             кустом ловит опечатку до того, как она уедет в реестр. */
+          note: (v) => `куст ${kustOfWell(v)}` },
+  direction: { list: () => DIRECTIONS, ph: 'Выберите направление' },
+  actionRef: { list: () => [...ACTIONS, ACTION_OTHER], ph: 'Выберите из справочника', clear: true },
+  executor:  { list: () => EXECUTORS, ph: 'Выберите ответственного' },
+  customer:  { list: () => CUSTOMERS, ph: 'Выберите ответственного', clear: true },
+};
+
+/* { key, active, typed } — какой список раскрыт, какой пункт подсвечен и
+   начал ли человек печатать. Флаг typed важен: пока не печатали, поле хранит
+   уже выбранное значение, и если считать его строкой поиска, при повторном
+   открытии список схлопнется до единственного пункта — того, что и так
+   выбран. Поэтому фильтр включается только после первого нажатия клавиши. */
+let combo = null;
+
+const comboQuery = (key) => {
+  if (!combo || combo.key !== key || !combo.typed) return '';
+  const el = $(`#c-${key}`);
+  return el ? el.value.trim().toLowerCase() : '';
+};
+
+/** Отбор по подстроке в любом месте строки, а не только в начале: скважину
+    ищут по номеру «1071», а он у названия месторождения в середине. */
+function comboMatches(key) {
+  const q = comboQuery(key);
+  const all = COMBOS[key].list();
+  if (!q) return all;
+  return all.filter((v) => String(v).toLowerCase().includes(q));
+}
+
+/** Подсветка совпавшего куска — глазу не приходится перечитывать всю строку. */
+function markMatch(text, q) {
+  const s = String(text);
+  if (!q) return esc(s);
+  const i = s.toLowerCase().indexOf(q);
+  if (i < 0) return esc(s);
+  return `${esc(s.slice(0, i))}<b>${esc(s.slice(i, i + q.length))}</b>${esc(s.slice(i + q.length))}`;
+}
+
+function comboMenuHtml(key) {
+  const items = comboMatches(key);
+  const q = comboQuery(key);
+  const note = COMBOS[key].note;
+
+  if (!items.length) {
+    return `<div class="combo__none">Ничего не найдено${
+      q ? `<br><span>по запросу «${esc(q)}»</span>` : ''}</div>`;
+  }
+
+  const total = COMBOS[key].list().length;
+  const head = q && items.length < total
+    ? `<div class="combo__count">Найдено ${items.length} из ${total}</div>` : '';
+
+  return head + items.map((v, i) => `
+    <div class="combo__opt ${i === combo.active ? 'is-active' : ''} ${
+      v === draft[key] ? 'is-chosen' : ''}" data-combo-opt="${esc(v)}" role="option">
+      <span class="combo__txt">${markMatch(v, q)}</span>
+      ${note ? `<span class="combo__note">${esc(note(v))}</span>` : ''}
+      ${v === draft[key] ? '<svg class="ic12 combo__tick"><use href="#i-check"/></svg>' : ''}
+    </div>`).join('');
+}
+
+function comboHtml(key, label) {
+  const c = COMBOS[key];
+  const off = c.off && c.off();
+  const open = combo && combo.key === key;
+  const canClear = c.clear && draft[key] && !open;
+  return `
+    <label class="form__f"><span class="form__l">${label}</span>
+      <div class="combo ${open ? 'is-open' : ''}" data-combo="${key}">
+        <input class="inp combo__inp" id="c-${key}" autocomplete="off" role="combobox"
+          aria-expanded="${open ? 'true' : 'false'}"
+          ${off ? 'disabled' : ''} value="${esc(draft[key] || '')}"
+          placeholder="${esc(off ? (c.offPh || '') : c.ph)}">
+        ${canClear
+          ? `<button class="combo__clear" data-combo-clear="${key}" title="Очистить" tabindex="-1">
+               <svg class="ic12"><use href="#i-close"/></svg></button>`
+          : `<svg class="combo__caret ic16"><use href="#i-caret"/></svg>`}
+        <div class="combo__menu" ${open ? '' : 'hidden'} role="listbox">${
+          open ? comboMenuHtml(key) : ''}</div>
+      </div>
+    </label>`;
+}
+
+/** Перерисовывается только меню: трогать сам input нельзя, в нём курсор. */
+function repaintMenu() {
+  if (!combo) return;
+  const menu = $(`[data-combo="${combo.key}"] .combo__menu`);
+  if (!menu) return;
+  menu.innerHTML = comboMenuHtml(combo.key);
+  const act = menu.querySelector('.is-active');
+  if (act) act.scrollIntoView({ block: 'nearest' });
+}
+
+function openCombo(key, firstChar) {
+  const c = COMBOS[key];
+  if (c.off && c.off()) return;
+
+  /* Подсветка встаёт на уже выбранное значение, а не на первую строку: список
+     из семнадцати месторождений открывается там, где человек остановился в
+     прошлый раз, и стрелками идти оттуда. */
+  const list = c.list();
+  const at = list.indexOf(draft[key]);
+  combo = { key, active: at >= 0 ? at : 0, typed: !!firstChar };
+  render();
+
+  const el = $(`#c-${key}`);
+  if (!el) return;
+  el.focus();
+  if (firstChar) { el.value = firstChar; combo.active = 0; repaintMenu(); }
+  else { el.select(); repaintMenu(); }
+}
+
+/** Закрытие без выбора возвращает в поле прежнее значение: строка поиска,
+    оставшаяся в поле, читалась бы как выбранное значение, которым не является. */
+function closeCombo() {
+  if (!combo) return;
+  const key = combo.key;
+  combo = null;
+  const el = $(`#c-${key}`);
+  if (el) el.value = draft[key] || '';
+  render();
+}
+
+function chooseCombo(key, value) {
+  draft[key] = value;
+  combo = null;
+  applyFieldSideEffects(key, value);
+  render();
+}
+
+function clearCombo(key) {
+  draft[key] = '';
+  combo = null;
+  applyFieldSideEffects(key, '');
+  render();
 }
 
 /* ------------------------------ аналоги ------------------------------ */
@@ -308,17 +471,8 @@ function paneObject() {
     <div class="wzcols">
       <div class="wzcols__main">
         <div class="form form--plain">
-          <label class="form__f"><span class="form__l">Месторождение</span>
-            <input class="inp" id="fField" data-k="field" list="dlFields" autocomplete="off"
-              value="${esc(draft.field)}" placeholder="Начните вводить название"></label>
-          <datalist id="dlFields">${fieldList.map((f) => `<option value="${esc(f)}">`).join('')}</datalist>
-
-          <label class="form__f"><span class="form__l">Скважина${
-            kust ? ` <i>куст ${esc(kust)}</i>` : ''}</span>
-            <input class="inp" id="fWell" data-k="well" list="dlWells" autocomplete="off"
-              ${draft.field ? '' : 'disabled'} value="${esc(draft.well)}"
-              placeholder="${draft.field ? 'Номер скважины' : 'Сначала месторождение'}"></label>
-          <datalist id="dlWells">${wells.map((w) => `<option value="${esc(w)}">`).join('')}</datalist>
+          ${comboHtml('field', 'Месторождение')}
+          ${comboHtml('well', `Скважина${kust ? ` <i>куст ${esc(kust)}</i>` : ''}`)}
         </div>
       </div>
       <aside class="wzaside">${wellAside()}</aside>
@@ -330,9 +484,7 @@ function paneObject() {
 function paneProblem() {
   return `
     <div class="form form--plain">
-      <label class="form__f"><span class="form__l">Направление</span>
-        <select class="inp" id="fDirection" data-k="direction">${
-          opts(DIRECTIONS, draft.direction, 'Выберите направление')}</select></label>
+      ${comboHtml('direction', 'Направление')}
 
       <label class="form__f"><span class="form__l">Описание проблемы или отклонения</span>
         <textarea class="inp inp--area" id="fProblem" data-k="problem" rows="3"
@@ -368,10 +520,7 @@ function paneProblem() {
 function paneAction() {
   return `
     <div class="form form--plain">
-      <label class="form__f"><span class="form__l">Рекомендуемое мероприятие
-          <i>справочник</i></span>
-        <select class="inp" id="fActionRef" data-k="actionRef">${
-          opts([...ACTIONS, ACTION_OTHER], draft.actionRef, 'Выберите из справочника')}</select></label>
+      ${comboHtml('actionRef', 'Рекомендуемое мероприятие <i>справочник</i>')}
 
       <label class="form__f"><span class="form__l">Формулировка мероприятия</span>
         <textarea class="inp inp--area" id="fAction" data-k="action" rows="4"
@@ -463,13 +612,8 @@ function paneHandover() {
   return `
     <div class="form form--plain">
       <div class="form__row">
-        <label class="form__f"><span class="form__l">Ответственный Исполнителя</span>
-          <select class="inp" id="fExecutor" data-k="executor">${
-            opts(EXECUTORS, draft.executor, 'Выберите ответственного')}</select></label>
-        <label class="form__f"><span class="form__l">Ответственный Заказчика
-            <i>предполагаемый</i></span>
-          <select class="inp" id="fCustomer" data-k="customer">${
-            opts(CUSTOMERS, draft.customer, 'Не выбран')}</select></label>
+        ${comboHtml('executor', 'Ответственный Исполнителя')}
+        ${comboHtml('customer', 'Ответственный Заказчика <i>предполагаемый</i>')}
       </div>
       <div class="form__hint">${prose(`Ответственный Заказчика здесь — предположение эксперта, оно
         подсказывает, кому уйдёт уведомление. Окончательного ответственного назначает Заказчик
@@ -785,10 +929,82 @@ document.addEventListener('click', (e) => {
   if (kind === 'restart') { resetDraft(); return; }
 });
 
+/* ---------- события выпадающего списка ---------- */
+
+/* Открытие по нажатию на поле или на стрелку. Не по фокусу: тогда список
+   раскрывался бы при возврате из соседнего поля клавишей Tab, когда человек
+   просто проходит форму насквозь. */
+document.addEventListener('mousedown', (e) => {
+  const inside = e.target.closest('[data-combo]');
+  if (!inside) { if (combo) closeCombo(); return; }
+
+  const key = inside.dataset.combo;
+
+  const clr = e.target.closest('[data-combo-clear]');
+  if (clr) { e.preventDefault(); clearCombo(clr.dataset.comboClear); return; }
+
+  const opt = e.target.closest('[data-combo-opt]');
+  if (opt) {
+    /* mousedown, а не click: click прилетел бы после blur поля, и список
+       успел бы закрыться раньше, чем выбор дошёл до обработчика. */
+    e.preventDefault();
+    chooseCombo(key, opt.dataset.comboOpt);
+    return;
+  }
+  if (combo && combo.key === key) return;   // повторное нажатие внутри открытого — не мешаем
+  e.preventDefault();
+  openCombo(key);
+});
+
+document.addEventListener('keydown', (e) => {
+  /* Набор с клавиатуры в закрытом поле раскрывает список и становится первым
+     символом поиска: пришедший по Tab не должен искать мышью, чем открыть. */
+  if (!combo) {
+    const el = e.target;
+    const id = el && el.id;
+    if (id && id.startsWith('c-') && COMBOS[id.slice(2)]
+        && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      e.preventDefault();
+      openCombo(id.slice(2), e.key);
+    }
+    return;
+  }
+  const items = comboMatches(combo.key);
+
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (!items.length) return;
+    const d = e.key === 'ArrowDown' ? 1 : -1;
+    combo.active = (combo.active + d + items.length) % items.length;
+    repaintMenu();
+    return;
+  }
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    if (items[combo.active] !== undefined) chooseCombo(combo.key, items[combo.active]);
+    return;
+  }
+  if (e.key === 'Escape' || e.key === 'Tab') {
+    /* Escape гасим, чтобы он не дошёл до обработчика экрана проверки аналогов:
+       закрыть список и закрыть экран — разные действия. */
+    if (e.key === 'Escape') e.stopPropagation();
+    closeCombo();
+  }
+});
+
 /* Ввод текста только пересчитывает счётчики и подвал: перерисовать поле,
    в котором человек печатает, значит потерять курсор. */
 document.addEventListener('input', (e) => {
   const el = e.target;
+
+  /* Поле раскрытого списка — строка поиска, а не значение: перерисовываем
+     только меню, в draft ничего не пишем до выбора. */
+  if (combo && el.id === `c-${combo.key}`) {
+    combo.active = 0;
+    repaintMenu();
+    return;
+  }
+
   if (el.id === 'fDup') return;
   const k = el.dataset.k;
   if (!k) return;
@@ -813,11 +1029,17 @@ document.addEventListener('change', (e) => {
   if (!k || el.tagName !== 'SELECT') return;
 
   draft[k] = el.value;
+  applyFieldSideEffects(k, el.value);
+  render();
+});
 
-  /* Смена верхнего уровня каскада обнуляет нижние: куст 18 существует не в
-     каждом месторождении, и оставленное значение молча указывало бы в пустоту. */
-  /* Смена месторождения обнуляет скважину: список скважин у другого узла свой. */
-  if (k === 'field') { draft.well = ''; }
+/* Побочные эффекты выбора собраны в одном месте: их запускает и выпадающий
+   список, и оставшиеся обычные `select`. Разъехавшись по двум обработчикам,
+   они рано или поздно разошлись бы и по поведению. */
+function applyFieldSideEffects(k, value) {
+  /* Смена месторождения обнуляет скважину: список скважин у другого узла свой,
+     и оставленный номер молча указывал бы в пустоту. */
+  if (k === 'field') draft.well = '';
 
   /* Смена скважины или направления сбрасывает подтверждение дублирования:
      подтверждали пару «скважина × направление», а она стала другой. */
@@ -826,12 +1048,10 @@ document.addEventListener('change', (e) => {
   /* Справочник заводит формулировку, но не перебивает уже написанный текст:
      эксперт мог дописать режимы и частоты, и потерять их при смене строки
      справочника было бы обиднее, чем набрать заново. */
-  if (k === 'actionRef' && el.value !== ACTION_OTHER && !draft.action.trim()) {
-    draft.action = el.value;
+  if (k === 'actionRef' && value !== ACTION_OTHER && !draft.action.trim()) {
+    draft.action = value;
   }
-
-  render();
-});
+}
 
 /* Escape с экрана проверки возвращает к заполнению, а не закрывает мастер:
    закрыть окно клавишей, потеряв заполненную форму, — слишком дорогая ошибка. */

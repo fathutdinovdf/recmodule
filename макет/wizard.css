@@ -405,3 +405,132 @@
   .wzsum__r { grid-template-columns: 132px 1fr auto; }
   .wzgate__i { grid-template-columns: 100px 190px 84px 1fr; }
 }
+
+/* ------------------------------ выпадающий список ------------------------------
+   Свой компонент вместо `select` и `datalist`: нативные рисуются средствами
+   операционной системы и не подчиняются токенам — на экране, собранном из
+   переменных ВМАП, они выглядят вставкой из другого приложения. */
+
+.combo { position: relative; }
+
+.combo__inp { width: 100%; padding-right: 34px; cursor: pointer; }
+.combo__inp:disabled { cursor: default; }
+.combo.is-open .combo__inp { cursor: text; }
+
+.combo__caret {
+  position: absolute; right: 11px; top: 50%; margin-top: -8px;
+  color: var(--icon-light); pointer-events: none;
+  transition: transform .18s cubic-bezier(.2, .8, .3, 1), color .18s;
+}
+.combo.is-open .combo__caret { transform: rotate(180deg); color: var(--icon-accent); }
+
+/* Меню перекрывает соседние поля, поэтому у него своя тень и свой слой.
+   Раскрытие: 140 мс — короче ощущается рывком, длиннее начинает мешать
+   тому, кто уже знает, что выбирает. */
+.combo__menu {
+  position: absolute; z-index: 40; left: 0; right: 0; top: calc(100% + 6px);
+  max-height: 288px; overflow-y: auto; overscroll-behavior: contain;
+  background: var(--bg-card);
+  border: 1px solid var(--border-divider-light);
+  border-radius: 12px;
+  box-shadow: var(--elevation-2);
+  padding: 6px;
+  animation: comboIn .14s cubic-bezier(.2, .8, .3, 1);
+  transform-origin: top center;
+}
+
+@keyframes comboIn {
+  from { opacity: 0; transform: translateY(-6px) scale(.985); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+/* Пункты проявляются каскадом — но только первые восемь и по 12 мс:
+   этого хватает, чтобы движение читалось как раскрытие сверху вниз, и
+   не хватает, чтобы ждать. Дальше по списку задержки нет вовсе, иначе
+   при семнадцати месторождениях низ списка появлялся бы заметно позже. */
+.combo__opt {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--item-gap-horizontal-m);
+  padding: 9px 12px;
+  border-radius: 8px;
+  font: var(--font-weight-text) var(--font-size-text-medium) / 1.35 var(--font-family-text);
+  color: var(--text-secondary);
+  cursor: pointer;
+  animation: optIn .16s ease both;
+}
+.combo__opt:nth-child(1) { animation-delay: .00s }
+.combo__opt:nth-child(2) { animation-delay: .012s }
+.combo__opt:nth-child(3) { animation-delay: .024s }
+.combo__opt:nth-child(4) { animation-delay: .036s }
+.combo__opt:nth-child(5) { animation-delay: .048s }
+.combo__opt:nth-child(6) { animation-delay: .060s }
+.combo__opt:nth-child(7) { animation-delay: .072s }
+.combo__opt:nth-child(8) { animation-delay: .084s }
+
+@keyframes optIn {
+  from { opacity: 0; transform: translateY(-3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Подсветка с клавиатуры и наведение мышью — одно и то же состояние:
+   два разных выделения на экране одновременно читаются как два курсора. */
+.combo__opt:hover,
+.combo__opt.is-active { background: var(--state-hover); color: var(--text-primary); }
+.combo__opt.is-chosen { color: var(--text-accent); font-weight: var(--font-weight-subtitle); }
+.combo__opt.is-chosen svg { color: var(--icon-accent); flex: 0 0 auto; }
+
+/* Совпавший кусок подсвечивается, чтобы не перечитывать всю строку. */
+.combo__txt b {
+  font-weight: var(--font-weight-subtitle);
+  color: var(--text-accent);
+  background: var(--state-selected-light);
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
+.combo__none {
+  padding: 12px;
+  font: var(--font-weight-text) var(--font-size-text-small) / 1.4 var(--font-family-text);
+  color: var(--text-quaternary);
+  text-align: center;
+}
+
+/* Кому важно отсутствие движения — тому его и не показываем. */
+@media (prefers-reduced-motion: reduce) {
+  .combo__menu, .combo__opt { animation: none; }
+  .combo__caret { transition: none; }
+}
+
+/* Пояснение справа от значения: у месторождения — сколько за ним скважин,
+   у скважины — куст. Скважины различаются только номером, и подтверждение
+   кустом ловит опечатку до того, как она уедет в реестр. */
+.combo__txt { flex: 1 1 auto; min-width: 0; }
+.combo__note {
+  flex: 0 0 auto;
+  font: var(--font-weight-text) var(--font-size-text-small) / 1 var(--font-family-text);
+  color: var(--text-quaternary);
+}
+.combo__opt.is-active .combo__note { color: var(--text-tertiary); }
+.combo__tick { flex: 0 0 auto; }
+
+.combo__count {
+  padding: 4px 12px 8px;
+  font: var(--font-weight-text) var(--font-size-text-caption) / 1.3 var(--font-family-text);
+  color: var(--text-quaternary);
+  border-bottom: 1px solid var(--border-divider-light);
+  margin-bottom: 4px;
+}
+.combo__none span {
+  display: inline-block; margin-top: 3px;
+  color: var(--text-quaternary); font-size: var(--font-size-text-caption);
+}
+
+/* Крестик очистки — только у необязательных полей, и только когда есть что
+   очищать. Занимает то же место, что стрелка: иначе поле дёргалось бы. */
+.combo__clear {
+  position: absolute; right: 8px; top: 50%; margin-top: -11px;
+  width: 22px; height: 22px; padding: 0;
+  display: grid; place-items: center;
+  border: 0; border-radius: 50%;
+  background: transparent; color: var(--icon-light); cursor: pointer;
+}
+.combo__clear:hover { background: var(--state-hover); color: var(--icon-accent); }
