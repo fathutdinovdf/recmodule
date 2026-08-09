@@ -85,13 +85,11 @@ const STATUS_TONE = {
   cancelled:    ['neutral', false],
 };
 
-const SOURCES = [
-  'Анализ отклонений ВМАП',
-  'Трендовый анализ',
-  'Приближение к уставкам',
-  'Ручной анализ эксперта',
-  'Заявка Заказчика',
-];
+/* Справочника «источник рекомендации» больше нет. Рекомендации выдаёт только
+   Исполнитель, поэтому поле ничего не различало: все значения описывали, каким
+   инструментом эксперт заметил проблему, а не кто автор. Связь с предупреждением
+   ВМАП или с заявкой Заказчика, если она есть, живёт во вкладке «Связи» —
+   это ссылка на другую сущность, а не значение справочника. */
 
 const EXECUTORS = ['Матросов', 'Тевс', 'Сидоров', 'Кузнецов'];
 const CUSTOMERS = ['Чернышов А.А', 'Гадаятов Ф.Г', 'Иванов С.П', 'Петров К.В'];
@@ -509,7 +507,6 @@ function makeSynthetic(n) {
       problem: pick(PROBLEMS),
       action: pick(ACTIONS),
       rationale: pick(RATIONALES),
-      source: pick(SOURCES),
       synthetic: true,
     };
 
@@ -579,7 +576,7 @@ function makeSynthetic(n) {
 /* ---------- сборка набора ---------- */
 
 function buildDataset() {
-  const all = [...REAL.map((r) => ({ ...r, source: r.source || 'Анализ отклонений ВМАП' })),
+  const all = [...REAL,
     ...makeSynthetic(169)];
 
   all.sort((a, b) => new Date(a.regDate) - new Date(b.regDate));
@@ -618,7 +615,6 @@ function buildDataset() {
       priorityLabel: prio.label,
       sla: prio.sla,
       regDate,
-      source: r.source || 'Ручной анализ эксперта',
       isPrimary: r.isPrimary === undefined ? true : r.isPrimary,
       attachments: r.attachments === undefined ? 0 : r.attachments,
     };
