@@ -35,7 +35,6 @@ const COLUMNS = [
   { key: 'windowOpenAt',  label: 'Дата открытия окна эффекта',    visible: false, w: 116, type: 'date' },
   { key: 'windowCloseAt', label: 'Дата закрытия окна',            visible: false, w: 116, type: 'date' },
   { key: 'commentsCount', label: 'Комментарии',                   visible: false, w: 96,  num: true },
-  { key: 'source',        label: 'Источник рекомендации',         visible: false, w: 150, filter: true },
   { key: 'isPrimary',     label: 'Первичность',                   visible: false, w: 92,  filter: true },
   { key: 'expectQzh',     label: 'Ожид. Δ Qж, м³/сут',            visible: false, w: 104, num: true },
   { key: 'expectQn',      label: 'Ожид. Δ Qн, т/сут',             visible: false, w: 104, num: true },
