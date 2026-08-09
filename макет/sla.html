@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Календарь и SLA — модуль управления рекомендациями</title>
+  <link rel="stylesheet" href="../tokens.css">
+  <link rel="stylesheet" href="registry.css">
+  <!-- card.css подключён ради .form / .inp / .kpi / .chip: это те же компоненты
+       ВМАП, что в карточке рекомендации, и заводить им вторую копию в sla.css
+       значило бы завести второй источник истины. Ни одного правила card.css
+       этот экран не переопределяет; единственный конфликтующий с registry.css
+       класс — .pager, и он здесь не используется. -->
+  <link rel="stylesheet" href="card.css">
+  <link rel="stylesheet" href="sla.css">
+</head>
+<body>
+
+<svg style="display:none">
+  <symbol id="i-bell" viewBox="0 0 16 16"><path d="M8 2a3.5 3.5 0 0 0-3.5 3.5c0 3-1 4-1 4h9s-1-1-1-4A3.5 3.5 0 0 0 8 2zM6.6 12a1.5 1.5 0 0 0 2.8 0" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-help" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M6.4 6.2A1.7 1.7 0 0 1 9.7 6.6c0 1.2-1.7 1.4-1.7 2.5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="11.4" r=".7" fill="currentColor"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 4.7V8l2.4 1.4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M2.2 8h11.6M8 2.1c1.7 1.9 2.6 3.9 2.6 5.9S9.7 12 8 13.9C6.3 12 5.4 10 5.4 8s.9-4 2.6-5.9z" fill="none" stroke="currentColor" stroke-width="1.2"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 16 16"><rect x="2.3" y="3.4" width="11.4" height="10.2" rx="1.3" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M2.3 6.6h11.4M5.5 2.2v2.4M10.5 2.2v2.4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 16 16"><path d="M8 2.6 14 13H2z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M8 6.4v3.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="11.3" r=".75" fill="currentColor"/></symbol>
+  <symbol id="i-calc" viewBox="0 0 16 16"><rect x="3" y="2.2" width="10" height="11.6" rx="1.3" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M5.4 5.1h5.2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="5.7" cy="8" r=".75" fill="currentColor"/><circle cx="8" cy="8" r=".75" fill="currentColor"/><circle cx="10.3" cy="8" r=".75" fill="currentColor"/><circle cx="5.7" cy="10.7" r=".75" fill="currentColor"/><circle cx="8" cy="10.7" r=".75" fill="currentColor"/><circle cx="10.3" cy="10.7" r=".75" fill="currentColor"/></symbol>
+</svg>
+
+<header class="appbar">
+  <div class="appbar__group appbar__group--right">
+    <button class="iconbtn iconbtn--lg" title="Уведомления"><svg class="ic20"><use href="#i-bell"/></svg><span class="dot"></span></button>
+    <button class="iconbtn iconbtn--lg" title="Помощь"><svg class="ic20"><use href="#i-help"/></svg></button>
+    <div class="user"><span class="avatar">ФД</span>Фатхутдинов Д.Ф.</div>
+  </div>
+</header>
+
+<div class="layout">
+  <nav class="sidenav">
+    <div class="sidenav__section">Работа</div>
+    <a class="navitem" href="inbox.html"><span class="navitem__label">Мои задачи</span><span class="badge badge--accent">7</span></a>
+    <a class="navitem" href="index.html"><span class="navitem__label">Реестр рекомендаций</span></a>
+    <a class="navitem"><span class="navitem__label">Заявки Заказчика</span><span class="badge">2</span></a>
+    <div class="sidenav__section">Эффект</div>
+    <a class="navitem navitem--muted"><span class="navitem__label">Окна эффекта</span><span class="soon">2 итерация</span></a>
+    <a class="navitem navitem--muted"><span class="navitem__label">Подтверждённые</span><span class="soon">2 итерация</span></a>
+    <div class="sidenav__section">Настройка</div>
+    <a class="navitem"><span class="navitem__label">Справочники</span></a>
+    <a class="navitem"><span class="navitem__label">Пользователи и роли</span></a>
+    <a class="navitem is-active"><span class="navitem__label">Календарь и SLA</span></a>
+    <a class="navitem"><span class="navitem__label">Отчёты и выгрузки</span></a>
+  </nav>
+
+  <main class="content content--sla">
+    <div class="pagehead">
+      <h1>Календарь и SLA</h1>
+      <div class="pagehead__actions">
+        <span class="form__note" id="dirtyNote">Изменений нет</span>
+        <button class="btn" id="btnRevert">Вернуть к сохранённому</button>
+        <button class="btn btn--accent" id="btnSave">Сохранить</button>
+      </div>
+    </div>
+
+    <!-- Основания вынесены отдельной полосой над настройками, а не спрятаны в
+         подсказки. Три источника имеют разный вес в споре, и человек, который
+         правит эти поля, должен видеть разницу до того, как что-то поменяет. -->
+    <section class="basis">
+      <div class="basis__i basis__i--c">
+        <span class="tag tag--ok">договор</span>
+        <div class="basis__t"><span class="basis__h">Праздники и выходные, ответ Исполнителя на заявку за 1 рабочий день.</span>
+          «Рабочее окно… с понедельника по пятницу, за исключением выходных и нерабочих праздничных дней,
+          с 09:00 до 00:00 по времени г. Когалым»; «Исполнитель… предоставляет ответ не позднее 1 (одного) рабочего дня».</div>
+      </div>
+      <div class="basis__i basis__i--f">
+        <span class="tag tag--warning">Форма 2</span>
+        <div class="basis__t"><span class="basis__h">Нормативы ответа 4 / 8 / 24 часа и градация приоритетов I / II / III.</span>
+          В договоре этих чисел нет ни разу — они пришли из подписи над таблицей Формы 2. Оставлены сознательно
+          (решение 64): процесс без срока ответа неуправляем. Идут в протокол согласования форм.</div>
+      </div>
+      <div class="basis__i basis__i--o">
+        <span class="tag tag--default">отступление</span>
+        <div class="basis__t"><span class="basis__h">Рабочее окно применено к передаче рекомендаций Заказчику.</span>
+          Договорное окно 09:00–00:00 — это окно доступности <b>Исполнителя</b>, и правило переноса в договоре
+          развёрнуто в обратную сторону: обращения Заказчика считаются полученными нами в 09:00 следующего рабочего
+          дня. Мы применили ту же норму зеркально (решения 19, 20, 66). Разумно, но в договоре основания нет —
+          тот же протокол.</div>
+      </div>
+    </section>
+
+    <!-- Ярус 1: как устроен рабочий день, сколько дают на ответ, в каком поясе. -->
+    <section class="row3">
+
+      <div class="panel panel--pad">
+        <div class="ph"><svg class="ic16"><use href="#i-clock"/></svg>Рабочее окно
+          <span class="tag tag--default ph__src">отступление</span></div>
+        <div class="ph__sub">Передача Заказчику происходит только внутри окна: всё, что зарегистрировано вне его,
+          ждёт открытия рабочего дня и до этого живёт в статусе «Зарегистрировано». Границы взяты из договорного
+          окна Исполнителя — <b>своего режима работы Заказчик договором не принимал</b>.</div>
+
+        <div class="form form--flat">
+          <div class="form__f">
+            <div class="form__l">Рабочие дни недели <i>базовое правило</i></div>
+            <div class="chips" id="workdays"></div>
+          </div>
+          <div class="form__row">
+            <div class="form__f">
+              <div class="form__l">Окно открывается</div>
+              <select class="inp inp--narrow" id="wFrom"></select>
+            </div>
+            <div class="form__f">
+              <div class="form__l">Окно закрывается</div>
+              <select class="inp inp--narrow" id="wTo"></select>
+            </div>
+          </div>
+          <label class="chk">
+            <input type="checkbox" id="shortOn" checked>
+            <span>В предпраздничные дни окно закрывается на час раньше<i class="chk__q" title="Статья 95 ТК сокращает на час рабочий день, непосредственно предшествующий празднику. Окно 09:00–00:00 — не нормированный рабочий день, а дежурное окно, поэтому применимость сокращения к нему надо подтвердить протоколом.">?</i></span>
+          </label>
+          <div class="kpis" id="winStats"></div>
+        </div>
+      </div>
+
+      <div class="panel panel--pad">
+        <div class="ph">Норматив ответа по приоритетам
+          <span class="tag tag--warning ph__src">Форма 2</span></div>
+        <div class="ph__sub">Считается <b>рабочими часами</b>, а не календарными: иначе срок в 4 часа по рекомендации,
+          переданной в 22:00, истекал бы в два часа ночи. Отсчёт идёт от момента <b>передачи</b> Заказчику,
+          а не от регистрации.</div>
+        <div class="slatbl" id="slaTbl"></div>
+
+        <div class="form__f wordblk">
+          <div class="form__l">Как модуль называет нарушение срока</div>
+          <div class="wordset" id="wordSet"></div>
+        </div>
+      </div>
+
+      <div class="panel panel--pad">
+        <div class="ph"><svg class="ic16"><use href="#i-globe"/></svg>Часовой пояс
+          <span class="tag tag--ok ph__src">договор</span></div>
+        <div class="ph__sub">Договор называет пояс прямо — «по времени г. Когалым». Поэтому расчётный пояс
+          не настраивается: два экземпляра одного отчёта, снятые в разных городах, обязаны совпадать.</div>
+
+        <div class="form form--flat">
+          <div class="form__f">
+            <div class="form__l">Пояс расчёта <i>изменению не подлежит</i></div>
+            <div class="tzfix">Когалым, UTC+5 · без перехода на летнее время</div>
+          </div>
+          <div class="form__f">
+            <div class="form__l">Показывать время в поясе</div>
+            <select class="inp" id="tzSelect"></select>
+          </div>
+          <div class="tzex" id="tzEx"></div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Ярус 2: производственный календарь. Дыра, которой в data.js нет вовсе. -->
+    <section class="panel panel--pad">
+      <div class="ph"><svg class="ic16"><use href="#i-cal"/></svg>Производственный календарь
+        <span class="tag tag--ok ph__src">договор</span>
+        <span class="ph__tabs" id="yearTabs"></span>
+        <span class="ph__right" id="calStats"></span>
+      </div>
+      <div class="ph__sub">Базовое правило — рабочие дни недели из настройки слева. Календарь хранит только
+        <b>исключения</b>: праздники, перенесённые выходные, рабочие субботы, предпраздничные дни. Список исключений —
+        то, что реально подписывается протоколом; полную роспись 365 дней человек не проверит.</div>
+
+      <div class="warnbar" id="calWarn" hidden>
+        <svg class="ic16"><use href="#i-warn"/></svg>
+        <div>Календарь на 2027 год заполнен <b>предварительно</b>: постановление Правительства о переносах выходных
+          на 2027 год на дату макета не опубликовано, а услуги по договору идут до 30.12.2027. Каждая дата
+          с пунктиром подлежит подтверждению — сдвиг одного переноса сдвигает срок ответа по всем рекомендациям
+          вокруг него.</div>
+      </div>
+
+      <div class="calwrap">
+        <div class="calmain">
+          <div class="legend" id="legend"></div>
+          <div class="calgrid" id="calGrid"></div>
+        </div>
+        <aside class="calside">
+          <div class="ph ph--s">Исключения года</div>
+          <div class="exlist" id="calList"></div>
+          <div class="ph ph--s">Журнал изменений</div>
+          <div class="form__hint">Правка календаря действует только вперёд: сроки уже переданных рекомендаций
+            не пересчитываются. Иначе спор о просрочке выигрывался бы правкой справочника задним числом.</div>
+          <div class="log2" id="calLog"></div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- Ярус 3: калькулятор. Единственный способ проверить правила руками. -->
+    <section class="panel panel--pad">
+      <div class="ph"><svg class="ic16"><use href="#i-calc"/></svg>Калькулятор срока ответа</div>
+      <div class="ph__sub">Задайте момент передачи и приоритет — модуль покажет, когда истекает срок, и разложит
+        расчёт по дням. Это же годится как аргумент в разговоре с Заказчиком: спорить с датой трудно,
+        с разбором по часам — нечем.</div>
+
+      <div class="calc">
+        <div class="calc__in">
+          <div class="form form--flat">
+            <div class="form__f">
+              <div class="form__l">Передано Заказчику <i>время Когалыма</i></div>
+              <input type="datetime-local" class="inp inp--date" id="calcAt">
+            </div>
+            <div class="form__f">
+              <div class="form__l">Приоритет</div>
+              <div class="chips" id="calcPrio"></div>
+            </div>
+            <label class="chk">
+              <input type="checkbox" id="calcCmp" checked>
+              <span>Показать, что дала бы формула действующей Формы 2</span>
+            </label>
+            <div class="form__f">
+              <div class="form__l">Проверочные случаи</div>
+              <div class="chips chips--wrap" id="calcPresets"></div>
+            </div>
+          </div>
+        </div>
+        <div class="calc__out">
+          <div class="verdict" id="calcVerdict"></div>
+          <div class="trace" id="calcTrace"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Ярус 4: зачем экран вообще нужен. -->
+    <section class="panel panel--pad">
+      <div class="ph"><svg class="ic16"><use href="#i-warn"/></svg>Сверка с действующей Формой 2</div>
+      <div class="ph__sub">Одиннадцать реальных записей за 3–4 августа. Момент передачи в обоих расчётах один и тот же,
+        различаются только правила: слева — как срок посчитала таблица Excel, справа — как считает модуль.</div>
+
+      <div class="defects" id="defects"></div>
+      <div class="cmpwrap">
+        <table class="tbl cmp" id="cmpTbl"></table>
+      </div>
+      <div class="kpis counters" id="counters"></div>
+    </section>
+
+  </main>
+</div>
+
+<div class="popover" id="popover" hidden></div>
+
+<script src="data.js"></script>
+<script src="sla.js"></script>
+</body>
+</html>
