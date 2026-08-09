@@ -323,6 +323,8 @@ function buildExpert() {
             означает, что мероприятие выполнено — тогда фиксируем дату, и этим же
             действием открывается окно эффекта на 90 суток.`,
       href: (r) => `card.html?id=${r.id}&tab=impl`,
+      deep: `index.html?tile=approved&executor=${encodeURIComponent(role.who)}`,
+      deepLabel: 'все согласованные за вами, в реестре',
       when: (r) => `согласовано ${fmt(r.repliedAt, false)}`,
       extra: (r) => `ждём смены режима ${sut(daysSince(r.repliedAt))}`,
     },
@@ -503,6 +505,8 @@ function buildEngineer() {
       when: (r) => `решение ${fmt(r.repliedAt, false)}`,
       showExecutor: true,
       extra: (r) => `${sut(daysSince(r.repliedAt))} без изменения режима`,
+      deep: `index.html?tile=approved&field=${encodeURIComponent(role.zone.join('|'))}`,
+      deepLabel: 'согласованные по вашей зоне, в реестре',
     },
     {
       id: 'b-window', tone: 'calm', rows: windows, limit: 3,

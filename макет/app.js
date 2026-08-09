@@ -62,13 +62,52 @@ function firstDir(c) { return c.type === 'datetime' ? 'desc' : 'asc'; }
 
 /* ------------------------------ состояние ------------------------------ */
 
+/* ---------- отбор из адреса ----------
+
+   Реестр — конечная точка всех глубоких ссылок: из уведомлений, из инбокса,
+   из переписки в LUKTEAM. Раньше из адреса читался только `alert`, поэтому
+   инбокс мог сослаться на «просроченные», но не на «согласовано, работ нет»
+   и не на зону ответственности инженера — такие блоки обрывались без выхода
+   в реестр.
+
+   Теперь читаются три вещи:
+     ?alert=overdue|soon|window — готовые срезы по срочности;
+     ?tile=approved             — плитка-счётчик;
+     ?field=A|B&executor=Тевс   — фильтр по любой колонке-справочнику.
+   Последнее общее: одна механика покрывает и зону ответственности (набор
+   месторождений), и «мои рекомендации», и что угодно ещё, вместо отдельного
+   параметра под каждый случай. */
+
+const QUERY = new URLSearchParams(location.search);
+
+/** Плитка из адреса — только существующая: опечатка в ссылке иначе молча
+    отфильтровала бы реестр в ноль, и человек решил бы, что данных нет. */
+function tileFromQuery() {
+  const key = QUERY.get('tile');
+  return key && TILES.some((t) => t.key === key) ? key : null;
+}
+
+/** Фильтры колонок из адреса. Значения разделяются вертикальной чертой:
+    в названиях месторождений есть и запятые, и скобки, и дефисы. */
+function colFiltersFromQuery() {
+  const out = {};
+  for (const c of COLUMNS) {
+    if (!c.filter) continue;
+    const raw = QUERY.get(c.key);
+    if (!raw) continue;
+    const set = new Set(raw.split('|').map((v) => v.trim()).filter(Boolean));
+    if (set.size) out[c.key] = set;
+  }
+  return out;
+}
+
 const state = {
-  tile: null,
+  tile: tileFromQuery(),
   /* Кнопок-срезов в интерфейсе нет, но сам отбор остался: он нужен для
      глубоких ссылок из уведомлений — index.html?alert=overdue. */
-  alert: new URLSearchParams(location.search).get('alert') || null,
+  alert: QUERY.get('alert') || null,
   period: '',
-  colFilters: {},          // ключ колонки → Set выбранных значений
+  colFilters: colFiltersFromQuery(),  // ключ колонки → Set выбранных значений
   textFilters: {},         // ключ колонки → строка поиска
   colWidths: {},           // ключ колонки → ширина, заданная перетаскиванием
   sort: null,              // null = сортировка выключена, действует DEFAULT_SORT
