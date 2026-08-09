@@ -75,10 +75,15 @@
   max-width: 96ch;
 }
 
+/* Метаданные идут одной строкой через точку-разделитель: без неё «6 значений»
+   и «Изменений в истории: 2» слипаются в одну фразу. */
 .refhead__meta {
   display: flex; flex-wrap: wrap; gap: var(--item-gap-horizontal-m);
   font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
   color: var(--text-quaternary);
+}
+.refhead__meta > span + span::before {
+  content: '·'; margin-right: var(--item-gap-horizontal-m); color: var(--text-quaternary);
 }
 .refhead__meta b { font-weight: var(--font-weight-subtitle); color: var(--text-secondary); }
 
