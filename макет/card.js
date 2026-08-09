@@ -172,7 +172,6 @@ function renderHead() {
       <div class="meta"><span class="meta__k">Направление</span><span class="meta__v">${rec.direction}</span></div>
       <div class="meta"><span class="meta__k">Ответственный Исполнителя</span><span class="meta__v">${rec.executor}</span></div>
       <div class="meta"><span class="meta__k">Ответственный Заказчика</span><span class="meta__v">${rec.customer || '—'}</span></div>
-      <div class="meta"><span class="meta__k">Источник</span><span class="meta__v">${rec.source}</span></div>
       <div class="meta"><span class="meta__k">Первичность</span><span class="meta__v">${rec.isPrimary ? 'Первичная' : 'Повторная'}</span></div>
     </div>
 
@@ -182,47 +181,63 @@ function renderHead() {
     </div>` : ''}`;
 }
 
-/* ------------------------------ лента статусов ------------------------------ */
+/* ------------------------------ прогноз ------------------------------
 
-/* Пять групп. «Реализация» — не период, а точка: рекомендация не задерживается
-   в ней ни на секунду, потому что фиксация факта сразу открывает окно.
-   В группе живёт только «Согласовано к реализации» — ожидание работ.
+   На месте, где раньше шла лента статусов из пяти шагов. Лента убрана: у 74 %
+   рекомендаций она показывала три-четыре прочерка из пяти — то есть занимала
+   самое дорогое место экрана, чтобы сообщить об отсутствии. Текущий статус и
+   так виден в шапке крупно, а даты переходов читаются во вкладке «История»,
+   где они и так есть в хронологии.
 
-   Последняя группа — «Окно закрыто», не «Подтверждено»: по договору
-   подтверждение эффекта наступает позже, после согласования расчёта между
-   Заказчиком и Исполнителем, которое в модуле пока не смоделировано. */
-const GROUPS = [
-  { t: 'Подготовка',    st: ['draft', 'registered'] },
-  { t: 'У Заказчика',   st: ['sent', 'review', 'clarify'] },
-  { t: 'Реализация',    st: ['approved'] },
-  { t: 'Окно эффекта',  st: ['windowOpen'] },
-  { t: 'Окно закрыто',  st: ['windowClosed'] },
+   Вместо неё — то, ради чего рекомендация вообще существует: ожидаемый
+   результат в трёх параметрах и деньгами. Раньше это лежало в середине
+   «Сводки» и уезжало за прокрутку.
+
+   Знак у ЭЭ читается наоборот: минус — это экономия энергии, то есть хорошо.
+   Поэтому цвет ставится по смыслу («лучше стало или хуже»), а не по знаку —
+   иначе экономия электроэнергии красилась бы как ухудшение. */
+
+const FORECAST = [
+  { k: 'Δ Qж', v: 'expectQzh', u: 'м³/сут', good: 'up' },
+  { k: 'Δ Qн', v: 'expectQn',  u: 'т/сут',  good: 'up' },
+  { k: 'Δ ЭЭ', v: 'expectEE',  u: 'кВт·ч',  good: 'down' },
 ];
 
-function renderRibbon() {
-  const stop = rec.status === 'rejected' || rec.status === 'cancelled';
-  const idx = GROUPS.findIndex((g) => g.st.includes(rec.status));
+function fcNum(v) {
+  if (v === undefined || v === null) return '—';
+  return (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toLocaleString('ru-RU');
+}
 
-  const dates = [
-    fmt(rec.regDate),
-    rec.sentAt ? fmt(rec.sentAt) : '—',
-    rec.factDate ? fmt(rec.factDate, false) : (rec.status === 'approved' ? 'ожидается' : '—'),
-    rec.windowOpenAt ? fmt(rec.windowOpenAt, false) : '—',
-    rec.windowCloseAt ? fmt(rec.windowCloseAt, false) : '—',
-  ];
+function renderForecast() {
+  const has = rec.expectQzh !== undefined || rec.forecast !== undefined;
 
-  let html = GROUPS.map((g, i) => {
-    let cls = '';
-    if (!stop && i < idx) cls = 'is-done';
-    else if (!stop && i === idx) cls = 'is-now';
-    return `<div class="step ${cls}"><span class="step__t">${g.t}</span><span class="step__d">${dates[i]}</span></div>`;
+  if (!has) {
+    $('#forecast').innerHTML = `<div class="forecast__empty">Ожидаемый результат ещё не заполнен —
+      его вносят на четвёртом шаге мастера регистрации.</div>`;
+    return;
+  }
+
+  const cells = FORECAST.map((f) => {
+    const v = rec[f.v];
+    let tone = '';
+    if (typeof v === 'number' && v !== 0) {
+      const better = f.good === 'up' ? v > 0 : v < 0;
+      tone = better ? 'is-good' : 'is-bad';
+    }
+    return `<div class="fc">
+      <div class="fc__k">${f.k}</div>
+      <div class="fc__v ${tone}">${fcNum(v)}<span class="fc__u">${f.u}</span></div>
+    </div>`;
   }).join('');
 
-  if (stop) {
-    html += `<div class="step is-stop"><span class="step__t">${rec.statusLabel}</span>
-      <span class="step__d">${fmt(rec.repliedAt || rec.sentAt)}</span></div>`;
-  }
-  $('#ribbon').innerHTML = html;
+  $('#forecast').innerHTML = `
+    <div class="fc fc--cap"><div class="fc__cap">Ожидаемый<br>результат</div></div>
+    ${cells}
+    <div class="fc fc--money">
+      <div class="fc__k">Прогнозный эффект</div>
+      <div class="fc__v">${rec.forecast ? rec.forecast.toLocaleString('ru-RU') : '—'}<span class="fc__u">руб</span></div>
+      <span class="fc__n">за 90 суток окна</span>
+    </div>`;
 }
 
 /* ------------------------------ вкладки ------------------------------ */
@@ -341,12 +356,24 @@ function decisionBlock() {
         rec.status === 'registered' ? `. Передача произойдёт ${fmt(rec.sentAt)}, с открытием рабочего дня.` : '.'}</div>
     </div>`;
   }
+  /* Отменённая рекомендация решения не получит никогда: её отменил Исполнитель
+     до передачи, Заказчик её не видел. Без этой ветки блок доходил до кнопок
+     «Принять / Отклонить / Требует уточнения» — они там бессмысленны. */
+  if (rec.status === 'cancelled') {
+    return `<div class="decision decision--done">
+      <div class="decision__h">Решение Заказчика</div>
+      <div class="decision__hint">Рекомендация отменена Исполнителем до передачи — решения по ней нет и не будет.</div>
+    </div>`;
+  }
+  /* «нет срока» — состояние без величины: приписывать к нему «0 мин» бессмысленно. */
+  const ctrl = CONTROL_LABEL[rec.controlKind]
+    + (rec.controlKind === 'ok' || rec.controlKind === 'none' ? '' : ' ' + dur(rec.controlDelta));
   return `<div class="decision">
     <div class="decision__h">Решение по рекомендации</div>
     <div class="decision__hint">
       Доступно пользователю Заказчика с правом решения. При отклонении и запросе уточнения
       обоснование обязательно. Норматив ответа — ${rec.sla} рабочих часов с момента передачи,
-      ${CONTROL_LABEL[rec.controlKind]}${rec.controlKind === 'ok' ? '' : ' ' + dur(rec.controlDelta)}.</div>
+      ${ctrl}.</div>
     ${form && ['accept', 'reject', 'clarify'].includes(form) ? decisionForm() : `
     <div class="decision__btns">
       <button class="btn btn--ok" data-act="open:accept">Принять</button>
@@ -372,14 +399,8 @@ function paneSummary() {
     <div class="block"><div class="block__h">Рекомендуемое мероприятие</div>
       <div class="block__b">${rec.action}</div></div>
 
-    <div class="block"><div class="block__h">Ожидаемый технологический результат</div>
-      <div class="kpis">
-        <div class="kpi"><span class="kpi__k">Δ Qж</span><span class="kpi__v">${num(rec.expectQzh, ' м³/сут')}</span></div>
-        <div class="kpi"><span class="kpi__k">Δ Qн</span><span class="kpi__v">${num(rec.expectQn, ' т/сут')}</span></div>
-        <div class="kpi"><span class="kpi__k">Δ ЭЭ</span><span class="kpi__v">${num(rec.expectEE, ' кВт·ч')}</span></div>
-        <div class="kpi"><span class="kpi__k">Прогнозный эффект</span><span class="kpi__v">${
-          rec.forecast ? rec.forecast.toLocaleString('ru-RU') + '<small> руб</small>' : '—'}</span></div>
-      </div></div>
+    <!-- Ожидаемый результат сюда не дублируется: он вынесен полосой прогноза
+         под шапку, где виден всегда и не уезжает за прокрутку. -->
 
     <div class="block"><div class="block__h">Горизонт подтверждения</div>
       <div class="block__b">${prose(`90 суток с даты фактической реализации.
@@ -751,7 +772,7 @@ function answerNow() {
 }
 
 function refresh() {
-  renderHead(); renderRibbon(); renderTabs(); renderPane();
+  renderHead(); renderForecast(); renderTabs(); renderPane();
 }
 
 function val(sel) {
@@ -906,7 +927,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 renderHead();
-renderRibbon();
+renderForecast();
 renderTabs();
 renderPane();
 renderContext();

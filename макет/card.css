@@ -109,36 +109,77 @@
 .headmenu button:hover { background: var(--state-hover); }
 .headmenu button.is-accent { color: var(--text-accent); font-weight: var(--font-weight-subtitle); }
 
-/* ------------------------------ лента статусов ------------------------------ */
+/* ------------------------------ прогноз ------------------------------
+   Занимает место убранной ленты статусов. Здесь сознательно отходим от
+   плотности табличных экранов ВМАП: это не данные для сканирования глазами,
+   а единственное на карточке место, где написано, ради чего рекомендация
+   существует. Числа крупные, разряды разделены, единицы уведены в тень. */
 
-.ribbon {
+.forecast {
   flex: 0 0 auto;
-  display: flex; align-items: stretch; gap: var(--item-gap-horizontal-xs);
-}
-.step {
-  flex: 1 1 0; min-width: 0;
-  padding: var(--item-padding-vertical-s) var(--item-padding-horizontal-m);
   background: var(--bg-card);
-  border-radius: var(--corner-radius-component);
+  border-radius: 20px;
   box-shadow: var(--elevation-1);
-  display: flex; flex-direction: column; gap: 1px;
-  border-left: 3px solid var(--border-divider-light);
+  padding: 16px 26px;
+  display: flex; align-items: stretch;
 }
-.step__t {
-  font: var(--font-weight-subtitle) var(--font-size-text-small-medium) / var(--line-height-text-small-medium) var(--font-family-text);
+
+.fc {
+  flex: 1 1 0; min-width: 0;
+  padding: 0 22px;
+  border-left: 1px solid var(--border-divider-light);
+  display: flex; flex-direction: column; justify-content: center; gap: 3px;
+}
+.fc:first-child { padding-left: 0; border-left: 0; }
+
+.fc__k {
+  font: var(--font-weight-text) var(--font-size-text-small) / 1.2 var(--font-family-text);
   color: var(--text-quaternary);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.step__d {
-  font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-caption) var(--font-family-text);
+.fc__v {
+  font: 600 26px/1.15 var(--font-family-headline);
+  color: var(--text-heading);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.fc__u {
+  font: var(--font-weight-text) var(--font-size-text-small) / 1 var(--font-family-text);
+  color: var(--text-quaternary);
+  margin-left: 5px;
+}
+.fc__n {
+  font: var(--font-weight-text) var(--font-size-text-caption) / 1.2 var(--font-family-text);
   color: var(--text-quaternary);
 }
-.step.is-done { border-left-color: var(--status-success); }
-.step.is-done .step__t { color: var(--text-secondary); }
-.step.is-now { border-left-color: var(--component-accent); background: var(--state-selected-light); }
-.step.is-now .step__t { color: var(--text-accent); }
-.step.is-stop { border-left-color: var(--status-error); }
-.step.is-stop .step__t { color: var(--status-error-text); }
+
+/* Цвет по смыслу, а не по знаку: минус у ЭЭ — это экономия. */
+.fc__v.is-good { color: var(--status-success-text); }
+.fc__v.is-bad  { color: var(--status-warning-text); }
+
+/* Подпись слева вместо первой колонки чисел — она объясняет всю полосу,
+   поэтому не должна выглядеть как ещё одно измерение. */
+.fc--cap { flex: 0 0 auto; padding-right: 26px; }
+.fc__cap {
+  font: var(--font-weight-subtitle) var(--font-size-text-small-medium) / 1.25 var(--font-family-text);
+  color: var(--text-tertiary);
+  text-transform: uppercase; letter-spacing: 0.6px;
+}
+
+/* Рубли — итог всей полосы, поэтому это единственная ячейка с заливкой. */
+.fc--money {
+  flex: 0 0 auto; min-width: 210px;
+  background: var(--state-selected-light);
+  border-radius: 14px;
+  border-left: 0;
+  margin: -6px 0;
+  padding: 10px 22px;
+}
+.fc--money .fc__v { color: var(--text-accent); }
+
+.forecast__empty {
+  font: var(--font-weight-text) var(--font-size-text-medium) / 1.4 var(--font-family-text);
+  color: var(--text-quaternary);
+}
 
 /* ------------------------------ тело ------------------------------ */
 
@@ -382,7 +423,9 @@
   font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
   color: var(--text-tertiary);
 }
-.prev__t b { color: var(--text-link); font-weight: var(--font-weight-text); }
+/* Номер рекомендации не переносится: «КВ2-26-0021» в две строки читается
+   как два разных значения. */
+.prev__t b { color: var(--text-link); font-weight: var(--font-weight-text); white-space: nowrap; }
 .prev__p {
   font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
   color: var(--text-secondary);
@@ -422,7 +465,7 @@
 .chip {
   border: 1px solid var(--border-component-default);
   background: var(--component-default);
-  border-radius: var(--corner-radius-full, 999px);
+  border-radius: 999px;  /* пилюля; такого радиуса в токенах ВМАП нет */
   padding: var(--item-padding-vertical-xs) var(--item-padding-horizontal-m);
   font: var(--font-weight-text) var(--font-size-text-small) / 1.6 var(--font-family-text);
   color: var(--text-secondary); cursor: pointer;
