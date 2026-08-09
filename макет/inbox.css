@@ -1,0 +1,236 @@
+/* Инбокс «Мои задачи» — вёрстка макета.
+   Ни одного цвета, кегля, радиуса или отступа мимо tokens.css.
+   Базовые компоненты (кнопки, плитки, теги, пилюли приоритета, кружок статуса,
+   значок) взяты из registry.css как есть: инбокс не заводит второй визуальный
+   язык, он собирает уже существующие детали в другом порядке. */
+
+.content--inbox { gap: var(--screen-gap-compact); }
+
+/* Строка «сейчас». В макете время зафиксировано, и это надо видеть на экране:
+   иначе непонятно, почему рекомендации ждут открытия рабочего окна. */
+.nowline {
+  display: inline-flex; align-items: center; gap: var(--item-gap-horizontal-m);
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+.nowline svg { color: var(--icon-light); flex: 0 0 auto; }
+
+/* ------------------------------ демонстрационная полоса ------------------------------ */
+
+/* Полоса существует только в макете. Помечена явно и намеренно набрана
+   нейтрально: она часть стенда, а не часть продукта, и не должна выглядеть
+   как рабочий фильтр экрана. */
+.demobar {
+  display: flex; align-items: center; gap: var(--group-gap-m);
+  flex-wrap: wrap;
+  padding: var(--group-padding-s) var(--group-padding-m);
+  background: var(--bg-card);
+  border: 1px dashed var(--border-divider);
+  border-radius: var(--corner-radius-l);
+}
+
+.demobar__flag {
+  flex: 0 0 auto;
+  padding: var(--item-padding-vertical-2xs) var(--item-padding-horizontal-s);
+  border-radius: var(--corner-radius-component);
+  background: var(--component-inverse-secondary);
+  color: var(--text-tertiary);
+  font: var(--font-weight-text) var(--font-size-text-short-description) / var(--line-height-text-short-description) var(--font-family-text);
+  letter-spacing: var(--letter-spacing-text-short-description);
+  text-transform: uppercase;
+}
+
+.demobar__who {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+.demobar__who b { color: var(--text-secondary); font-weight: var(--font-weight-subtitle); }
+
+/* Сегмент-контрол — компонент ВМАП, у него своя подложка component/segmented. */
+.seg {
+  display: inline-flex; gap: var(--item-gap-horizontal-xs);
+  padding: var(--item-padding-horizontal-2xs);
+  background: var(--component-inverse-tertiary);
+  border-radius: var(--corner-radius-medium-component);
+}
+.seg__b {
+  height: 24px; padding: 0 var(--item-padding-medium-horizontal-s);
+  border: 0; border-radius: var(--corner-radius-component);
+  background: transparent; color: var(--text-secondary);
+  font: var(--font-weight-text) var(--font-size-text-small) / 1 var(--font-family-text);
+  cursor: pointer; white-space: nowrap;
+}
+.seg__b:hover { background: var(--state-hover); }
+.seg__b.is-on {
+  background: var(--component-segmented);
+  color: var(--text-accent);
+  font-weight: var(--font-weight-subtitle);
+  box-shadow: var(--elevation-1);
+}
+
+/* ------------------------------ плитки ------------------------------ */
+
+/* Плитки реестра — взаимоисключающие счётчики статусов, здесь — быстрый взгляд
+   «что горит» и якорь к блоку ниже. Компонент тот же, поэтому берём .tile
+   из registry.css; своя только сетка: плиток у ролей разное число. */
+.itiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--block-gap-default);
+}
+.itiles .tile { text-decoration: none; color: inherit; justify-content: center; }
+.itiles .tile__l { text-align: center; }
+/* Ноль — тоже ответ: срез существует, просто сегодня пуст. Приглушаем, чтобы
+   он не перетягивал взгляд с ненулевых. */
+.itiles .tile.is-zero .tile__n { color: var(--text-quaternary); }
+
+.badgenote {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+  padding: 0 var(--item-padding-horizontal-xs);
+}
+
+/* ------------------------------ лента блоков ------------------------------ */
+
+.feed {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto;
+  display: flex; flex-direction: column; gap: var(--screen-gap-default);
+  padding-right: var(--item-padding-horizontal-xs);
+}
+
+.blk {
+  background: var(--bg-card);
+  border-radius: var(--corner-radius-section);
+  box-shadow: var(--elevation-1);
+  padding: var(--section-padding-compact) var(--section-padding-default) var(--section-padding-default);
+  scroll-margin-top: var(--group-padding-s);
+}
+
+/* Подсвечивается исключение, а не норма — то же правило, что у строк реестра.
+   Кромкой помечены только блоки, где ход за пользователем и время идёт;
+   наблюдательные блоки не окрашены вовсе, хотя их на экране большинство. */
+.blk--hot { box-shadow: var(--elevation-1), inset 3px 0 0 var(--status-error); }
+.blk--warn { box-shadow: var(--elevation-1), inset 3px 0 0 var(--status-warning); }
+
+.blk__h {
+  display: flex; align-items: center; gap: var(--item-gap-horizontal-m);
+  padding-top: var(--item-padding-vertical-m);
+}
+.blk__t {
+  margin: 0;
+  font: var(--font-weight-headline) var(--font-size-h6) / var(--line-height-h6) var(--font-family-headline);
+  color: var(--text-heading);
+}
+.blk__deep {
+  margin-left: auto; white-space: nowrap;
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-link); text-decoration: none;
+}
+.blk__deep:hover { text-decoration: underline; }
+
+/* Зачем блок существует. Текст процессный, а не подсказка к элементу: инбокс
+   читают люди с обеих сторон договора, и одинаковое понимание порядка важнее
+   экономии двух строк. */
+.blk__why {
+  margin: var(--item-padding-vertical-xs) 0 var(--group-gap-s);
+  max-width: 96ch;
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+
+.blk__list {
+  display: flex; flex-direction: column;
+  border-top: 1px solid var(--border-divider-light);
+}
+
+.blk__empty, .blk__more {
+  padding: var(--group-padding-s) 0 0;
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-quaternary);
+}
+.blk__more a { color: var(--text-link); text-decoration: none; }
+.blk__more a:hover { text-decoration: underline; }
+
+/* ------------------------------ строка задачи ------------------------------ */
+
+/* Вся строка — ссылка в карточку. Ради этого окно и делалось: норматив в
+   4 рабочих часа не выдержать, если до обоснования надо добираться через
+   реестр и фильтры. */
+.task {
+  display: flex; align-items: flex-start; gap: var(--item-gap-horizontal-m);
+  padding: var(--item-padding-vertical-m) var(--item-padding-horizontal-s);
+  border-bottom: 1px solid var(--border-divider-light);
+  text-decoration: none; color: inherit;
+}
+.task:hover { background: var(--state-hover); }
+.task:hover .task__go { color: var(--icon-accent); }
+
+.task__dot { margin-top: var(--item-padding-vertical-s); }
+.task__b { flex: 1 1 auto; min-width: 0; }
+.task__go { flex: 0 0 auto; color: var(--icon-disabled); margin-top: var(--item-padding-vertical-xs); }
+
+.task__r1 {
+  display: flex; align-items: center; gap: var(--item-gap-horizontal-m);
+  flex-wrap: wrap;
+}
+.task__num {
+  font: var(--font-weight-subtitle) var(--font-size-text-small-medium) / var(--line-height-text-small-medium) var(--font-family-text);
+  color: var(--text-link);
+  font-variant-numeric: tabular-nums;
+}
+/* Время — в правом верхнем углу строки, как в блоке предупреждений ВМАП. */
+.task__when {
+  margin-left: auto; white-space: nowrap;
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-quaternary);
+  font-variant-numeric: tabular-nums;
+}
+
+.task__r2 {
+  margin-top: var(--item-gap-vertical-xs);
+  font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  color: var(--text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.task__r3, .task__r4 {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.task__r3 b { font-weight: var(--font-weight-subtitle); color: var(--text-secondary); }
+.task__r4 { color: var(--text-quaternary); }
+
+/* ------------------------------ сводные таблицы руководителей ------------------------------ */
+
+/* Руководителю нужен свод, а не список задач, поэтому здесь табличный паттерн
+   реестра: тот же кегль 12/16, те же отступы и границы. Ширины не фиксируем —
+   колонок мало и они узкие. */
+.sum { table-layout: auto; width: 100%; }
+.sum thead th { position: static; white-space: normal; vertical-align: bottom; }
+.sum tbody td { vertical-align: middle; }
+.sum__n { font-variant-numeric: tabular-nums; }
+.sum tbody tr:last-child td {
+  border-bottom: 0;
+  border-top: 1px solid var(--border-table);
+  color: var(--text-secondary);
+}
+
+/* ------------------------------ служебная сводка администратора ------------------------------ */
+
+.kv {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--group-gap-s);
+  border-top: 1px solid var(--border-divider-light);
+  padding-top: var(--group-padding-s);
+}
+.kv__i { display: flex; flex-direction: column; gap: var(--item-gap-vertical-xs); }
+.kv__k {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+.kv__v {
+  font: var(--font-weight-headline) var(--font-size-h5) / var(--line-height-h5) var(--font-family-headline);
+  color: var(--text-heading);
+  font-variant-numeric: tabular-nums;
+}
