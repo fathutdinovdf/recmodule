@@ -1,0 +1,399 @@
+/* Экран «Календарь и SLA».
+   Все цвета, отступы и кегли — через tokens.css, как и на остальных экранах.
+   Здесь только то, чего нет в registry.css и card.css: полоса оснований,
+   таблица нормативов, сетка производственного календаря, разбор расчёта
+   и сверка с Формой 2. */
+
+/* .content задан с overflow: hidden — реестр не прокручивается, прокручивается
+   его таблица. Здесь наоборот: четыре яруса, ни один из которых не тянется,
+   поэтому прокрутка возвращается странице, а панели перестают растягиваться. */
+.content--sla { overflow-y: auto; overflow-x: hidden; }
+.content--sla > section { flex: 0 0 auto; }
+.content--sla .panel { flex: 0 0 auto; min-height: 0; overflow: visible; }
+
+.panel--pad { padding: var(--group-padding-l); gap: var(--group-gap-s); }
+
+/* ------------------------------ заголовки панелей ------------------------------ */
+
+.ph {
+  display: flex; align-items: center; gap: var(--item-gap-horizontal-m);
+  font: var(--font-weight-headline) var(--font-size-h6) / var(--line-height-h6) var(--font-family-headline);
+  color: var(--text-heading);
+}
+.ph svg { color: var(--icon-light); flex: 0 0 auto; }
+.ph--s { font-size: var(--font-size-text-medium); margin-top: var(--group-gap-s); }
+.ph__src { flex: 0 0 auto; }
+.ph__tabs { display: flex; gap: var(--item-gap-horizontal-xs); margin-left: var(--group-gap-s); }
+.ph__right {
+  margin-left: auto;
+  font: var(--font-weight-text) var(--font-size-text-small) / 1 var(--font-family-text);
+  color: var(--text-tertiary);
+}
+.ph__right b { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.ph__sub {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+  margin-bottom: var(--group-gap-s);
+}
+.ph__sub b { color: var(--text-secondary); font-weight: var(--font-weight-subtitle); }
+
+/* Форма внутри панели не отделяется линией и не имеет верхнего отступа:
+   в карточке .form раскрывается под текстом, здесь она и есть содержимое. */
+.form--flat { margin-top: 0; padding-top: 0; border-top: 0; }
+
+/* ------------------------------ полоса оснований ------------------------------ */
+
+.basis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--block-gap-default); }
+.basis__i {
+  display: flex; gap: var(--item-gap-horizontal-m);
+  background: var(--bg-card);
+  border-radius: var(--corner-radius-l);
+  box-shadow: var(--elevation-1);
+  padding: var(--group-padding-m);
+  border-left: 3px solid var(--status-default);
+}
+.basis__i--c { border-left-color: var(--status-success); }
+.basis__i--f { border-left-color: var(--status-warning); }
+.basis__i--o { border-left-color: var(--status-default); }
+.basis__i .tag { flex: 0 0 auto; margin-top: 2px; }
+.basis__t {
+  font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+.basis__h { display: block; color: var(--text-secondary); font-weight: var(--font-weight-subtitle); margin-bottom: 2px; }
+.basis__t b { color: var(--text-secondary); font-weight: var(--font-weight-subtitle); }
+
+/* ------------------------------ ярус настроек ------------------------------ */
+
+.row3 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1fr); gap: var(--block-gap-default); align-items: start; }
+
+.chips { display: flex; gap: var(--item-gap-horizontal-s); flex-wrap: nowrap; }
+.chips--wrap { flex-wrap: wrap; }
+
+.inp--narrow { max-width: 140px; }
+.inp--num { width: 68px; text-align: center; font-variant-numeric: tabular-nums; }
+
+.chk {
+  display: flex; align-items: center; gap: var(--item-gap-horizontal-m);
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-secondary); cursor: pointer;
+}
+.chk input { accent-color: var(--component-accent); margin: 0; flex: 0 0 auto; }
+.chk__q {
+  display: inline-grid; place-items: center;
+  width: 14px; height: 14px; margin-left: var(--item-gap-horizontal-s);
+  border-radius: 50%; background: var(--component-inverse-secondary);
+  color: var(--text-tertiary); font-style: normal;
+  font: var(--font-weight-subtitle) var(--font-size-text-caption) / 1 var(--font-family-text);
+  cursor: help; vertical-align: middle;
+}
+
+.kpis { margin-top: var(--group-gap-s); }
+.kpi--bad { background: var(--status-error-light-bg); }
+.kpi--bad .kpi__v { color: var(--status-error-text); }
+
+/* ------------------------------ нормативы ------------------------------ */
+
+.slatbl { display: flex; flex-direction: column; }
+.slarow {
+  display: grid; grid-template-columns: 92px 158px minmax(0, 1fr);
+  align-items: center; gap: var(--item-gap-horizontal-m);
+  padding: var(--item-padding-vertical-s) 0;
+  border-bottom: 1px solid var(--border-divider-light);
+}
+.slarow:last-child { border-bottom: 0; }
+/* Договорной норматив отделён от трёх «наших» полем и фоном: у него другой
+   источник и другая цена ошибки, и в одном ряду с 4/8/24 это теряется. */
+.slarow--sep {
+  align-items: center;
+  grid-template-columns: 92px 158px;
+  row-gap: var(--item-gap-vertical-s);
+  margin-top: var(--group-gap-s);
+  padding: var(--group-padding-s);
+  border-top: 1px solid var(--border-divider);
+  border-bottom: 0;
+  background: var(--status-success-light-bg);
+  border-radius: var(--corner-radius-m);
+}
+.slarow--sep .slarow__ex { grid-column: 1 / -1; }
+.slarow__in { display: flex; align-items: center; gap: var(--item-gap-horizontal-s); }
+.slarow__u {
+  font: var(--font-weight-text) var(--font-size-text-small) / 1 var(--font-family-text);
+  color: var(--text-tertiary); white-space: nowrap;
+}
+.slarow__ex {
+  font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+.slarow__ex b { color: var(--text-secondary); font-weight: var(--font-weight-subtitle); }
+
+.wordblk { margin-top: var(--group-gap-m); }
+.wordset { display: flex; gap: var(--item-gap-horizontal-m); }
+.radio2 {
+  flex: 1 1 0; display: flex; align-items: flex-start; gap: var(--item-gap-horizontal-s);
+  padding: var(--item-padding-vertical-s) var(--item-padding-horizontal-s);
+  border: 1px solid var(--border-component-default);
+  border-radius: var(--corner-radius-component);
+  cursor: pointer;
+}
+.radio2.is-on { border-color: var(--component-accent); background: var(--state-selected-light); }
+.radio2 input { accent-color: var(--component-accent); margin: 2px 0 0; flex: 0 0 auto; }
+.radio2 b {
+  display: block;
+  font: var(--font-weight-subtitle) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-secondary);
+}
+.radio2 small {
+  display: block;
+  font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-caption) var(--font-family-text);
+  color: var(--text-quaternary);
+}
+
+/* ------------------------------ часовой пояс ------------------------------ */
+
+.tzfix {
+  padding: var(--item-padding-vertical-s) var(--item-padding-horizontal-m);
+  border-radius: var(--corner-radius-component);
+  background: var(--bg-secondary);
+  font: var(--font-weight-subtitle) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  color: var(--text-secondary);
+}
+.tzex { display: flex; flex-direction: column; gap: var(--item-gap-vertical-s); margin-top: var(--group-gap-s); }
+.tzex__r {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px var(--item-gap-horizontal-m);
+  padding: var(--group-padding-xs) var(--item-padding-horizontal-m);
+  border-radius: var(--corner-radius-m);
+  background: var(--bg-secondary);
+}
+.tzex__l {
+  grid-column: 1 / -1;
+  font: var(--font-weight-text) var(--font-size-text-caption) / 1 var(--font-family-text);
+  color: var(--text-quaternary);
+}
+.tzex__r b {
+  font: var(--font-weight-subtitle) var(--font-size-text-medium) / 1.3 var(--font-family-text);
+  color: var(--text-secondary); font-variant-numeric: tabular-nums;
+}
+.tzex__m {
+  font: var(--font-weight-text) var(--font-size-text-caption) / 1.3 var(--font-family-text);
+  color: var(--text-quaternary); align-self: center;
+}
+.tzex__a {
+  grid-column: 1 / -1;
+  font: var(--font-weight-text) var(--font-size-text-small) / 1.3 var(--font-family-text);
+  color: var(--text-tertiary); font-variant-numeric: tabular-nums;
+}
+.tzex__a i { font-style: normal; color: var(--text-quaternary); margin-left: var(--item-gap-horizontal-s); }
+.tzex__a--same { color: var(--text-quaternary); }
+
+/* ------------------------------ производственный календарь ------------------------------ */
+
+.warnbar {
+  display: flex; gap: var(--item-gap-horizontal-m); align-items: flex-start;
+  padding: var(--group-padding-s) var(--group-padding-m);
+  border-radius: var(--corner-radius-m);
+  background: var(--status-warning-light-bg);
+  color: var(--status-warning-text);
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  margin-bottom: var(--group-gap-s);
+}
+.warnbar svg { flex: 0 0 auto; margin-top: 1px; }
+
+.ytab {
+  height: 22px; padding: 0 var(--item-padding-horizontal-s);
+  border: 1px solid var(--border-component-default);
+  border-radius: var(--corner-radius-component);
+  background: var(--component-default); color: var(--text-secondary);
+  font: var(--font-weight-text) var(--font-size-text-small) / 1 var(--font-family-text);
+  cursor: pointer;
+}
+.ytab.is-on { background: var(--component-accent); border-color: transparent; color: var(--text-on-accent); font-weight: var(--font-weight-subtitle); }
+
+.calwrap { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--block-gap-default); align-items: start; }
+.calmain { min-width: 0; }
+.calside { display: flex; flex-direction: column; gap: var(--item-gap-vertical-s); }
+.calside .ph--s:first-child { margin-top: 0; }
+
+.legend { display: flex; flex-wrap: wrap; gap: var(--item-gap-horizontal-m) var(--group-gap-m); margin-bottom: var(--group-gap-s); }
+.leg {
+  display: inline-flex; align-items: center; gap: var(--item-gap-horizontal-s);
+  font: var(--font-weight-text) var(--font-size-text-caption) / 1 var(--font-family-text);
+  color: var(--text-tertiary);
+}
+.leg__d { width: 12px; height: 12px; border-radius: var(--corner-radius-s); background: var(--component-default); border: 1px solid var(--border-component-default); }
+.leg__hint { color: var(--text-quaternary); margin-left: auto; }
+
+/* Шесть месяцев в ряд: двенадцать блоков ложатся в две ровные строки, и год
+   виден целиком без прокрутки. При пяти колонках последняя строка остаётся
+   на треть пустой, а год перестаёт читаться как год. */
+.calgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: var(--block-gap-default) var(--group-gap-m); }
+.calm { min-width: 0; }
+.calm__h {
+  font: var(--font-weight-subtitle) var(--font-size-text-small) / 1 var(--font-family-text);
+  color: var(--text-secondary); margin-bottom: var(--item-gap-vertical-s);
+}
+.calm__w, .calm__g { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.calm__w i {
+  font: var(--font-weight-text) var(--font-size-text-caption) / 16px var(--font-family-text);
+  color: var(--text-quaternary); font-style: normal; text-align: center;
+}
+
+/* Клетка дня. Размер 22 px — компромисс: 12 месяцев обязаны поместиться на
+   экран без прокрутки, но клетка должна оставаться кликабельной мишенью. */
+.cd {
+  height: 22px; padding: 0; border: 1px solid transparent;
+  border-radius: var(--corner-radius-s);
+  background: var(--component-default); color: var(--text-secondary);
+  font: var(--font-weight-text) var(--font-size-text-caption) / 1 var(--font-family-text);
+  font-variant-numeric: tabular-nums; cursor: pointer;
+}
+.cd:hover { box-shadow: var(--focus-component); }
+.cd--pad { background: transparent; cursor: default; }
+.cd--pad:hover { box-shadow: none; }
+.cd.k-we { background: var(--bg-secondary); color: var(--text-quaternary); }
+.cd.k-hol { background: var(--status-error-light-bg); color: var(--status-error-text); font-weight: var(--font-weight-subtitle); }
+.cd.k-off { background: var(--status-warning-light-bg); color: var(--status-warning-text); font-weight: var(--font-weight-subtitle); }
+.cd.k-work { background: var(--status-success-light-bg); color: var(--status-success-text); font-weight: var(--font-weight-subtitle); }
+.cd.k-short { background: var(--status-processing-light-bg); color: var(--status-processing-text); font-weight: var(--font-weight-subtitle); }
+/* Неподтверждённая дата обведена пунктиром: цвет уже занят видом дня,
+   а «предварительно» — это про доверие к дате, а не про её вид. */
+.cd.is-draft { border-style: dashed; border-color: currentColor; }
+.cd.is-out { opacity: 0.4; }
+.cd.is-now { box-shadow: inset 0 0 0 2px var(--component-accent); }
+
+.leg__d.k-we { background: var(--bg-secondary); }
+.leg__d.k-hol { background: var(--status-error-light-bg); border-color: var(--status-error); }
+.leg__d.k-off { background: var(--status-warning-light-bg); border-color: var(--status-warning); }
+.leg__d.k-work { background: var(--status-success-light-bg); border-color: var(--status-success); }
+.leg__d.k-short { background: var(--status-processing-light-bg); border-color: var(--status-processing); }
+
+.exlist { display: flex; flex-direction: column; gap: 1px; max-height: 232px; overflow-y: auto; }
+.exi {
+  display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: var(--item-gap-horizontal-s);
+  padding: 3px var(--item-padding-horizontal-xs);
+  border-radius: var(--corner-radius-s);
+  font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-caption) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+.exi.k-hol { background: var(--status-error-light-bg); }
+.exi.k-off { background: var(--status-warning-light-bg); }
+.exi.k-work { background: var(--status-success-light-bg); }
+.exi.k-short { background: var(--status-processing-light-bg); }
+.exi__d { font-weight: var(--font-weight-subtitle); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.exi__d i { font-style: normal; color: var(--text-quaternary); font-weight: var(--font-weight-text); }
+.exi__t em { font-style: normal; color: var(--text-quaternary); margin-left: var(--item-gap-horizontal-s); }
+
+.log2 { display: flex; flex-direction: column; gap: var(--item-gap-vertical-s); }
+.log2__i {
+  padding: var(--group-padding-xs) var(--item-padding-horizontal-s);
+  border-left: 2px solid var(--border-divider);
+}
+.log2__d {
+  font: var(--font-weight-text) var(--font-size-text-caption) / 1.3 var(--font-family-text);
+  color: var(--text-quaternary); font-variant-numeric: tabular-nums;
+}
+.log2__t {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-secondary);
+}
+.log2__w { display: block; color: var(--text-quaternary); font-size: var(--font-size-text-caption); }
+
+/* ------------------------------ калькулятор ------------------------------ */
+
+.calc { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: var(--block-gap-default); align-items: start; }
+.calc__out { display: flex; flex-direction: column; gap: var(--group-gap-s); min-width: 0; }
+
+.verdict {
+  padding: var(--group-padding-m) var(--group-padding-l);
+  border-radius: var(--corner-radius-l);
+  background: var(--state-selected-light);
+  border-left: 3px solid var(--component-accent);
+}
+.verdict__k {
+  font: var(--font-weight-text) var(--font-size-text-small) / 1 var(--font-family-text);
+  color: var(--text-tertiary);
+}
+.verdict__v {
+  font: var(--font-weight-headline) var(--font-size-h3) / var(--line-height-h3) var(--font-family-headline);
+  color: var(--text-accent); font-variant-numeric: tabular-nums;
+}
+.verdict__s {
+  font: var(--font-weight-text) var(--font-size-text-small) / 1.4 var(--font-family-text);
+  color: var(--text-tertiary);
+}
+
+.trace { display: flex; flex-direction: column; }
+.tr {
+  display: grid; grid-template-columns: 22px 132px 156px minmax(0, 1fr);
+  align-items: baseline; gap: var(--item-gap-horizontal-m);
+  padding: var(--item-padding-vertical-xs) 0;
+  border-bottom: 1px solid var(--border-divider-light);
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+}
+.tr:last-child { border-bottom: 0; }
+.tr__n {
+  display: inline-grid; place-items: center;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--component-inverse-secondary); color: var(--text-tertiary);
+  font-size: var(--font-size-text-caption); font-weight: var(--font-weight-subtitle);
+}
+.tr__a { color: var(--text-tertiary); }
+.tr__b { color: var(--text-secondary); font-weight: var(--font-weight-subtitle); font-variant-numeric: tabular-nums; }
+.tr__c { color: var(--text-quaternary); }
+.tr__c b { color: var(--text-secondary); }
+.tr__no { color: var(--status-warning-text); }
+.tr--f2 { margin-top: var(--group-gap-s); background: var(--status-error-light-bg); border-radius: var(--corner-radius-m); padding: var(--group-padding-xs) var(--item-padding-horizontal-s); border-bottom: 0; }
+.tr--f2 .tr__n { background: var(--status-error); color: var(--text-on-accent); font-size: 9px; }
+.tr--f2 .tr__b { color: var(--status-error-text); }
+
+/* ------------------------------ сверка с Формой 2 ------------------------------ */
+
+.defects { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--block-gap-default); margin-bottom: var(--group-gap-m); }
+.defect {
+  padding: var(--group-padding-s) var(--group-padding-m);
+  border-radius: var(--corner-radius-m);
+  background: var(--bg-secondary);
+  border-left: 3px solid var(--status-error);
+}
+.defect__h {
+  font: var(--font-weight-subtitle) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-secondary); margin-bottom: 2px;
+}
+.defect__h code { font-family: ui-monospace, Consolas, monospace; font-size: inherit; }
+.defect__b {
+  font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+
+.cmpwrap { overflow-x: auto; }
+.cmp { width: 100%; }
+.cmp th, .cmp td { padding: var(--item-padding-vertical-xs) var(--item-padding-horizontal-s); white-space: nowrap; }
+.cmp td.num { font-variant-numeric: tabular-nums; }
+.cmp tbody tr.is-bad td { background: var(--status-error-light-bg); }
+.cmp__bad { color: var(--status-error-text); font-weight: var(--font-weight-subtitle); }
+
+.counters { margin-top: var(--group-gap-m); }
+
+/* ------------------------------ поповер дня ------------------------------ */
+
+.popover__h {
+  font: var(--font-weight-subtitle) var(--font-size-text-medium) / 1 var(--font-family-text);
+  color: var(--text-heading);
+}
+
+/* ------------------------------ прочее ------------------------------ */
+
+.form__note.is-dirty { color: var(--status-warning-text); }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn:disabled:hover { background: var(--component-default); }
+.btn--accent:disabled:hover { background: var(--component-accent); }
+
+/* На узком экране три колонки настроек и две колонки календаря не читаются:
+   строки сжимаются до переносов внутри каждого поля. */
+@media (max-width: 1500px) {
+  .row3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .basis { grid-template-columns: minmax(0, 1fr); }
+  .calwrap { grid-template-columns: minmax(0, 1fr); }
+  .calc { grid-template-columns: minmax(0, 1fr); }
+  .defects { grid-template-columns: minmax(0, 1fr); }
+}
