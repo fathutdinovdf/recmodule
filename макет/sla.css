@@ -177,7 +177,7 @@
 .leg__d.k-work { background: var(--status-success-light-bg); border-color: var(--status-success); }
 .leg__d.k-short { background: var(--status-processing-light-bg); border-color: var(--status-processing); }
 
-.exlist { display: flex; flex-direction: column; gap: 1px; max-height: 232px; overflow-y: auto; }
+.exlist { display: flex; flex-direction: column; gap: 1px; flex: 2 1 0; min-height: 120px; overflow-y: auto; }
 .exi {
   display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: var(--item-gap-horizontal-s);
   padding: 3px var(--item-padding-horizontal-xs);
@@ -278,7 +278,7 @@
    внутри себя. Без этого каждая новая запись удлиняла колонку, а календарь
    рядом оставался на месте — панель росла вниз пустотой. Высота не задаётся
    числом: колонка тянется ровно на календарь, остаток достаётся журналу. */
-.log2--scroll { flex: 1 1 0; min-height: 96px; overflow-y: auto; padding-right: var(--item-gap-horizontal-s); scrollbar-width: thin; }
+.log2--scroll { flex: 1 1 0; min-height: 110px; overflow-y: auto; padding-right: var(--item-gap-horizontal-s); scrollbar-width: thin; }
 
 /* Ниже планшета три колонки настроек уже не читаются — только там строка
    и ломается. */
