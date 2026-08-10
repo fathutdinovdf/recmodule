@@ -365,21 +365,16 @@
     $('tzSelect').innerHTML = TZS.map((t) =>
       `<option value="${t.id}"${t.id === S.tz ? ' selected' : ''}>${t.label}</option>`).join('');
 
+    /* Примеры «Сейчас» и «Срок из калькулятора» убраны: карточка отвечает на
+       вопрос «в каком поясе считает модуль», а не показывает часы. Разница
+       поясов остаётся — но только когда она есть и, значит, о чём-то говорит. */
     const tz = TZS.find((t) => t.id === S.tz);
     const shift = tz.off - TZ_CALC;
-    const sample = addWorkHours(new Date(calcAt), S.sla[calcPrio]).at;
-    const rows = [
-      ['Сейчас', NOW],
-      ['Срок из калькулятора', sample],
-    ];
-    $('tzEx').innerHTML = rows.map(([l, d]) => {
-      const loc = new Date(d.getTime() + shift * 3600000);
-      return `<div class="tzex__r"><span class="tzex__l">${l}</span>
-        <b>${fmtDT(d)}</b><span class="tzex__m">Когалым, расчёт</span>
-        ${shift ? `<span class="tzex__a">${fmtDT(loc)}<i>у вас</i></span>` : '<span class="tzex__a tzex__a--same">ваш пояс совпадает с расчётным</span>'}</div>`;
-    }).join('') + (shift
-      ? `<div class="form__hint">Разница ${shift > 0 ? '+' : ''}${shift} ч. В выгрузках, печатных формах и уведомлениях время всегда когалымское — иначе два экземпляра одного отчёта разойдутся, и спор перейдёт с существа на часовые пояса.</div>`
-      : '');
+    $('tzEx').innerHTML = shift
+      ? `<div class="form__hint">Ваш пояс отличается от расчётного на ${shift > 0 ? '+' : ''}${shift} ч.
+         В выгрузках, печатных формах и уведомлениях время всегда когалымское — иначе два экземпляра
+         одного отчёта разойдутся, и спор перейдёт с существа на часовые пояса.</div>`
+      : '<div class="form__hint">Ваш пояс совпадает с расчётным.</div>';
   }
 
   /* ------------------------------------------------------------------

@@ -1,8 +1,7 @@
 /* Экран «Календарь и SLA».
    Все цвета, отступы и кегли — через tokens.css, как и на остальных экранах.
-   Здесь только то, чего нет в registry.css и card.css: полоса оснований,
-   таблица нормативов, сетка производственного календаря, разбор расчёта
-   и сверка с Формой 2. */
+   Здесь только то, чего нет в registry.css и card.css: таблица нормативов,
+   сетка производственного календаря и разбор расчёта. */
 
 /* .content задан с overflow: hidden — реестр не прокручивается, прокручивается
    его таблица. Здесь наоборот: четыре яруса, ни один из которых не тянется,
@@ -25,7 +24,6 @@
 /* Второй набор нормативов в той же панели: заголовку нужен воздух сверху,
    иначе он липнет к таблице предыдущего. */
 .ph--gap { margin-top: var(--section-padding-extra-wide); }
-.ph__src { flex: 0 0 auto; }
 .ph__tabs { display: flex; gap: var(--item-gap-horizontal-xs); margin-left: var(--group-gap-s); }
 .ph__right {
   margin-left: auto;
@@ -44,22 +42,9 @@
    в карточке .form раскрывается под текстом, здесь она и есть содержимое. */
 .form--flat { margin-top: 0; padding-top: 0; border-top: 0; }
 
-/* ------------------------------ полоса оснований ------------------------------ */
-
-  display: flex; gap: var(--item-gap-horizontal-m);
-  background: var(--bg-card);
-  border-radius: var(--corner-radius-l);
-  box-shadow: var(--elevation-1);
-  padding: var(--group-padding-m);
-  border-left: 3px solid var(--status-default);
-}
-  font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-small) var(--font-family-text);
-  color: var(--text-tertiary);
-}
-
 /* ------------------------------ ярус настроек ------------------------------ */
 
-.row3 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1fr); gap: var(--block-gap-default); align-items: start; }
+.row3 { display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.35fr) minmax(0, 0.9fr); gap: var(--block-gap-default); align-items: stretch; }
 
 .chips { display: flex; gap: var(--item-gap-horizontal-s); flex-wrap: nowrap; }
 .chips--wrap { flex-wrap: wrap; }
@@ -83,8 +68,6 @@
 }
 
 .kpis { margin-top: var(--group-gap-s); }
-.kpi--bad { background: var(--status-error-light-bg); }
-.kpi--bad .kpi__v { color: var(--status-error-text); }
 
 /* ------------------------------ нормативы ------------------------------ */
 
@@ -96,20 +79,6 @@
   border-bottom: 1px solid var(--border-divider-light);
 }
 .slarow:last-child { border-bottom: 0; }
-/* Договорной норматив отделён от трёх «наших» полем и фоном: у него другой
-   источник и другая цена ошибки, и в одном ряду с 4/8/24 это теряется. */
-.slarow--sep {
-  align-items: center;
-  grid-template-columns: 92px 158px;
-  row-gap: var(--item-gap-vertical-s);
-  margin-top: var(--group-gap-s);
-  padding: var(--group-padding-s);
-  border-top: 1px solid var(--border-divider);
-  border-bottom: 0;
-  background: var(--status-success-light-bg);
-  border-radius: var(--corner-radius-m);
-}
-.slarow--sep .slarow__ex { grid-column: 1 / -1; }
 .slarow__in { display: flex; align-items: center; gap: var(--item-gap-horizontal-s); }
 .slarow__u {
   font: var(--font-weight-text) var(--font-size-text-small) / 1 var(--font-family-text);
@@ -121,7 +90,6 @@
 }
 .slarow__ex b { color: var(--text-secondary); font-weight: var(--font-weight-subtitle); }
 
-.wordblk { margin-top: var(--group-gap-m); }
 
 /* ------------------------------ часовой пояс ------------------------------ */
 
@@ -132,33 +100,6 @@
   font: var(--font-weight-subtitle) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
   color: var(--text-secondary);
 }
-.tzex { display: flex; flex-direction: column; gap: var(--item-gap-vertical-s); margin-top: var(--group-gap-s); }
-.tzex__r {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px var(--item-gap-horizontal-m);
-  padding: var(--group-padding-xs) var(--item-padding-horizontal-m);
-  border-radius: var(--corner-radius-m);
-  background: var(--bg-secondary);
-}
-.tzex__l {
-  grid-column: 1 / -1;
-  font: var(--font-weight-text) var(--font-size-text-caption) / 1 var(--font-family-text);
-  color: var(--text-quaternary);
-}
-.tzex__r b {
-  font: var(--font-weight-subtitle) var(--font-size-text-medium) / 1.3 var(--font-family-text);
-  color: var(--text-secondary); font-variant-numeric: tabular-nums;
-}
-.tzex__m {
-  font: var(--font-weight-text) var(--font-size-text-caption) / 1.3 var(--font-family-text);
-  color: var(--text-quaternary); align-self: center;
-}
-.tzex__a {
-  grid-column: 1 / -1;
-  font: var(--font-weight-text) var(--font-size-text-small) / 1.3 var(--font-family-text);
-  color: var(--text-tertiary); font-variant-numeric: tabular-nums;
-}
-.tzex__a i { font-style: normal; color: var(--text-quaternary); margin-left: var(--item-gap-horizontal-s); }
-.tzex__a--same { color: var(--text-quaternary); }
 
 /* ------------------------------ производственный календарь ------------------------------ */
 
@@ -317,22 +258,6 @@
 .tr__c b { color: var(--text-secondary); }
 .tr__no { color: var(--status-warning-text); }
 
-/* ------------------------------ сверка с Формой 2 ------------------------------ */
-
-  padding: var(--group-padding-s) var(--group-padding-m);
-  border-radius: var(--corner-radius-m);
-  background: var(--bg-secondary);
-  border-left: 3px solid var(--status-error);
-}
-  font: var(--font-weight-subtitle) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
-  color: var(--text-secondary); margin-bottom: 2px;
-}
-  font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-small) var(--font-family-text);
-  color: var(--text-tertiary);
-}
-
-
-
 /* ------------------------------ поповер дня ------------------------------ */
 
 .popover__h {
@@ -350,7 +275,6 @@
 /* На узком экране три колонки настроек и две колонки календаря не читаются:
    строки сжимаются до переносов внутри каждого поля. */
 @media (max-width: 1500px) {
-  .row3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .calwrap { grid-template-columns: minmax(0, 1fr); }
   .calc { grid-template-columns: minmax(0, 1fr); }
 }
@@ -365,4 +289,10 @@
   max-height: 236px; overflow-y: auto;
   padding-right: var(--item-gap-horizontal-s);
   scrollbar-width: thin;
+}
+
+/* Ниже планшета три колонки настроек уже не читаются — только там строка
+   и ломается. */
+@media (max-width: 1100px) {
+  .row3 { grid-template-columns: minmax(0, 1fr); }
 }
