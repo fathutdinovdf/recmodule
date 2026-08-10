@@ -138,6 +138,15 @@ body.is-resizing { cursor: col-resize; user-select: none; }
   white-space: nowrap;
 }
 .pagehead__actions { margin-left: auto; display: flex; gap: var(--item-gap-horizontal-m); }
+/* Зона ответственности стоит рядом с заголовком, а не в фильтрах: это не
+   отбор, который можно снять, а граница того, что человеку вообще видно. */
+.pagehead__zone {
+  margin-left: var(--item-gap-horizontal-m);
+  font: var(--font-weight-text) var(--font-size-text-small) / 1 var(--font-family-text);
+  color: var(--text-tertiary);
+}
+.pagehead__zone b { color: var(--text-secondary); font-weight: var(--font-weight-subtitle); }
+
 
 .btn {
   display: inline-flex; align-items: center; gap: var(--item-gap-medium-horizontal-s);
@@ -149,6 +158,9 @@ body.is-resizing { cursor: col-resize; user-select: none; }
   color: var(--text-secondary);
   font: var(--font-weight-text) var(--font-size-text-medium) / 1 var(--font-family-text);
   cursor: pointer;
+  /* Кнопка бывает и ссылкой — «Создать рекомендацию» ведёт в мастер отдельной
+     страницей. Без сброса она приезжает с подчёркиванием и синим цветом. */
+  text-decoration: none;
 }
 .btn:hover { background: var(--state-hover); }
 .btn--accent {

@@ -80,6 +80,17 @@ function firstDir(c) { return c.type === 'datetime' ? 'desc' : 'asc'; }
 
 const QUERY = new URLSearchParams(location.search);
 
+/* Зона ответственности — не фильтр, а граница видимости: пользователь Заказчика
+   не должен видеть чужие объекты вовсе, поэтому она отрезается до всего
+   остального и снять её из интерфейса нельзя (решение 87). Роль берётся из
+   адреса тем же параметром, что в инбоксе, — так глубокие ссылки между
+   экранами сохраняют, от чьего имени смотрят. */
+const USER = USERS.find((u) => u.key === QUERY.get('role')) || USERS[0];
+
+/** Записи, доступные текущему пользователю. Всё остальное в реестре считается
+    от них: и плитки, и счётчики в фильтрах колонок, и «всего в реестре». */
+const VISIBLE = DATA.filter((r) => inScope(USER, r));
+
 /** Плитка из адреса — только существующая: опечатка в ссылке иначе молча
     отфильтровала бы реестр в ноль, и человек решил бы, что данных нет. */
 function tileFromQuery() {
@@ -202,7 +213,7 @@ function matchesAlert(rec) {
 }
 
 function filtered() {
-  return DATA.filter((rec) => {
+  return VISIBLE.filter((rec) => {
     if (state.tile) {
       const t = tileOf(rec);
       if (!t || t.key !== state.tile) return false;
@@ -237,7 +248,7 @@ function sorted(rows) {
 
 function renderTiles() {
   $('#tiles').innerHTML = TILES.map((t) => {
-    const n = DATA.filter((r) => t.statuses.includes(r.status)).length;
+    const n = VISIBLE.filter((r) => t.statuses.includes(r.status)).length;
     return `<button class="tile ${state.tile === t.key ? 'is-on' : ''}" data-tile="${t.key}">
       <span class="tile__n">${n}</span><span class="tile__l">${t.label}</span></button>`;
   }).join('');
@@ -350,9 +361,9 @@ function renderPager(total) {
   if (state.page > pages) state.page = pages;
   const from = total ? (state.page - 1) * state.pageSize + 1 : 0;
   const to = Math.min(total, state.page * state.pageSize);
-  $('#pagerInfo').textContent = total === DATA.length
+  $('#pagerInfo').textContent = total === VISIBLE.length
     ? `${from}–${to} из ${total}`
-    : `${from}–${to} из ${total} отобранных · всего в реестре ${DATA.length}`;
+    : `${from}–${to} из ${total} отобранных · всего в реестре ${VISIBLE.length}`;
 
   const btns = [`<button class="pgbtn" data-page="${state.page - 1}" ${state.page === 1 ? 'disabled' : ''}>‹</button>`];
   let gap = false;
@@ -368,7 +379,25 @@ function renderPager(total) {
   $('#pagerPages').innerHTML = btns.join('');
 }
 
+/* Строка о зоне рисуется один раз: зона не меняется, пока не сменился
+   пользователь. Молчит, когда ограничения нет, — «все объекты договора» рядом
+   с заголовком было бы шумом. */
+function renderZone() {
+  const note = $('#zoneNote');
+  if (!note) return;
+  const части = [];
+  if (USER.executor) части.push('свои рекомендации');
+  if (USER.zone.length) {
+    части.push(`${USER.zone.length} ${USER.zone.length === 1 ? 'объект' : 'объекта'} зоны ответственности`);
+  }
+  note.innerHTML = части.length
+    ? `<b>${USER.who}</b> · ${части.join(' · ')} · показано ${VISIBLE.length} из ${DATA.length}`
+    : '';
+  note.title = USER.zone.length ? USER.zone.join(', ') : '';
+}
+
 function render() {
+  renderZone();
   renderTiles();
   renderHead();
   const rows = sorted(filtered());
@@ -398,7 +427,7 @@ function openPopover(anchor, html, onMount) {
 
 function openFilterPopover(anchor, key) {
   const counts = new Map();
-  for (const rec of DATA) {
+  for (const rec of VISIBLE) {
     const v = String(cellValue(rec, key) ?? '');
     counts.set(v, (counts.get(v) || 0) + 1);
   }

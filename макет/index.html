@@ -32,23 +32,24 @@
   <nav class="sidenav">
     <div class="sidenav__section">Работа</div>
     <a class="navitem" href="inbox.html"><span class="navitem__label">Мои задачи</span><span class="badge badge--accent">7</span></a>
-    <a class="navitem is-active"><span class="navitem__label">Реестр рекомендаций</span></a>
-    <a class="navitem"><span class="navitem__label">Заявки Заказчика</span><span class="badge">2</span></a>
+    <a class="navitem is-active" href="index.html"><span class="navitem__label">Реестр рекомендаций</span></a>
+    <a class="navitem navitem--muted"><span class="navitem__label">Заявки Заказчика</span><span class="badge">2</span></a>
     <div class="sidenav__section">Эффект</div>
     <a class="navitem navitem--muted"><span class="navitem__label">Окна эффекта</span></a>
     <a class="navitem navitem--muted"><span class="navitem__label">Подтверждённые</span></a>
     <div class="sidenav__section">Настройка</div>
-    <a class="navitem"><span class="navitem__label">Справочники</span></a>
-    <a class="navitem"><span class="navitem__label">Пользователи и роли</span></a>
-    <a class="navitem"><span class="navitem__label">Календарь и SLA</span></a>
-    <a class="navitem"><span class="navitem__label">Отчёты и выгрузки</span></a>
+    <a class="navitem" href="refs.html"><span class="navitem__label">Справочники</span></a>
+    <a class="navitem navitem--muted"><span class="navitem__label">Пользователи и роли</span></a>
+    <a class="navitem" href="sla.html"><span class="navitem__label">Календарь и SLA</span></a>
+    <a class="navitem navitem--muted"><span class="navitem__label">Отчёты и выгрузки</span></a>
   </nav>
 
   <main class="content">
     <div class="pagehead">
       <h1>Реестр рекомендаций</h1>
+      <span class="pagehead__zone" id="zoneNote"></span>
       <div class="pagehead__actions">
-        <button class="btn btn--accent"><svg class="ic16"><use href="#i-plus"/></svg>Создать рекомендацию</button>
+        <a class="btn btn--accent" href="wizard.html"><svg class="ic16"><use href="#i-plus"/></svg>Создать рекомендацию</a>
         <button class="iconbtn iconbtn--lg" id="btnCols" title="Настройка колонок"><svg class="ic20"><use href="#i-cols"/></svg></button>
         <button class="iconbtn iconbtn--lg" title="Экспорт"><svg class="ic20"><use href="#i-export"/></svg></button>
       </div>

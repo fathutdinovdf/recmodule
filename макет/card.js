@@ -46,6 +46,12 @@ const prose = (s) => s.replace(/\s+/g, ' ').trim();
 /* ------------------------------ выбор записи ------------------------------ */
 
 const params = new URLSearchParams(location.search);
+
+/* От чьего имени открыта карточка. Тем же параметром, что в инбоксе и реестре,
+   чтобы переход между экранами не терял роль. По умолчанию — эксперт
+   Исполнителя: карточку чаще всего открывает автор рекомендации. */
+const USER = USERS.find((u) => u.key === params.get('role')) || USERS[0];
+
 const askedId = Number(params.get('id'));
 const rec = DATA.find((r) => r.id === askedId)
   || DATA.find((r) => r.status === 'review')
@@ -237,10 +243,27 @@ function renderForecast() {
 
 /* ------------------------------ вкладки ------------------------------ */
 
-/* Черновики в аналоги и в правую колонку не попадают: у черновика нет ни
-   номера, ни даты регистрации, и в реестре его видит только автор. */
-const analogs = DATA.filter((r) => r.well === rec.well && r.id !== rec.id && r.status !== 'draft')
+/* Две разные выборки, и путать их нельзя.
+
+   «Ранее по этой скважине» в правой колонке — история объекта: что уже
+   пробовали на этой скважине и чем кончилось. Она нужна всегда.
+
+   Вкладка «Аналоги» — про опыт по направлению: как ту же задачу решали на
+   других скважинах. Раньше вкладка повторяла правую колонку и была пустой
+   ровно тогда, когда её впервые открывают, — на первой рекомендации по
+   скважине. Теперь это пять свежих рекомендаций того же направления с других
+   скважин (решение 88).
+
+   Черновики не попадают ни туда, ни туда: у черновика нет ни номера, ни даты
+   регистрации, и в реестре его видит только автор. */
+const wellHistory = DATA.filter((r) => r.well === rec.well && r.id !== rec.id && r.status !== 'draft')
   .sort((a, b) => b.regDate - a.regDate);
+
+const ANALOGS_LIMIT = 5;
+const analogs = DATA
+  .filter((r) => r.direction === rec.direction && r.well !== rec.well && r.status !== 'draft')
+  .sort((a, b) => b.regDate - a.regDate)
+  .slice(0, ANALOGS_LIMIT);
 
 function tabsDef() {
   return [
@@ -367,12 +390,26 @@ function decisionBlock() {
   /* «нет срока» — состояние без величины: приписывать к нему «0 мин» бессмысленно. */
   const ctrl = CONTROL_LABEL[rec.controlKind]
     + (rec.controlKind === 'ok' || rec.controlKind === 'none' ? '' : ' ' + dur(rec.controlDelta));
+
+  /* Пользователь Заказчика без права решения видит ту же карточку целиком,
+     но без кнопок: скрывать от него обоснование и срок незачем — по этой
+     рекомендации ему работать, — а решение принимает уполномоченный
+     сотрудник (решение 89). Блок остаётся на месте, чтобы срок ответа был
+     виден и тому, кто решения не принимает. */
+  if (!USER.canDecide) {
+    return `<div class="decision decision--done">
+      <div class="decision__h">Решение по рекомендации</div>
+      <div class="decision__hint">Норматив ответа — ${rec.sla} рабочих часов с момента передачи,
+        ${ctrl}. Решение принимает уполномоченный сотрудник Заказчика; у вашей учётной записи
+        права решения нет.</div>
+    </div>`;
+  }
+
   return `<div class="decision">
     <div class="decision__h">Решение по рекомендации</div>
     <div class="decision__hint">
-      Доступно пользователю Заказчика с правом решения. При отклонении и запросе уточнения
-      обоснование обязательно. Норматив ответа — ${rec.sla} рабочих часов с момента передачи,
-      ${ctrl}.</div>
+      При отклонении и запросе уточнения обоснование обязательно.
+      Норматив ответа — ${rec.sla} рабочих часов с момента передачи, ${ctrl}.</div>
     ${form && ['accept', 'reject', 'clarify'].includes(form) ? decisionForm() : `
     <div class="decision__btns">
       <button class="btn btn--ok" data-act="open:accept">Принять</button>
@@ -574,16 +611,22 @@ function paneImpl() {
 /* ------------------------------ остальные вкладки ------------------------------ */
 
 function paneAnalogs() {
-  if (!analogs.length) return '<div class="empty-pane">По этой скважине других рекомендаций нет.</div>';
-  return `<div class="block"><div class="block__h">Рекомендации по скважине ${rec.well}
+  if (!analogs.length) {
+    return `<div class="empty-pane">Рекомендаций по направлению «${esc(rec.direction)}»
+      на других скважинах пока нет.</div>`;
+  }
+  return `<div class="block"><div class="block__h">${esc(rec.direction)}
       <span class="tab__n">${analogs.length}</span></div>
-    <div class="block__b">${prose(`Проверка на аналоги выполняется в момент регистрации: при совпадении
-      скважины и направления эксперт обязан подтвердить, что это отдельная работа.`)}</div></div>
-    <div class="log">${analogs.slice(0, 12).map((r) => `
+    <div class="block__b">${prose(`Как ту же задачу решали на других скважинах — последние
+      ${ANALOGS_LIMIT} рекомендаций этого направления. История самой скважины ${rec.well} —
+      в правой колонке.`)}</div></div>
+    <div class="log">${analogs.map((r) => `
       <div class="log__i"><div class="log__d">${fmt(r.regDate, false)}</div>
-        <div class="log__t"><a href="card.html?id=${r.id}"><b>${r.number}</b></a> · ${r.direction}<br>
-          <span class="log__who">${r.problem} — ${r.statusLabel}${
-            r.direction === rec.direction ? ' · совпадает направление' : ''}</span></div></div>`).join('')}</div>`;
+        <div class="log__t"><a href="card.html?id=${r.id}"><b>${r.number}</b></a> ·
+          скважина ${esc(r.well)} · ${esc(r.field)}<br>
+          <span class="log__who">${esc(r.problem)} — ${r.statusLabel}${
+            r.completenessLabel ? `, реализовано ${r.completenessLabel.toLowerCase()}` : ''}</span>
+        </div></div>`).join('')}</div>`;
 }
 
 function paneFiles() {
@@ -716,7 +759,7 @@ function renderContext() {
   const pts = series.map((v, i) =>
     `${(i / 29 * 320).toFixed(1)},${(58 - (v - min) / (max - min || 1) * 50).toFixed(1)}`).join(' ');
 
-  const prev = analogs.slice(0, 5);
+  const prev = wellHistory.slice(0, 5);
 
   $('#context').innerHTML = `
     <div class="card">
@@ -742,7 +785,7 @@ function renderContext() {
     </div>
 
     <div class="card">
-      <div class="card__h">Ранее по этой скважине<a href="#">все ${analogs.length}</a></div>
+      <div class="card__h">Ранее по этой скважине<a href="#">все ${wellHistory.length}</a></div>
       ${prev.length ? `<div class="prev">${prev.map((p) => `
         <a class="prev__i" href="card.html?id=${p.id}">
           <div class="prev__t"><b>${p.number}</b> · ${fmt(p.regDate, false)} · ${p.statusLabel}</div>
