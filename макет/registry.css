@@ -82,13 +82,21 @@ body.is-resizing { cursor: col-resize; user-select: none; }
   overflow-y: auto;
 }
 
+/* Заголовок группы меню — это заголовок, а не подпись: он делит пункты на
+   «Работа», «Эффект» и «Настройка», и на бледно-сером его переставали читать
+   как деление. Отсюда цвет обычного текста, полужирное начертание и линия
+   сверху: группа отделяется от предыдущей, а не просто подписывается. */
 .sidenav__section {
-  font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-caption) var(--font-family-text);
+  font: var(--font-weight-subtitle) var(--font-size-text-caption) / var(--line-height-text-caption) var(--font-family-text);
   letter-spacing: var(--letter-spacing-text-caption);
   text-transform: uppercase;
-  color: var(--text-quaternary);
-  padding: var(--group-padding-s) var(--item-padding-horizontal-s) var(--item-padding-vertical-xs);
+  color: var(--text-tertiary);
+  padding: var(--group-padding-m) var(--item-padding-horizontal-s) var(--item-padding-vertical-xs);
+  margin-top: var(--group-gap-s);
+  border-top: 1px solid var(--border-divider-light);
 }
+/* У первой группы линии нет: делить сверху нечего. */
+.sidenav__section:first-child { margin-top: 0; padding-top: var(--group-padding-s); border-top: 0; }
 
 .navitem {
   display: flex; align-items: center; gap: var(--item-gap-horizontal-m);
@@ -97,6 +105,9 @@ body.is-resizing { cursor: col-resize; user-select: none; }
   font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
   color: var(--text-secondary);
   cursor: pointer;
+  /* Пункт меню стал ссылкой ради переходов между экранами — без сброса он
+     приезжает подчёркнутым, и меню читается как список ссылок в тексте. */
+  text-decoration: none;
 }
 .navitem:hover { background: var(--state-hover); }
 .navitem.is-active {

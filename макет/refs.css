@@ -27,19 +27,24 @@
   overflow-y: auto;
 }
 
+/* Заголовок класса справочников набирается так же, как заголовки групп в
+   боковом меню: это деление списка, а не сноска к нему. */
 .reflist__section {
-  font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-caption) var(--font-family-text);
+  font: var(--font-weight-subtitle) var(--font-size-text-caption) / var(--line-height-text-caption) var(--font-family-text);
   letter-spacing: var(--letter-spacing-text-caption);
   text-transform: uppercase;
-  color: var(--text-quaternary);
-  padding: var(--group-padding-s) var(--item-padding-horizontal-s) var(--item-padding-vertical-2xs);
+  color: var(--text-tertiary);
+  padding: var(--group-padding-m) var(--item-padding-horizontal-s) var(--item-padding-vertical-2xs);
+  margin-top: var(--group-gap-s);
+  border-top: 1px solid var(--border-divider-light);
 }
+.reflist__section:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
 
 /* Подпись под заголовком группы объясняет класс справочников один раз, а не
    на каждой строке: почему у одних есть кнопки правки, а у других нет. */
 .reflist__note {
   font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
-  color: var(--text-quaternary);
+  color: var(--text-tertiary);
   padding: 0 var(--item-padding-horizontal-s) var(--item-padding-vertical-s);
 }
 
