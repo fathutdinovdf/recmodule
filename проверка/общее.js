@@ -26,12 +26,17 @@ function исходник(имя) {
     всё подряд через `eval` в текущей области — значит затянуть в проверку сотни
     посторонних имён и потерять контроль над тем, что именно проверяется. */
 function загрузитьДанные() {
-  const код = исходник('data.js');
+  /* вмап.js подключается к каждой странице раньше data.js и держит справочные
+     данные ВМАП: месторождения, скважины и разрешение номера в объект.
+     Порядок здесь тот же, иначе data.js не соберётся. */
+  const код = `${исходник('вмап.js')}\n;${исходник('data.js')}`;
   const экспорт = `
     ; return {
       NOW, DATA, TILES, STATUSES, PRIORITIES, DECISIONS, DIRECTIONS,
       EXECUTORS, CUSTOMERS, COMPLETENESS, STATUS_TONE, SLA_VISIBLE_STATUSES,
-      FIELDS, FIELD_CODE, WELLS, KUSTS, WELL_FIELD, WELL_KUST,
+      MODULE_PARAMS, REJECT_REASONS, CLARIFY_REASONS,
+      FIELDS, FIELD_CODE, FIELD_STATS, WELLS, VMAP_FIELDS, VMAP_WELLS,
+      WELL_INDEX, findWell, wellsOfField, resolveWell,
       OUTCOME_MIX, OUTCOME_DECISION, COMMENTS_EXEC, COMMENTS_CUST,
       WORK_FROM, WORK_TO, REAL,
       day, local16, hash, isWorkday, inWindow, toWindow,

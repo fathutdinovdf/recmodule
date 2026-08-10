@@ -416,11 +416,14 @@ const SPECS = [
     key: 'fields', group: 'replica', nav: 'Месторождения', title: 'Месторождения',
     useKey: 'field', replica: true,
     src: 'ois_vmap."OrganizationUnits", OrganizationUnitType = 3',
+    /* Кусты и скважины считаются по выгрузке ВМАП, а не по тестовому набору
+       рекомендаций: раньше здесь стояли числа вида «2 куста», хотя на
+       месторождении их полторы сотни, и таблица врала про масштаб фонда. */
     build: () => FIELDS.map((f) => ({
       src: f, name: f,
       code: FIELD_CODE[f] || '',
-      kusts: (fieldKusts.get(f) || new Set()).size,
-      wells: (fieldWells.get(f) || new Set()).size,
+      kusts: FIELD_STATS[f].kusts,
+      wells: FIELD_STATS[f].wells,
     })),
     cols: [
       {
