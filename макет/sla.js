@@ -337,24 +337,21 @@
   /* Нормативов два набора, и путать их нельзя: по рекомендации срок держит
      Заказчик, по обращению — Исполнитель. Сроки одинаковые, 4 / 8 / 24, но
      это разные обязательства разных сторон, поэтому и настройки раздельные. */
-  function slaRows(набор, ключ, событие) {
-    return PRIORITIES.map((p) => {
-      const часов = набор[p.code];
-      const res = addWorkHours(new Date('2026-08-07T22:40'), часов);
-      return `<div class="slarow">
+  /* Пример «передано пт 22:40 → истекает …» из строки убран: ровно это и
+     показывает калькулятор ниже, причём с разбором по дням и на любой дате. */
+  function slaRows(набор, ключ) {
+    return PRIORITIES.map((p) => `<div class="slarow">
         <span class="prio prio--${p.code}">${p.code}<i>приоритет</i></span>
         <div class="slarow__in">
-          <input type="number" class="inp inp--num" data-${ключ}="${p.code}" value="${часов}" min="1" max="120" step="1">
+          <input type="number" class="inp inp--num" data-${ключ}="${p.code}" value="${набор[p.code]}" min="1" max="120" step="1">
           <span class="slarow__u">рабочих часов</span>
         </div>
-        <div class="slarow__ex">пример: ${событие} пт 22:40 → истекает ${fmtDT(res.at)}</div>
-      </div>`;
-    }).join('');
+      </div>`).join('');
   }
 
   function renderSla() {
-    $('slaTbl').innerHTML = slaRows(S.sla, 'sla', 'передано');
-    $('claimTbl').innerHTML = slaRows(S.claimSla, 'claim', 'обращение зарегистрировано');
+    $('slaTbl').innerHTML = slaRows(S.sla, 'sla');
+    $('claimTbl').innerHTML = slaRows(S.claimSla, 'claim');
   }
 
   /* ------------------------------------------------------------------

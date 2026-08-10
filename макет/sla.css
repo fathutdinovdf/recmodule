@@ -73,7 +73,7 @@
 
 .slatbl { display: flex; flex-direction: column; }
 .slarow {
-  display: grid; grid-template-columns: 92px 158px minmax(0, 1fr);
+  display: grid; grid-template-columns: 92px minmax(0, 1fr);
   align-items: center; gap: var(--item-gap-horizontal-m);
   padding: var(--item-padding-vertical-s) 0;
   border-bottom: 1px solid var(--border-divider-light);
@@ -84,11 +84,6 @@
   font: var(--font-weight-text) var(--font-size-text-small) / 1 var(--font-family-text);
   color: var(--text-tertiary); white-space: nowrap;
 }
-.slarow__ex {
-  font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-small) var(--font-family-text);
-  color: var(--text-tertiary);
-}
-.slarow__ex b { color: var(--text-secondary); font-weight: var(--font-weight-subtitle); }
 
 
 /* ------------------------------ часовой пояс ------------------------------ */
@@ -124,9 +119,9 @@
 }
 .ytab.is-on { background: var(--component-accent); border-color: transparent; color: var(--text-on-accent); font-weight: var(--font-weight-subtitle); }
 
-.calwrap { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--block-gap-default); align-items: start; }
+.calwrap { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--block-gap-default); align-items: stretch; }
 .calmain { min-width: 0; }
-.calside { display: flex; flex-direction: column; gap: var(--item-gap-vertical-s); }
+.calside { display: flex; flex-direction: column; gap: var(--item-gap-vertical-s); min-height: 0; }
 .calside .ph--s:first-child { margin-top: 0; }
 
 .legend { display: flex; flex-wrap: wrap; gap: var(--item-gap-horizontal-m) var(--group-gap-m); margin-bottom: var(--group-gap-s); }
@@ -279,17 +274,11 @@
   .calc { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* Журнал изменений прокручивается внутри себя. Без этого каждая новая запись
-   удлиняла правую колонку, а календарь рядом оставался на месте — панель
-   росла вниз пустотой.
-   Высота 236px — намеренное исключение из шкалы токенов: это ровно четыре
-   записи журнала, при которых правая колонка заканчивается вровень с сеткой
-   календаря. Любое значение из шкалы обрезает запись посередине. */
-.log2--scroll {
-  max-height: 236px; overflow-y: auto;
-  padding-right: var(--item-gap-horizontal-s);
-  scrollbar-width: thin;
-}
+/* Журнал изменений забирает остаток высоты правой колонки и прокручивается
+   внутри себя. Без этого каждая новая запись удлиняла колонку, а календарь
+   рядом оставался на месте — панель росла вниз пустотой. Высота не задаётся
+   числом: колонка тянется ровно на календарь, остаток достаётся журналу. */
+.log2--scroll { flex: 1 1 0; min-height: 96px; overflow-y: auto; padding-right: var(--item-gap-horizontal-s); scrollbar-width: thin; }
 
 /* Ниже планшета три колонки настроек уже не читаются — только там строка
    и ломается. */
