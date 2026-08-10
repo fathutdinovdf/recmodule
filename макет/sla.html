@@ -60,38 +60,12 @@
       </div>
     </div>
 
-    <!-- Основания вынесены отдельной полосой над настройками, а не спрятаны в
-         подсказки. Три источника имеют разный вес в споре, и человек, который
-         правит эти поля, должен видеть разницу до того, как что-то поменяет. -->
-    <section class="basis">
-      <div class="basis__i basis__i--c">
-        <span class="tag tag--ok">договор</span>
-        <div class="basis__t"><span class="basis__h">Праздники и выходные, ответ Исполнителя на заявку за 1 рабочий день.</span>
-          «Рабочее окно… с понедельника по пятницу, за исключением выходных и нерабочих праздничных дней,
-          с 09:00 до 00:00 по времени г. Когалым»; «Исполнитель… предоставляет ответ не позднее 1 (одного) рабочего дня».</div>
-      </div>
-      <div class="basis__i basis__i--f">
-        <span class="tag tag--warning">Форма 2</span>
-        <div class="basis__t"><span class="basis__h">Нормативы ответа 4 / 8 / 24 часа и градация приоритетов I / II / III.</span>
-          В договоре этих чисел нет ни разу — они пришли из подписи над таблицей Формы 2. Оставлены сознательно
-          (решение 64): процесс без срока ответа неуправляем. Идут в протокол согласования форм.</div>
-      </div>
-      <div class="basis__i basis__i--o">
-        <span class="tag tag--default">отступление</span>
-        <div class="basis__t"><span class="basis__h">Рабочее окно применено к передаче рекомендаций Заказчику.</span>
-          Договорное окно 09:00–00:00 — это окно доступности <b>Исполнителя</b>, и правило переноса в договоре
-          развёрнуто в обратную сторону: обращения Заказчика считаются полученными нами в 09:00 следующего рабочего
-          дня. Мы применили ту же норму зеркально (решения 19, 20, 66). Разумно, но в договоре основания нет —
-          тот же протокол.</div>
-      </div>
-    </section>
 
     <!-- Ярус 1: как устроен рабочий день, сколько дают на ответ, в каком поясе. -->
     <section class="row3">
 
       <div class="panel panel--pad">
-        <div class="ph"><svg class="ic16"><use href="#i-clock"/></svg>Рабочее окно
-          <span class="tag tag--default ph__src">отступление</span></div>
+        <div class="ph"><svg class="ic16"><use href="#i-clock"/></svg>Рабочее окно</div>
         <div class="ph__sub">Передача Заказчику происходит только внутри окна: всё, что зарегистрировано вне его,
           ждёт открытия рабочего дня и до этого живёт в статусе «Зарегистрировано». Границы взяты из договорного
           окна Исполнителя — <b>своего режима работы Заказчик договором не принимал</b>.</div>
@@ -120,22 +94,20 @@
       </div>
 
       <div class="panel panel--pad">
-        <div class="ph">Норматив ответа по приоритетам
-          <span class="tag tag--warning ph__src">Форма 2</span></div>
+        <div class="ph">Ответ Заказчика на рекомендацию</div>
         <div class="ph__sub">Считается <b>рабочими часами</b>, а не календарными: иначе срок в 4 часа по рекомендации,
           переданной в 22:00, истекал бы в два часа ночи. Отсчёт идёт от момента <b>передачи</b> Заказчику,
           а не от регистрации.</div>
         <div class="slatbl" id="slaTbl"></div>
 
-        <div class="form__f wordblk">
-          <div class="form__l">Как модуль называет нарушение срока</div>
-          <div class="wordset" id="wordSet"></div>
-        </div>
+        <div class="ph ph--s ph--gap">Ответ Исполнителя на обращение Заказчика</div>
+        <div class="ph__sub">Зеркальный норматив: приоритет обращению присваивает Заказчик, срок держит Исполнитель.
+          Отсчёт — от регистрации обращения и получения полного комплекта исходных данных.</div>
+        <div class="slatbl" id="claimTbl"></div>
       </div>
 
       <div class="panel panel--pad">
-        <div class="ph"><svg class="ic16"><use href="#i-globe"/></svg>Часовой пояс
-          <span class="tag tag--ok ph__src">договор</span></div>
+        <div class="ph"><svg class="ic16"><use href="#i-globe"/></svg>Часовой пояс</div>
         <div class="ph__sub">Договор называет пояс прямо — «по времени г. Когалым». Поэтому расчётный пояс
           не настраивается: два экземпляра одного отчёта, снятые в разных городах, обязаны совпадать.</div>
 
@@ -157,14 +129,9 @@
     <!-- Ярус 2: производственный календарь. Дыра, которой в data.js нет вовсе. -->
     <section class="panel panel--pad">
       <div class="ph"><svg class="ic16"><use href="#i-cal"/></svg>Производственный календарь
-        <span class="tag tag--ok ph__src">договор</span>
         <span class="ph__tabs" id="yearTabs"></span>
         <span class="ph__right" id="calStats"></span>
       </div>
-      <div class="ph__sub">Базовое правило — рабочие дни недели из настройки слева. Календарь хранит только
-        <b>исключения</b>: праздники, перенесённые выходные, рабочие субботы, предпраздничные дни. Список исключений —
-        то, что реально подписывается протоколом; полную роспись 365 дней человек не проверит.</div>
-
       <div class="warnbar" id="calWarn" hidden>
         <svg class="ic16"><use href="#i-warn"/></svg>
         <div>Календарь на 2027 год заполнен <b>предварительно</b>: постановление Правительства о переносах выходных
@@ -179,12 +146,12 @@
           <div class="calgrid" id="calGrid"></div>
         </div>
         <aside class="calside">
-          <div class="ph ph--s">Исключения года</div>
+          <div class="ph ph--s">Праздничные и перенесённые дни</div>
           <div class="exlist" id="calList"></div>
           <div class="ph ph--s">Журнал изменений</div>
           <div class="form__hint">Правка календаря действует только вперёд: сроки уже переданных рекомендаций
             не пересчитываются. Иначе спор о просрочке выигрывался бы правкой справочника задним числом.</div>
-          <div class="log2" id="calLog"></div>
+          <div class="log2 log2--scroll" id="calLog"></div>
         </aside>
       </div>
     </section>
@@ -207,10 +174,6 @@
               <div class="form__l">Приоритет</div>
               <div class="chips" id="calcPrio"></div>
             </div>
-            <label class="chk">
-              <input type="checkbox" id="calcCmp" checked>
-              <span>Показать, что дала бы формула действующей Формы 2</span>
-            </label>
             <div class="form__f">
               <div class="form__l">Проверочные случаи</div>
               <div class="chips chips--wrap" id="calcPresets"></div>
@@ -224,18 +187,6 @@
       </div>
     </section>
 
-    <!-- Ярус 4: зачем экран вообще нужен. -->
-    <section class="panel panel--pad">
-      <div class="ph"><svg class="ic16"><use href="#i-warn"/></svg>Сверка с действующей Формой 2</div>
-      <div class="ph__sub">Одиннадцать реальных записей за 3–4 августа. Момент передачи в обоих расчётах один и тот же,
-        различаются только правила: слева — как срок посчитала таблица Excel, справа — как считает модуль.</div>
-
-      <div class="defects" id="defects"></div>
-      <div class="cmpwrap">
-        <table class="tbl cmp" id="cmpTbl"></table>
-      </div>
-      <div class="kpis counters" id="counters"></div>
-    </section>
 
   </main>
 </div>

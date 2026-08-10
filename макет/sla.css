@@ -22,6 +22,9 @@
 }
 .ph svg { color: var(--icon-light); flex: 0 0 auto; }
 .ph--s { font-size: var(--font-size-text-medium); margin-top: var(--group-gap-s); }
+/* Второй набор нормативов в той же панели: заголовку нужен воздух сверху,
+   иначе он липнет к таблице предыдущего. */
+.ph--gap { margin-top: var(--section-padding-extra-wide); }
 .ph__src { flex: 0 0 auto; }
 .ph__tabs { display: flex; gap: var(--item-gap-horizontal-xs); margin-left: var(--group-gap-s); }
 .ph__right {
@@ -43,8 +46,6 @@
 
 /* ------------------------------ полоса оснований ------------------------------ */
 
-.basis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--block-gap-default); }
-.basis__i {
   display: flex; gap: var(--item-gap-horizontal-m);
   background: var(--bg-card);
   border-radius: var(--corner-radius-l);
@@ -52,16 +53,9 @@
   padding: var(--group-padding-m);
   border-left: 3px solid var(--status-default);
 }
-.basis__i--c { border-left-color: var(--status-success); }
-.basis__i--f { border-left-color: var(--status-warning); }
-.basis__i--o { border-left-color: var(--status-default); }
-.basis__i .tag { flex: 0 0 auto; margin-top: 2px; }
-.basis__t {
   font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-small) var(--font-family-text);
   color: var(--text-tertiary);
 }
-.basis__h { display: block; color: var(--text-secondary); font-weight: var(--font-weight-subtitle); margin-bottom: 2px; }
-.basis__t b { color: var(--text-secondary); font-weight: var(--font-weight-subtitle); }
 
 /* ------------------------------ ярус настроек ------------------------------ */
 
@@ -128,26 +122,6 @@
 .slarow__ex b { color: var(--text-secondary); font-weight: var(--font-weight-subtitle); }
 
 .wordblk { margin-top: var(--group-gap-m); }
-.wordset { display: flex; gap: var(--item-gap-horizontal-m); }
-.radio2 {
-  flex: 1 1 0; display: flex; align-items: flex-start; gap: var(--item-gap-horizontal-s);
-  padding: var(--item-padding-vertical-s) var(--item-padding-horizontal-s);
-  border: 1px solid var(--border-component-default);
-  border-radius: var(--corner-radius-component);
-  cursor: pointer;
-}
-.radio2.is-on { border-color: var(--component-accent); background: var(--state-selected-light); }
-.radio2 input { accent-color: var(--component-accent); margin: 2px 0 0; flex: 0 0 auto; }
-.radio2 b {
-  display: block;
-  font: var(--font-weight-subtitle) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
-  color: var(--text-secondary);
-}
-.radio2 small {
-  display: block;
-  font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-caption) var(--font-family-text);
-  color: var(--text-quaternary);
-}
 
 /* ------------------------------ часовой пояс ------------------------------ */
 
@@ -342,37 +316,22 @@
 .tr__c { color: var(--text-quaternary); }
 .tr__c b { color: var(--text-secondary); }
 .tr__no { color: var(--status-warning-text); }
-.tr--f2 { margin-top: var(--group-gap-s); background: var(--status-error-light-bg); border-radius: var(--corner-radius-m); padding: var(--group-padding-xs) var(--item-padding-horizontal-s); border-bottom: 0; }
-.tr--f2 .tr__n { background: var(--status-error); color: var(--text-on-accent); font-size: 9px; }
-.tr--f2 .tr__b { color: var(--status-error-text); }
 
 /* ------------------------------ сверка с Формой 2 ------------------------------ */
 
-.defects { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--block-gap-default); margin-bottom: var(--group-gap-m); }
-.defect {
   padding: var(--group-padding-s) var(--group-padding-m);
   border-radius: var(--corner-radius-m);
   background: var(--bg-secondary);
   border-left: 3px solid var(--status-error);
 }
-.defect__h {
   font: var(--font-weight-subtitle) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
   color: var(--text-secondary); margin-bottom: 2px;
 }
-.defect__h code { font-family: ui-monospace, Consolas, monospace; font-size: inherit; }
-.defect__b {
   font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-small) var(--font-family-text);
   color: var(--text-tertiary);
 }
 
-.cmpwrap { overflow-x: auto; }
-.cmp { width: 100%; }
-.cmp th, .cmp td { padding: var(--item-padding-vertical-xs) var(--item-padding-horizontal-s); white-space: nowrap; }
-.cmp td.num { font-variant-numeric: tabular-nums; }
-.cmp tbody tr.is-bad td { background: var(--status-error-light-bg); }
-.cmp__bad { color: var(--status-error-text); font-weight: var(--font-weight-subtitle); }
 
-.counters { margin-top: var(--group-gap-m); }
 
 /* ------------------------------ поповер дня ------------------------------ */
 
@@ -392,8 +351,18 @@
    строки сжимаются до переносов внутри каждого поля. */
 @media (max-width: 1500px) {
   .row3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .basis { grid-template-columns: minmax(0, 1fr); }
   .calwrap { grid-template-columns: minmax(0, 1fr); }
   .calc { grid-template-columns: minmax(0, 1fr); }
-  .defects { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Журнал изменений прокручивается внутри себя. Без этого каждая новая запись
+   удлиняла правую колонку, а календарь рядом оставался на месте — панель
+   росла вниз пустотой.
+   Высота 236px — намеренное исключение из шкалы токенов: это ровно четыре
+   записи журнала, при которых правая колонка заканчивается вровень с сеткой
+   календаря. Любое значение из шкалы обрезает запись посередине. */
+.log2--scroll {
+  max-height: 236px; overflow-y: auto;
+  padding-right: var(--item-gap-horizontal-s);
+  scrollbar-width: thin;
 }

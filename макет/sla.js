@@ -144,8 +144,10 @@
       to: 24,
       shortOn: true,
       sla: { I: 4, II: 8, III: 24 },
-      claimSla: 1,                    // рабочих дней на ответ по заявке Заказчика
-      wording: 'soft',                // как называть нарушение срока
+      /* Обращения Заказчика получили те же уровни SL, что и рекомендации:
+         приоритет присваивает Заказчик, отвечает Исполнитель. Прежняя настройка
+         «1 рабочий день» этого не описывает и заменена тремя сроками. */
+      claimSla: { I: 4, II: 8, III: 24 },
       tz: 'kgl',
       cal: seedCal(),
     };
@@ -159,7 +161,6 @@
      Дефолт выбран так, чтобы экран сразу отвечал на главный вопрос, а не
      показывал пустой калькулятор. */
   let calcAt = '2026-08-07T22:40';
-  let calcCmp = true;
   const LOG = [
     { d: '05.08.2026 08:12', who: 'Фатхутдинов Д.Ф.', t: 'Загружен производственный календарь на 2026 год' },
     { d: '05.08.2026 08:12', who: 'Фатхутдинов Д.Ф.', t: 'Календарь на 2027 год заполнен предварительно, до публикации постановления' },
@@ -285,17 +286,7 @@
     return { work, hours, hol, off, short, extra };
   }
 
-  /* ------------------------------------------------------------------
-     Расчёт по действующей Форме 2
-     ------------------------------------------------------------------
-     Две беды сразу, поэтому обе воспроизведены как есть:
-     нормативы 3/5/6 (растянутая по столбцу ошибочная версия формулы вместо
-     4/8/24 из строки 10) и календарные часы от NOW() без рабочего окна. */
-  const F2_HOURS = { I: 3, II: 5, III: 6 };
 
-  function f2Deadline(sent, prio) {
-    return new Date(sent.getTime() + F2_HOURS[prio] * 3600000);
-  }
 
   function verdict(deadline, replied, now) {
     if (replied) {
@@ -304,7 +295,7 @@
         : { k: 'late', t: 'ПОЛУЧЕН С ПРОСРОЧКОЙ' };
     }
     if (now <= deadline) return { k: 'waiting', t: 'ОЖИДАНИЕ' };
-    return { k: 'overdue', t: S.wording === 'hard' ? 'ПРОСРОЧЕНО' : 'СРОК ИСТЁК' };
+    return { k: 'overdue', t: 'ПРОСРОЧЕНО' };
   }
 
   /* ------------------------------------------------------------------
@@ -343,43 +334,27 @@
      Рендер: нормативы
      ------------------------------------------------------------------ */
 
-  function renderSla() {
-    const rows = PRIORITIES.map((p) => {
-      const res = addWorkHours(new Date('2026-08-07T22:40'), S.sla[p.code]);
+  /* Нормативов два набора, и путать их нельзя: по рекомендации срок держит
+     Заказчик, по обращению — Исполнитель. Сроки одинаковые, 4 / 8 / 24, но
+     это разные обязательства разных сторон, поэтому и настройки раздельные. */
+  function slaRows(набор, ключ, событие) {
+    return PRIORITIES.map((p) => {
+      const часов = набор[p.code];
+      const res = addWorkHours(new Date('2026-08-07T22:40'), часов);
       return `<div class="slarow">
         <span class="prio prio--${p.code}">${p.code}<i>приоритет</i></span>
         <div class="slarow__in">
-          <input type="number" class="inp inp--num" data-sla="${p.code}" value="${S.sla[p.code]}" min="1" max="120" step="1">
+          <input type="number" class="inp inp--num" data-${ключ}="${p.code}" value="${часов}" min="1" max="120" step="1">
           <span class="slarow__u">рабочих часов</span>
         </div>
-        <div class="slarow__ex">пример: передано пт 22:40 → истекает ${fmtDT(res.at)}</div>
+        <div class="slarow__ex">пример: ${событие} пт 22:40 → истекает ${fmtDT(res.at)}</div>
       </div>`;
     }).join('');
+  }
 
-    $('slaTbl').innerHTML = rows + `
-      <div class="slarow slarow--sep">
-        <span class="tag tag--ok">договор</span>
-        <div class="slarow__in">
-          <input type="number" class="inp inp--num" data-claim="1" value="${S.claimSla}" min="1" max="10" step="1">
-          <span class="slarow__u">рабочий день</span>
-        </div>
-        <div class="slarow__ex">ответ <b>Исполнителя</b> на обращение Заказчика. Единственный норматив, прямо
-          установленный договором, и единственный, нарушение которого — нарушение договора.
-          Экран заявок ещё не спроектирован (решение 65), настройка заведена заранее, чтобы норматив
-          не потерялся.</div>
-      </div>`;
-
-    /* Формулировка нарушения — не косметика. Раз 4/8/24 договором не
-       установлены, слово «просрочено» предъявляет Заказчику нарушение
-       обязательства, которого он не принимал (расхождение 2.1, вариант «б»).
-       До протокола нейтральная формулировка безопаснее, поэтому она и стоит
-       по умолчанию. */
-    $('wordSet').innerHTML = [
-      ['soft', 'Срок истёк', 'нейтрально: констатирует факт, не вменяет нарушение'],
-      ['hard', 'Просрочено', 'после протокола, закрепляющего нормативы 4 / 8 / 24'],
-    ].map(([v, l, h]) => `<label class="radio2${S.wording === v ? ' is-on' : ''}">
-        <input type="radio" name="wording" value="${v}"${S.wording === v ? ' checked' : ''}>
-        <span><b>${l}</b><small>${h}</small></span></label>`).join('');
+  function renderSla() {
+    $('slaTbl').innerHTML = slaRows(S.sla, 'sla', 'передано');
+    $('claimTbl').innerHTML = slaRows(S.claimSla, 'claim', 'обращение зарегистрировано');
   }
 
   /* ------------------------------------------------------------------
@@ -486,7 +461,6 @@
 
   function renderCalc() {
     $('calcAt').value = calcAt;
-    $('calcCmp').checked = calcCmp;
     $('calcPrio').innerHTML = PRIORITIES.map((p) =>
       `<button class="chip${p.code === calcPrio ? ' is-on' : ''}" data-prio="${p.code}">${p.code} — ${S.sla[p.code]} ч</button>`).join('');
     $('calcPresets').innerHTML = PRESETS.map(([l, v, pr], i) =>
@@ -533,14 +507,6 @@
     let html = rows.map(([i, a, b, c]) =>
       `<div class="tr"><span class="tr__n">${i}</span><span class="tr__a">${a}</span><b class="tr__b">${b}</b><span class="tr__c">${c}</span></div>`).join('');
 
-    if (calcCmp) {
-      const f2 = f2Deadline(sent, calcPrio);
-      const diff = (r.at - f2) / 3600000;
-      html += `<div class="tr tr--f2"><span class="tr__n">Ф2</span><span class="tr__a">Действующая Форма 2</span>
-        <b class="tr__b">${fmtDT(f2)}</b>
-        <span class="tr__c">${F2_HOURS[calcPrio]} календарных часов от передачи — растянутая по столбцу ошибочная версия формулы (3 / 5 / 6 вместо 4 / 8 / 24) и без рабочего окна.
-        Расходится с модулем на <b>${fmtH(Math.abs(diff))}</b> ${diff > 0 ? 'в сторону преждевременной просрочки' : 'в другую сторону'}.</span></div>`;
-    }
     $('calcTrace').innerHTML = html;
   }
 
@@ -548,71 +514,6 @@
      Рендер: сверка с Формой 2
      ------------------------------------------------------------------ */
 
-  function renderCmp() {
-    /* Берутся только реальные записи: синтетика сгенерирована уже по правилам
-       модуля и в сверке двух расчётов ничего не доказывает. */
-    const rows = REAL.map((r) => {
-      const sent = new Date(r.sentAt);
-      const replied = r.repliedAt ? new Date(r.repliedAt) : null;
-      const mod = addWorkHours(sent, S.sla[r.priority]).at;
-      const f2 = f2Deadline(sent, r.priority);
-      return {
-        r, sent, replied, mod, f2,
-        vM: verdict(mod, replied, NOW),
-        vF: verdict(f2, replied, NOW),
-      };
-    });
-
-    const head = `<thead><tr>
-      <th>Скважина</th><th>Приор.</th><th>Передано</th><th>Ответ</th>
-      <th>Срок по Форме 2</th><th>Вердикт Формы 2</th>
-      <th>Срок по модулю</th><th>Вердикт модуля</th><th>Форма 2 раньше на</th></tr></thead>`;
-
-    const body = rows.map((x) => {
-      const bad = x.vM.k !== x.vF.k;
-      const gap = (x.mod - x.f2) / 3600000;
-      return `<tr${bad ? ' class="is-bad"' : ''}>
-        <td>${esc(x.r.well)}</td>
-        <td><span class="prio prio--${x.r.priority}">${x.r.priority}</span></td>
-        <td class="num">${fmtDT(x.sent)}</td>
-        <td class="num">${x.replied ? fmtDT(x.replied) : '<span class="mark">—</span>'}</td>
-        <td class="num">${fmtDT(x.f2)}</td>
-        <td><span class="tag tag--${x.vF.k}">${x.vF.t}</span></td>
-        <td class="num">${fmtDT(x.mod)}</td>
-        <td><span class="tag tag--${x.vM.k}">${x.vM.t}</span></td>
-        <td>${bad ? '<b class="cmp__bad">вердикт неверен</b>' : (Math.abs(gap) > 0.01 ? `<span class="mark">${fmtH(Math.abs(gap))}</span>` : '<span class="mark">совпадает</span>')}</td>
-      </tr>`;
-    }).join('');
-
-    $('cmpTbl').innerHTML = head + `<tbody>${body}</tbody>`;
-
-    /* Счётчик Формы 2 считает просрочку по всем строкам подряд. Модуль
-       показывает контроль ответа только на статусах, где вопрос ответа ещё
-       открыт (SLA_VISIBLE_STATUSES, решение 62) — поэтому и счётчики разные
-       не только из-за арифметики. */
-    const visible = rows.filter((x) => SLA_VISIBLE_STATUSES.indexOf(x.r.status) >= 0);
-    const f2Over = rows.filter((x) => x.vF.k === 'overdue').length;
-    const modOver = visible.filter((x) => x.vM.k === 'overdue' || x.vM.k === 'late').length;
-    const wrong = rows.filter((x) => x.vM.k !== x.vF.k).length;
-
-    $('counters').innerHTML = [
-      ['Записей в сверке', rows.length, 'реальные, 3–4 августа'],
-      ['Вердиктов Формы 2 неверны', wrong, 'из ' + rows.length],
-      ['«Просрочен ответ» по Форме 2', f2Over, 'счётчик формы'],
-      ['Нарушений норматива на деле', modOver, 'на статусах с открытым вопросом ответа'],
-    ].map(([k, v, s], i) => `<div class="kpi${i === 1 ? ' kpi--bad' : ''}"><div class="kpi__k">${k}</div><div class="kpi__v">${v}</div><div class="kpi__k">${s}</div></div>`).join('');
-
-    const wrongList = rows.filter((x) => x.vM.k !== x.vF.k)
-      .map((x) => `${x.r.well} (${x.vF.t.toLowerCase()} вместо «${x.vM.t.toLowerCase()}»)`).join(', ');
-    $('defects').innerHTML = [
-      ['Формула растянута с ошибкой',
-        `В строке 10 формула даёт норматив 4 / 8 / 24 часа, начиная со строки 11 и до конца столбца — другая версия, 3 / 5 / 6. Подпись над таблицей при этом обещает 4 / 8 / 24.`],
-      ['Считается по <code>NOW()</code>, календарными часами',
-        `Рабочее окно и правило переноса в формуле не учтены вовсе. Рекомендация, переданная в 22:40 пятницы, получает срок в час ночи субботы.`],
-      ['На живых данных вердикт неверен у ' + wrong + ' записей из ' + rows.length,
-        wrongList ? esc(wrongList) : '—'],
-    ].map(([h, b]) => `<div class="defect"><div class="defect__h">${h}</div><div class="defect__b">${b}</div></div>`).join('');
-  }
 
   /* ------------------------------------------------------------------
      Сохранение
@@ -629,7 +530,7 @@
   }
 
   function renderAll() {
-    renderWindow(); renderSla(); renderTz(); renderCal(); renderCalc(); renderCmp(); renderDirty();
+    renderWindow(); renderSla(); renderTz(); renderCal(); renderCalc(); renderDirty();
   }
 
   /* ------------------------------------------------------------------
@@ -650,15 +551,14 @@
     $('wTo').addEventListener('change', (e) => { S.to = +e.target.value; renderAll(); });
     $('shortOn').addEventListener('change', (e) => { S.shortOn = e.target.checked; renderAll(); });
 
-    $('slaTbl').addEventListener('change', (e) => {
+    const правкаНорматива = (e) => {
       const t = e.target;
       if (t.dataset.sla) S.sla[t.dataset.sla] = Math.max(1, +t.value || 1);
-      if (t.dataset.claim) S.claimSla = Math.max(1, +t.value || 1);
+      if (t.dataset.claim) S.claimSla[t.dataset.claim] = Math.max(1, +t.value || 1);
       renderAll();
-    });
-    $('wordSet').addEventListener('change', (e) => {
-      if (e.target.name === 'wording') { S.wording = e.target.value; renderAll(); }
-    });
+    };
+    $('slaTbl').addEventListener('change', правкаНорматива);
+    $('claimTbl').addEventListener('change', правкаНорматива);
 
     $('tzSelect').addEventListener('change', (e) => { S.tz = e.target.value; renderTz(); renderDirty(); });
 
@@ -682,7 +582,6 @@
       const [, v, pr] = PRESETS[+b.dataset.preset];
       calcAt = v; calcPrio = pr; renderCalc(); renderTz();
     });
-    $('calcCmp').addEventListener('change', (e) => { calcCmp = e.target.checked; renderCalc(); });
 
     $('btnRevert').addEventListener('click', () => { S = JSON.parse(JSON.stringify(SAVED)); renderAll(); });
     $('btnSave').addEventListener('click', () => {
