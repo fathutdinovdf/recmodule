@@ -30,13 +30,13 @@
 /* Заголовок класса справочников набирается так же, как заголовки групп в
    боковом меню: это деление списка, а не сноска к нему. */
 .reflist__section {
-  font: var(--font-weight-subtitle) var(--font-size-text-caption) / var(--line-height-text-caption) var(--font-family-text);
+  font: var(--font-weight-subtitle) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
   letter-spacing: var(--letter-spacing-text-caption);
   text-transform: uppercase;
-  color: var(--text-tertiary);
-  padding: var(--group-padding-m) var(--item-padding-horizontal-s) var(--item-padding-vertical-2xs);
+  color: var(--text-secondary);
+  padding: var(--group-padding-m) var(--item-padding-horizontal-s) var(--item-padding-vertical-xs);
   margin-top: var(--group-gap-s);
-  border-top: 1px solid var(--border-divider-light);
+  border-top: 1px solid var(--border-divider);
 }
 .reflist__section:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
 

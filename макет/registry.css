@@ -87,13 +87,13 @@ body.is-resizing { cursor: col-resize; user-select: none; }
    как деление. Отсюда цвет обычного текста, полужирное начертание и линия
    сверху: группа отделяется от предыдущей, а не просто подписывается. */
 .sidenav__section {
-  font: var(--font-weight-subtitle) var(--font-size-text-caption) / var(--line-height-text-caption) var(--font-family-text);
+  font: var(--font-weight-subtitle) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
   letter-spacing: var(--letter-spacing-text-caption);
   text-transform: uppercase;
-  color: var(--text-tertiary);
-  padding: var(--group-padding-m) var(--item-padding-horizontal-s) var(--item-padding-vertical-xs);
+  color: var(--text-secondary);
+  padding: var(--group-padding-m) var(--item-padding-horizontal-s) var(--item-padding-vertical-s);
   margin-top: var(--group-gap-s);
-  border-top: 1px solid var(--border-divider-light);
+  border-top: 1px solid var(--border-divider);
 }
 /* У первой группы линии нет: делить сверху нечего. */
 .sidenav__section:first-child { margin-top: 0; padding-top: var(--group-padding-s); border-top: 0; }
