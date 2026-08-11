@@ -38,6 +38,17 @@ function dur(ms) {
 
 const days = (a, b) => Math.round((toDate(b) - toDate(a)) / 86400000);
 
+/** Часы норматива словами: «3 ч 40 мин», «меньше минуты». Дробные часы на
+    экране не читаются — 3.67 ч человеку ни о чём не говорит. */
+function fmtHours(h) {
+  const m = Math.round(h * 60);
+  if (m <= 0) return 'ничего';
+  const ч = Math.floor(m / 60);
+  const мм = m % 60;
+  if (!ч) return `${мм} мин`;
+  return мм ? `${ч} ч ${мм} мин` : `${ч} ч`;
+}
+
 /* В .block__b стоит pre-wrap — он нужен, чтобы сохранять переносы в тексте
    рекомендации, введённом человеком. Собственные пояснения интерфейса из-за
    него получали бы отступы исходного кода, поэтому их прогоняем через prose. */
@@ -347,8 +358,10 @@ function decisionForm() {
         <textarea class="inp inp--area" id="fText" rows="4"
           placeholder="Какого расчёта, замера или пояснения не хватает для решения."></textarea></label>
       <div class="form__hint">Рекомендация вернётся Исполнителю в статус «На уточнении» под тем же
-        номером. После повторной передачи норматив ответа считается заново, но вся цепочка
-        кругов сохраняется в истории.</div>
+        номером. Норматив ответа приостановится и продолжится с остатка после повторной
+        передачи: сейчас израсходовано ${fmtHours(workHoursBetween(rec.sentAt, NOW))}
+        из ${rec.sla} ч, останется ${fmtHours(Math.max(0, rec.sla - workHoursBetween(rec.sentAt, NOW)))}.
+        Вся цепочка кругов сохраняется в истории.</div>
       ${errLine()}
       <div class="form__btns">
         <button class="btn btn--wait" data-act="submit:clarify">Отправить запрос</button>
@@ -375,6 +388,13 @@ function decisionBlock() {
           rec.decision === 'Требует уточнения' ? 'Что требуется уточнить'
             : `Обоснование Заказчика${rec.rejectKind ? ` · ${rec.rejectKind}` : ''}`}</div>
         <div class="block__b">${rec.rejectReason}</div>` : ''}
+      ${/* Остаток норматива виден именно здесь: это первое, что спросит эксперт,
+            получив рекомендацию назад, — сколько времени у Заказчика останется
+            после того, как он допишет и передаст снова. */''}
+      ${rec.slaLeft !== undefined ? `<div class="decision__hint" style="margin-top:12px">
+        Норматив ответа приостановлен: из ${rec.sla} ч израсходовано
+        ${fmtHours(rec.slaSpent)}, после повторной передачи останется
+        <b>${fmtHours(rec.slaLeft)}</b>.</div>` : ''}
     </div>`;
   }
   if (rec.status === 'draft' || rec.status === 'registered') {
@@ -858,6 +878,11 @@ function submit(what) {
     rec.decision = 'Требует уточнения';
     rec.rejectKind = 'Запрос уточнения';
     rec.rejectReason = text;
+    /* Норматив приостанавливается в момент запроса: считаем израсходованное
+       и остаток здесь же, иначе перерисованная карточка показала бы поля
+       только после перезагрузки, когда их проставит data.js. */
+    rec.slaSpent = +workHoursBetween(rec.sentAt, NOW).toFixed(2);
+    rec.slaLeft = +Math.max(0, rec.sla - rec.slaSpent).toFixed(2);
     setStatus('clarify');
     form = null; refresh(); return;
   }
