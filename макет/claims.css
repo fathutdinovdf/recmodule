@@ -56,7 +56,7 @@
    статус с датой. Порядок — от «когда горит» к «что это», потому что
    выбирают заявку по срочности, а читают уже выбранную. */
 .ci {
-  display: flex; flex-direction: column; gap: var(--item-gap-vertical-2xs);
+  display: flex; flex-direction: column; gap: var(--item-gap-vertical-xs);
   width: 100%; text-align: left;
   padding: var(--group-padding-s);
   border: 1px solid transparent;
@@ -65,7 +65,7 @@
 }
 .ci:hover { background: var(--state-hover); }
 .ci.is-on { background: var(--state-selected-light); border-color: var(--component-accent); }
-.ci + .ci { margin-top: var(--item-gap-vertical-2xs); }
+.ci + .ci { margin-top: var(--item-gap-vertical-xs); }
 
 .ci__top { display: flex; align-items: center; gap: var(--item-gap-horizontal-s); flex-wrap: wrap; }
 .ci__n {
@@ -98,7 +98,7 @@
 }
 .claimhead__top { display: flex; align-items: center; gap: var(--item-gap-horizontal-m); flex-wrap: wrap; }
 .claimhead__n {
-  font: var(--font-weight-headline) var(--font-size-h4) / var(--line-height-h4) var(--font-family-headline);
+  font: var(--font-weight-headline) var(--font-size-h3) / var(--line-height-h3) var(--font-family-headline);
   color: var(--text-heading); font-variant-numeric: tabular-nums;
 }
 .claimhead__obj {
@@ -110,7 +110,7 @@
    рекомендации: одинаковые сущности читаются одинаково. */
 .claimhead__meta { display: flex; flex-wrap: wrap; }
 .claimhead__meta > span {
-  display: flex; flex-direction: column; gap: var(--item-gap-vertical-2xs);
+  display: flex; flex-direction: column; gap: var(--item-gap-vertical-xs);
   padding: 0 var(--group-padding-m);
   border-left: 1px solid var(--border-divider-light);
   font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
@@ -134,7 +134,7 @@
   border-bottom: 1px solid var(--border-divider-light);
   background: var(--bg-secondary);
 }
-.clock { display: flex; flex-direction: column; gap: var(--item-gap-vertical-2xs); min-width: 0; }
+.clock { display: flex; flex-direction: column; gap: var(--item-gap-vertical-xs); min-width: 0; }
 .clock__k {
   font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
   color: var(--text-tertiary);

@@ -3,21 +3,27 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Реестр рекомендаций — модуль управления мероприятиями</title>
+  <title>Пользователи и роли — модуль управления рекомендациями</title>
   <link rel="stylesheet" href="../tokens.css">
   <link rel="stylesheet" href="registry.css">
+  <!-- Формы, блоки, счётчики и лента истории берутся из вёрстки карточки:
+       на этом экране те же самые компоненты, и заводить им второй внешний вид
+       значило бы получить в модуле две разные формы одного назначения. -->
+  <link rel="stylesheet" href="card.css">
+  <link rel="stylesheet" href="users.css">
 </head>
 <body>
 
 <svg style="display:none">
-  <symbol id="i-sort" viewBox="0 0 12 12"><path d="M6 2.5v7M6 9.5 3.8 7.3M6 9.5l2.2-2.2" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-  <symbol id="i-funnel" viewBox="0 0 12 12"><path d="M1.5 2.5h9L7 6.4v3.1L5 10.5V6.4z" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></symbol>
   <symbol id="i-search" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="m10.2 10.2 3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
   <symbol id="i-bell" viewBox="0 0 16 16"><path d="M8 2a3.5 3.5 0 0 0-3.5 3.5c0 3-1 4-1 4h9s-1-1-1-4A3.5 3.5 0 0 0 8 2zM6.6 12a1.5 1.5 0 0 0 2.8 0" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-help" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M6.4 6.2A1.7 1.7 0 0 1 9.7 6.6c0 1.2-1.7 1.4-1.7 2.5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="11.4" r=".7" fill="currentColor"/></symbol>
   <symbol id="i-plus" viewBox="0 0 16 16"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
-  <symbol id="i-cols" viewBox="0 0 16 16"><rect x="2.2" y="3" width="11.6" height="10" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M6.1 3v10M9.9 3v10" stroke="currentColor" stroke-width="1.2"/></symbol>
-  <symbol id="i-export" viewBox="0 0 16 16"><path d="M8 10.5V2.8M8 2.8 5.6 5.2M8 2.8l2.4 2.4M3 10v2.2c0 .6.4 1 1 1h8c.6 0 1-.4 1-1V10" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 16 16"><path d="M3 13h2.4l7.1-7.1-2.4-2.4L3 10.6V13z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="m9.8 3.9 2.4 2.4" stroke="currentColor" stroke-width="1.2"/></symbol>
+  <symbol id="i-info" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M8 7.2v4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="4.9" r=".8" fill="currentColor"/></symbol>
+  <symbol id="i-map" viewBox="0 0 16 16"><path d="M6 3 2.6 4.4v8.2L6 11.2l4 1.4 3.4-1.4V3L10 4.4z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M6 3v8.2M10 4.4v8.2" fill="none" stroke="currentColor" stroke-width="1.2"/></symbol>
+  <symbol id="i-off" viewBox="0 0 16 16"><path d="M8 2.4v5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M4.8 4.6a4.4 4.4 0 1 0 6.4 0" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
+  <symbol id="i-check" viewBox="0 0 16 16"><path d="m3.6 8.4 3 3 5.8-6.2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 </svg>
 
 <header class="appbar">
@@ -32,49 +38,32 @@
   <nav class="sidenav">
     <div class="sidenav__section">Работа</div>
     <a class="navitem" href="inbox.html"><span class="navitem__label">Мои задачи</span><span class="badge badge--accent">7</span></a>
-    <a class="navitem is-active" href="index.html"><span class="navitem__label">Реестр рекомендаций</span></a>
+    <a class="navitem" href="index.html"><span class="navitem__label">Реестр рекомендаций</span></a>
     <a class="navitem" href="claims.html"><span class="navitem__label">Заявки Заказчика</span><span class="badge">2</span></a>
     <div class="sidenav__section">Эффект</div>
     <a class="navitem navitem--muted"><span class="navitem__label">Окна эффекта</span></a>
     <a class="navitem navitem--muted"><span class="navitem__label">Подтверждённые</span></a>
     <div class="sidenav__section">Настройка</div>
     <a class="navitem" href="refs.html"><span class="navitem__label">Справочники</span></a>
-    <a class="navitem" href="users.html"><span class="navitem__label">Пользователи и роли</span></a>
+    <a class="navitem is-active" href="users.html"><span class="navitem__label">Пользователи и роли</span></a>
     <a class="navitem" href="sla.html"><span class="navitem__label">Календарь и SLA</span></a>
     <a class="navitem navitem--muted"><span class="navitem__label">Отчёты и выгрузки</span></a>
   </nav>
 
-  <main class="content">
+  <main class="content content--users">
     <div class="pagehead">
-      <h1>Реестр рекомендаций</h1>
-      <span class="pagehead__zone" id="zoneNote"></span>
-      <div class="pagehead__actions">
-        <a class="btn btn--accent" href="wizard.html"><svg class="ic16"><use href="#i-plus"/></svg>Создать рекомендацию</a>
-        <button class="iconbtn iconbtn--lg" id="btnCols" title="Настройка колонок"><svg class="ic20"><use href="#i-cols"/></svg></button>
-        <button class="iconbtn iconbtn--lg" title="Экспорт"><svg class="ic20"><use href="#i-export"/></svg></button>
-      </div>
+      <h1>Пользователи и роли</h1>
+      <div class="pagehead__actions" id="headActions"></div>
     </div>
 
-    <section class="tiles" id="tiles"></section>
+    <div class="usersbody">
+      <nav class="userlist" id="userlist"></nav>
 
-    <section class="panel">
-      <div class="tablewrap">
-        <table class="tbl" id="tbl">
-          <colgroup id="cg"></colgroup>
-          <thead id="thead"></thead>
-          <tbody id="tbody"></tbody>
-        </table>
-      </div>
-
-      <div class="pager">
-        <div class="pager__info" id="pagerInfo"></div>
-        <button class="btn btn--ghost btn--small" id="btnReset" hidden>Сбросить фильтры</button>
-        <div class="pager__pages" id="pagerPages"></div>
-        <label class="field field--compact"><select id="pageSize">
-          <option>25</option><option selected>50</option><option>100</option>
-        </select></label>
-      </div>
-    </section>
+      <section class="panel panel--user">
+        <header class="userhead" id="userhead"></header>
+        <div class="userbody" id="userbody"></div>
+      </section>
+    </div>
   </main>
 </div>
 
@@ -82,6 +71,6 @@
 
 <script src="вмап.js"></script>
 <script src="data.js"></script>
-<script src="app.js"></script>
+<script src="users.js"></script>
 </body>
 </html>

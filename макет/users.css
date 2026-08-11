@@ -1,0 +1,285 @@
+/* Экран «Пользователи и роли». Дополняет registry.css и card.css, ничего из них
+   не переопределяет. Все цвета, отступы, радиусы и кегли — через tokens.css.
+
+   Экран двухчастный и устроен как «Справочники»: слева список, справа карточка
+   выбранного. Это одна и та же операция «выбрать элемент и настроить его», и
+   выглядеть она должна одинаково — поэтому левый список собран из тех же
+   .navitem, что и главное меню, а формы, счётчики и лента истории взяты
+   подключением из card.css. */
+
+.content--users { overflow: hidden; }
+
+.usersbody {
+  flex: 1 1 auto; min-height: 0;
+  display: flex; gap: var(--screen-gap-default);
+}
+
+/* ------------------------------ список пользователей ------------------------------ */
+
+/* Ширина та же, что у главного меню: две колонки навигации рядом, и разная
+   ширина читалась бы как разный уровень вложенности. */
+.userlist {
+  width: var(--layout-sidebar-width);
+  flex: 0 0 auto;
+  background: var(--bg-card);
+  border-radius: var(--corner-radius-section);
+  box-shadow: var(--elevation-1);
+  padding: var(--group-padding-s);
+  overflow-y: auto;
+}
+
+/* Сторона договора набирается как заголовок группы меню: это деление списка,
+   а не сноска к нему. */
+.userlist__section {
+  font: var(--font-weight-subtitle) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  letter-spacing: var(--letter-spacing-text-caption);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  padding: var(--group-padding-m) var(--item-padding-horizontal-s) var(--item-padding-vertical-xs);
+  margin-top: var(--group-gap-s);
+  border-top: 1px solid var(--border-divider);
+}
+.userlist__section:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+
+/* Чем стороны различаются по правам, сказано один раз под заголовком группы,
+   а не тегом у каждого имени: иначе список превращается в стену подписей. */
+.userlist__note {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+  padding: 0 var(--item-padding-horizontal-s) var(--item-padding-vertical-s);
+}
+
+.uitem { align-items: flex-start; }
+.uitem__b { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.uitem__n {
+  font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.uitem.is-active .uitem__n { font-weight: var(--font-weight-subtitle); }
+/* Роль — вторая строка пункта, а не тег: тег рядом с именем отнимал бы у имени
+   ширину, а роль здесь читают чаще, чем фамилию. */
+.uitem__r {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-quaternary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.uitem .badge { margin-top: var(--item-padding-vertical-2xs); }
+
+/* ------------------------------ шапка карточки ------------------------------ */
+
+.panel--user { min-width: 0; }
+
+.userhead {
+  flex: 0 0 auto;
+  padding: var(--group-padding-m);
+  border-bottom: 1px solid var(--border-divider-light);
+  display: flex; flex-direction: column; gap: var(--item-gap-vertical-s);
+}
+.userhead__top {
+  display: flex; align-items: center; gap: var(--item-gap-horizontal-m);
+  flex-wrap: wrap;
+}
+.userhead__t {
+  margin: 0;
+  font: var(--font-weight-headline) var(--font-size-h5) / var(--line-height-h5) var(--font-family-headline);
+  color: var(--text-heading);
+}
+.userhead__me { font: var(--font-weight-text) var(--font-size-text-small) / 1 var(--font-family-text); }
+.userhead__act { margin-left: auto; display: flex; align-items: center; gap: var(--item-gap-horizontal-m); }
+.userhead__desc {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+  max-width: 96ch;
+}
+
+/* Метаданные идут одной строкой через точку-разделитель — как в шапке
+   справочника: без неё «Сторона: Заказчик» и «Стартовая страница» слипаются. */
+.userhead__meta {
+  display: flex; flex-wrap: wrap; gap: var(--item-gap-horizontal-m);
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-quaternary);
+}
+.userhead__meta > span + span::before {
+  content: '·'; margin-right: var(--item-gap-horizontal-m); color: var(--text-quaternary);
+}
+.userhead__meta b { font-weight: var(--font-weight-subtitle); color: var(--text-secondary); }
+
+/* Сегмент-контрол «Доступ / Журнал» — тот же компонент, что на «Справочниках»;
+   в токенах для него есть отдельная поверхность component-segmented. */
+.seg {
+  display: inline-flex; padding: var(--item-padding-vertical-2xs);
+  background: var(--component-inverse-tertiary);
+  border-radius: var(--corner-radius-medium-component);
+  gap: var(--item-gap-horizontal-xs);
+}
+.seg__b {
+  border: 0; background: transparent; cursor: pointer;
+  padding: var(--item-padding-vertical-xs) var(--item-padding-medium-horizontal-s);
+  border-radius: var(--corner-radius-component);
+  color: var(--text-tertiary);
+  font: var(--font-weight-text) var(--font-size-text-small) / 1 var(--font-family-text);
+}
+.seg__b:hover { color: var(--text-secondary); }
+.seg__b.is-on {
+  background: var(--component-segmented);
+  color: var(--text-primary);
+  font-weight: var(--font-weight-subtitle);
+  box-shadow: var(--elevation-1);
+}
+
+/* ------------------------------ тело карточки ------------------------------ */
+
+.userbody { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: var(--group-padding-l); }
+
+/* Настройка доступа — не «блок текста», как в карточке рекомендации, а группа
+   с собственной рамкой: у неё есть своё действие в заголовке, и без рамки
+   кнопка «Изменить зону» читалась бы как относящаяся ко всему экрану. */
+.ublock {
+  border: 1px solid var(--border-component-default);
+  border-radius: var(--corner-radius-l);
+  padding: var(--group-padding-l);
+  margin-bottom: var(--block-gap-default);
+  display: flex; flex-direction: column; gap: var(--group-gap-s);
+}
+.ublock--off { border-left: 3px solid var(--status-warning); }
+.ublock .block__h { margin-bottom: 0; }
+.ublock__ic { color: var(--icon-light); }
+.ublock__act { margin-left: auto; }
+.ublock__t {
+  font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  color: var(--text-secondary);
+  max-width: 96ch;
+}
+.ublock__t--quiet {
+  color: var(--text-quaternary);
+  font-size: var(--font-size-text-small); line-height: var(--line-height-text-small);
+}
+/* Форма внутри группы уже отделена рамкой самой группы — верхняя линия и
+   отступ от card.css здесь только добавляют пустоты. */
+.ublock .form { margin-top: 0; padding-top: 0; border-top: 0; }
+
+/* ------------------------------ зона ответственности ------------------------------ */
+
+.zchips { display: flex; flex-wrap: wrap; gap: var(--item-gap-horizontal-m); }
+.zchip {
+  display: inline-flex; align-items: center; gap: var(--item-gap-horizontal-s);
+  padding: var(--item-padding-vertical-xs) var(--item-padding-horizontal-s);
+  border: 1px solid var(--border-component-default);
+  border-radius: var(--corner-radius-component);
+  background: var(--component-default);
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-secondary);
+}
+.zchip small { color: var(--text-quaternary); font-variant-numeric: tabular-nums; }
+
+.zbar { display: flex; align-items: center; gap: var(--item-gap-horizontal-m); flex-wrap: wrap; }
+.zbar .field { flex: 1 1 220px; }
+.zbar__i {
+  margin-left: auto;
+  font: var(--font-weight-text) var(--font-size-text-small) / 1 var(--font-family-text);
+  color: var(--text-quaternary);
+}
+
+/* Список месторождений скроллится сам, а не удлиняет карточку: под ним стоят
+   счётчики выбранного, и уезжать за край экрана им нельзя — именно ради них
+   выбор и делают. Высота задана долей экрана, а не пикселями: на ноутбуке
+   список должен быть короче, чем на мониторе. */
+.zlist {
+  margin-top: var(--item-gap-vertical-s);
+  max-height: 34vh; overflow-y: auto;
+  display: flex; flex-direction: column;
+  border: 1px solid var(--border-divider-light);
+  border-radius: var(--corner-radius-component);
+  padding: var(--item-padding-vertical-xs);
+}
+.zrow {
+  display: flex; align-items: center; gap: var(--item-gap-horizontal-m);
+  padding: var(--item-padding-vertical-xs) var(--item-padding-horizontal-s);
+  border-radius: var(--corner-radius-component);
+  font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.zrow:hover { background: var(--state-hover); }
+.zrow.is-hidden { display: none; }
+.zrow input { accent-color: var(--component-accent); margin: 0; flex: 0 0 auto; }
+.zrow__n { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zrow__c { color: var(--text-quaternary); font-variant-numeric: tabular-nums; }
+
+/* Режим «все объекты договора» не прячет список, а гасит его: видно, из чего
+   состоит «всё», и что галочки никуда не делись — их просто сейчас не спрашивают. */
+.zpick.is-off { opacity: 0.5; pointer-events: none; }
+
+/* ------------------------------ переключатель права решения ------------------------------
+
+   Размеры переключателя — дорожка 34px × 18px, кружок 14px, радиус 999px —
+   заданы намеренно мимо шкалы токенов: компонента-переключателя в дизайн-системе
+   ВМАП нет, а собрать его из ближайших размеров шкалы не выходит — кружок
+   16px (--sizing-icon-icon-only) в дорожке 18px задевал бы её края. */
+.sw { display: inline-flex; align-items: center; gap: var(--item-gap-horizontal-m); cursor: pointer; }
+.sw input { position: absolute; opacity: 0; width: 0; height: 0; }
+.sw__t {
+  position: relative; flex: 0 0 auto;
+  width: 34px; height: 18px;
+  border-radius: 999px;
+  background: var(--component-inverse-secondary);
+  transition: background 90ms linear;
+}
+.sw__t::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--bg-card); box-shadow: var(--elevation-1);
+  transition: transform 90ms linear;
+}
+.sw input:checked + .sw__t { background: var(--component-accent); }
+.sw input:checked + .sw__t::after { transform: translateX(16px); }
+.sw input:focus-visible + .sw__t { box-shadow: var(--focus-component); }
+.sw__l {
+  font: var(--font-weight-subtitle) var(--font-size-text-medium) / 1 var(--font-family-text);
+  color: var(--text-primary);
+}
+
+/* ------------------------------ журнал изменений ------------------------------ */
+
+/* Лента взята из карточки рекомендации (.log в card.css), но автор вынесен на
+   отдельную строку, как в журнале календаря: в карточке автор дописывается к
+   короткому событию, а здесь события длинные — «зона: добавлено то-то, убрано
+   то-то», — и имя, приклеенное к концу фразы, читается как её продолжение. */
+.uwho {
+  display: block;
+  color: var(--text-quaternary);
+  font-size: var(--font-size-text-caption); line-height: var(--line-height-text-caption);
+}
+
+.userbody .log { padding-top: var(--item-gap-vertical-s); }
+
+/* ------------------------------ поля со списком ------------------------------ */
+
+/* Поле выбора в форме растягивается на всю ширину колонки: .field из реестра
+   рассчитан на панель фильтров и по умолчанию сжимается по содержимому. */
+.field--wide { display: flex; width: 100%; }
+
+/* ------------------------------ поповер подтверждения ------------------------------ */
+
+.confirm { display: flex; flex-direction: column; gap: var(--group-gap-s); }
+.confirm__h {
+  font: var(--font-weight-subtitle) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  color: var(--text-heading);
+}
+.confirm__t {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+
+/* ------------------------------ теги ------------------------------ */
+
+/* Акцентный тег роли — тот же, что помечает редактируемый справочник: цвет
+   означает «это настраивается здесь». */
+.tag--accent { background: var(--component-accent-secondary); color: var(--text-accent); }
+/* Крупный тег роли набирается не фиксированной высотой, а отступами: высота
+   тега в реестре рассчитана на десятый кегль, а роль набрана мельче основного
+   текста, но крупнее подписи. */
+.tag--lg {
+  height: auto; padding: var(--item-padding-vertical-2xs) var(--item-padding-horizontal-s);
+  font-size: var(--font-size-text-small);
+}
