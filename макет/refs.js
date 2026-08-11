@@ -241,6 +241,14 @@ const GROUPS = [
     key: 'replica', title: 'Данные ВМАП',
     note: 'Приходят из ВМАП и обновляются синхронизацией. В модуле не редактируются.',
   },
+  /* Экономика вынесена в свою группу, а не положена к справочникам модуля:
+     это не перечисления для полей рекомендации, а ставки, из которых считаются
+     деньги по договору. Цена ошибки здесь другая, и владеет ими другой
+     человек (решение 92). */
+  {
+    key: 'econ', title: 'Экономическая модель',
+    note: 'Ставки, из которых считается эффект мероприятия. Правка действует вперёд: расчёты, уже вошедшие в акт, не пересчитываются.',
+  },
 ];
 
 /* У данных ВМАП тег такой же, как у системных: пользователю важно одно — что
@@ -249,7 +257,24 @@ const CLASS_TAG = {
   own: '<span class="tag tag--accent tag--lg">редактируемый</span>',
   fixed: '<span class="tag tag--default tag--lg">не редактируется</span>',
   replica: '<span class="tag tag--default tag--lg">не редактируется</span>',
+  econ: '<span class="tag tag--accent tag--lg">редактируемый</span>',
 };
+
+/* Одиннадцать числовых колонок с длинными названиями не помещаются в шапку,
+   поэтому подпись короткая, а полная — в заголовке столбца по наведению.
+   База умножения вынесена отдельной строкой: она важнее единиц измерения,
+   потому что именно её путают. */
+const ECON_COLS = [
+  ['ndpiFact', 'НДПИ факт', 'Ставка НДПИ по фактическим ценам, руб/т нефти'],
+  ['ndpiMsu', 'НДПИ МСУ', 'Ставка НДПИ по макроэкономическим сценарным условиям, руб/т нефти'],
+  ['lift', 'Подъём', 'Электроэнергия на подъём жидкости, руб/т жидкости'],
+  ['ppd', 'ППД', 'Электроэнергия на поддержание пластового давления, руб/т жидкости'],
+  ['transport', 'Транспорт', 'Электроэнергия на транспорт жидкости, руб/т жидкости'],
+  ['prep', 'Подготовка', 'Электроэнергия на подготовку нефти, руб/т нефти'],
+  ['chem', 'Реагенты', 'Деэмульгаторы, руб/т нефти'],
+  ['esp', 'Обслуживание ГНО', 'Услуги ЭПУ-сервис и НПО, тыс. руб/год на скважину'],
+  ['decline', 'Темп падения', 'Годовой темп падения дебита нефти, %'],
+];
 
 const SPECS = [
   {
@@ -413,6 +438,37 @@ const SPECS = [
   },
 
   {
+    key: 'econ', group: 'econ', nav: 'Ставки по месторождениям', title: 'Ставки по месторождениям',
+    useKey: null, rowActs: ['edit'], wide: true,
+    desc: `Из этих ставок собирается эффект мероприятия: выручка минус НДПИ минус энергетика и реагенты.
+      Разрез — месторождение ВМАП; там, где в модели Заказчика месторождение не разрезано по цехам,
+      значения у соседних узлов совпадают.`,
+    build: () => ECON_RATES.map((r) => ({ src: r.field, ...r, name: r.field })),
+    cols: [
+      {
+        key: 'name', label: 'Месторождение', w: 210, sticky: true,
+        render: (it) => `<div class="clip1" title="${esc(it.name)}">${esc(it.name)}</div>`,
+      },
+      ...ECON_COLS.map(([key, label, hint]) => ({
+        key, label, w: 108, right: true, hint,
+        /* Незаполненная ставка помечается словом, а не нулём: ноль в расчёте
+           молча занизит эффект, а «не задано» его остановит. */
+        render: (it) => (it[key] === undefined || it[key] === null
+          ? '<span class="mark">не задано</span>'
+          : numCell(it[key].toLocaleString('ru-RU'))),
+      })),
+      { key: 'act', label: '', w: 52, render: (it, s) => actCell(it, s) },
+    ],
+    seedLog: [
+      {
+        at: new Date('2026-07-08T10:15'),
+        text: prose(`Ставки перенесены из «Модели оценки экономической эффективности» Заказчика,
+          период декабрь. Заполнено 17 месторождений из 18.`),
+      },
+    ],
+  },
+
+  {
     key: 'fields', group: 'replica', nav: 'Месторождения', title: 'Месторождения',
     useKey: 'field', replica: true,
     src: 'ois_vmap."OrganizationUnits", OrganizationUnitType = 3',
@@ -533,6 +589,21 @@ function headMeta(s) {
   const n = st.items.filter((it) => !it.archived).length;
   const arch = st.items.filter((it) => it.archived).length;
 
+  /* Цена нефти и коэффициент эксплуатации от месторождения не зависят, и
+     строки в таблице им заводить незачем — они стоят в шапке справочника,
+     рядом со счётчиком. */
+  if (s.key === 'econ') {
+    const заполнено = st.items.filter((it) => it.ndpiFact !== null && it.ndpiFact !== undefined).length;
+    return `<div class="refhead__meta">
+      <span><b>${n}</b> ${plural(n, ['месторождение', 'месторождения', 'месторождений'])},
+        заполнено <b>${заполнено}</b></span>
+      <span>Цена нефти: факт <b>${ECON_GLOBAL.oilPriceFact.toLocaleString('ru-RU')}</b> руб/т,
+        МСУ <b>${ECON_GLOBAL.oilPriceMsu.toLocaleString('ru-RU')}</b> руб/т</span>
+      <span>Коэффициент эксплуатации: <b>${ECON_GLOBAL.uptime}</b></span>
+      <span>Изменений в истории: <b>${st.log.length}</b></span>
+    </div>`;
+  }
+
   if (s.replica) {
     const next = new Date(sync.at.getTime() + 15 * 60000);
     return `<div class="refhead__meta">
@@ -614,6 +685,40 @@ function formHtml() {
       <div class="form__hint">Код войдёт в номера новых рекомендаций по этому узлу:
         <b>${esc(v.code || 'ХХ')}-26-0001</b>. Код свой у каждого месторождения — общий код на
         четыре Южно-Ягунских давал бы одинаковые номера разным объектам.</div>
+      ${errLine()}
+      <div class="form__btns">
+        <button class="btn btn--accent" data-act="save">Сохранить</button>
+        <button class="btn" data-act="cancel">Отмена</button>
+      </div>
+    </div>`;
+  }
+
+  if (form.kind === 'econ') {
+    /* Поля сгруппированы по базе умножения, а не по алфавиту: перепутать
+       ставку на нефть со ставкой на жидкость — самая дорогая ошибка ввода,
+       и группировка защищает от неё лучше любой подписи. */
+    const группы = [
+      ['На тонну нефти', ['ndpiFact', 'ndpiMsu', 'prep', 'chem']],
+      ['На тонну жидкости', ['lift', 'ppd', 'transport']],
+      ['На скважину и прочее', ['esp', 'decline']],
+    ];
+    return `<div class="form">
+      <div class="form__h">${esc(form.item.field)} — ставки экономической модели</div>
+      ${группы.map(([заголовок, ключи]) => `
+        <div class="form__l">${заголовок}</div>
+        <div class="form__row">${ключи.map((к) => {
+          const [, подпись, всплывающая] = ECON_COLS.find(([x]) => x === к);
+          return `<label class="form__f" title="${esc(всплывающая)}">
+            <span class="form__l">${подпись}</span>
+            <input class="inp inp--num" id="f-${к}" value="${esc(v[к] ?? '')}"
+              inputmode="decimal" placeholder="не задано"></label>`;
+        }).join('')}</div>`).join('')}
+      <div class="form__hint">${prose(`Пустое поле означает, что ставка не задана: расчёт по этому
+        месторождению не пойдёт и скажет, чего не хватает. Ноль — это утверждение, что затрат нет.
+        Коэффициент падения выводится из темпа автоматически.`)}</div>
+      <div class="form__hint">${prose(`Правка действует вперёд. Расчёты, уже вошедшие в подписанный
+        акт верификации, не пересчитываются: договор требует считать по параметрам, действующим
+        на дату расчёта.`)}</div>
       ${errLine()}
       <div class="form__btns">
         <button class="btn btn--accent" data-act="save">Сохранить</button>
@@ -704,9 +809,12 @@ function actCell(it, s) {
         title="Код месторождения для номера рекомендации"><svg class="ic12"><use href="#i-pencil"/></svg></button>
     </div>`;
   }
-  if (s.group !== 'own') return '';
-  /* У приоритетов доступна только правка: сам список из трёх уровней закрыт
-     статусной моделью и Формой 2 — редактируется норматив, а не состав. */
+  /* Правятся справочники модуля и экономическая модель. У остальных строка
+     действий пуста: системные справочники меняются вместе с логикой, данные
+     ВМАП приходят синхронизацией. */
+  if (s.group !== 'own' && s.group !== 'econ') return '';
+  /* У приоритетов и у ставок доступна только правка: состав строк задан
+     извне — статусной моделью, Формой 2 или деревом ВМАП. */
   const only = s.rowActs;
   return `<div class="rowact">
     <button class="iconbtn iconbtn--xs" data-row="${it.id}" data-act="edit"
@@ -726,10 +834,11 @@ function renderTable() {
   const st = refState(s.key);
   const rows = visibleRows(s);
 
-  /* Таблица занимает всю ширину панели: колонок мало, и горизонтальная прокрутка
-     реестра здесь была бы лишней. Ширины заданы всем колонкам, кроме одной
-     смысловой — она забирает остаток. */
-  $('#tbl').style.width = '100%';
+  /* У большинства справочников колонок мало, и таблица занимает всю ширину
+     панели. У ставок их одиннадцать: там ширина набирается из колонок, а
+     панель прокручивается вбок, первая колонка при этом закреплена. */
+  $('#tbl').style.width = s.wide ? 'max-content' : '100%';
+  $('#tablewrap').classList.toggle('tablewrap--wide', !!s.wide);
   $('#cg').innerHTML = s.cols.map((c) =>
     `<col${c.w ? ` style="width:${c.w}px"` : ''}>`).join('');
 
@@ -740,7 +849,8 @@ function renderTable() {
     if (!c.label) return '<th></th>';
     return `<th class="${c.right ? 'th--right' : ''}">
       <span class="th">
-        <span class="th__t ${on ? 'is-sorted' : ''}" data-sort="${c.key}" title="${c.label} — сортировать">
+        <span class="th__t ${on ? 'is-sorted' : ''}" data-sort="${c.key}" title="${
+          esc(c.hint || `${c.label} — сортировать`)}">
           <span class="th__label">${c.label}</span>
           ${on ? `<svg class="ic-th th__arrow ${sort.dir === 'asc' ? 'is-asc' : ''}"><use href="#i-sort"/></svg>` : ''}
         </span>
@@ -865,6 +975,10 @@ function openForm(key, id, kind) {
 
   if (kind === 'code') {
     form = { key, id, mode: 'edit', kind: 'code', item, values: { code: item.code, name: item.name } };
+  } else if (s.key === 'econ') {
+    const v = {};
+    for (const [к] of ECON_COLS) v[к] = item[к] ?? '';
+    form = { key, id, mode: 'edit', kind: 'econ', item, values: v };
   } else if (s.key === 'params') {
     form = { key, id, mode: 'edit', kind: 'param', item, values: { value: item.value } };
   } else if (s.key === 'priorities') {
@@ -882,6 +996,10 @@ function openForm(key, id, kind) {
 function readForm() {
   if (form.kind === 'code') { form.values.code = $('#fCode').value.trim().toUpperCase(); return; }
   if (form.kind === 'param') { form.values.value = $('#fValue').value.trim(); return; }
+  if (form.kind === 'econ') {
+    for (const [к] of ECON_COLS) form.values[к] = $(`#f-${к}`).value.trim();
+    return;
+  }
   if (form.kind === 'priority') {
     form.values.name = $('#fName').value.trim();
     form.values.sla = $('#fSla').value.trim();
@@ -911,6 +1029,34 @@ function saveForm() {
     const was = item.code;
     item.code = v.code;
     log(key, `Узел «${item.name}»: код номера ${was ? `изменён с ${was} на ${v.code}` : `задан — ${v.code}`}.`);
+    form = null; render(); return;
+  }
+
+  if (form.kind === 'econ') {
+    const было = {};
+    const стало = {};
+    for (const [к, подпись] of ECON_COLS) {
+      const строка = String(v[к]).replace(',', '.').trim();
+      /* Пустое поле — законное значение: оно означает «ставка не задана», и
+         расчёт по такому месторождению не пойдёт. Ноль означал бы «затрат
+         нет», а это другое утверждение. */
+      const число = строка === '' ? null : Number(строка);
+      if (число !== null && (!Number.isFinite(число) || число < 0)) {
+        formErr = `«${подпись}»: нужно неотрицательное число или пустое поле.`;
+        render(); return;
+      }
+      const прежнее = form.item[к] ?? null;
+      if (прежнее !== число) { было[подпись] = прежнее; стало[подпись] = число; }
+      form.item[к] = число;
+    }
+    /* Коэффициент падения выводится из темпа по формуле модели Заказчика,
+       руками не вводится: два поля, связанные формулой, разъезжаются. */
+    form.item.declineK = form.item.decline === null ? null
+      : +Math.max(0.87, (100 - form.item.decline / 2) / 100).toFixed(4);
+
+    const части = Object.keys(стало)
+      .map((п) => `${п}: ${было[п] ?? 'не задано'} → ${стало[п] ?? 'не задано'}`);
+    if (части.length) log(key, `${form.item.field} — ${части.join('; ')}.`);
     form = null; render(); return;
   }
 

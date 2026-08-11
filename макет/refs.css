@@ -318,3 +318,25 @@
   font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
   color: var(--text-tertiary);
 }
+
+/* ------------------------------ широкая таблица ------------------------------
+
+   У ставок экономической модели одиннадцать числовых колонок: в ширину панели
+   они не помещаются и в любой раскладке сожмутся до нечитаемого. Поэтому
+   таблица набирает ширину из колонок и прокручивается вбок, а месторождение
+   закрепляется слева — иначе, уехав к последним колонкам, человек перестаёт
+   понимать, чью строку читает. Это тот же приём, что в Excel, откуда эти
+   ставки и пришли. */
+.tablewrap--wide { overflow-x: auto; }
+.tablewrap--wide th:first-child,
+.tablewrap--wide td:first-child {
+  position: sticky; left: 0; z-index: 1;
+  background: var(--bg-card);
+}
+/* Закреплённая колонка перекрывает соседнюю при прокрутке — отделяем линией,
+   иначе текст наезжает на текст без всякой границы. */
+.tablewrap--wide th:first-child::after,
+.tablewrap--wide td:first-child::after {
+  content: ''; position: absolute; top: 0; right: 0; bottom: 0;
+  border-right: 1px solid var(--border-divider-light);
+}
