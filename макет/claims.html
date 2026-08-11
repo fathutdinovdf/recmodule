@@ -3,18 +3,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Мои задачи — модуль управления мероприятиями</title>
+  <title>Заявки Заказчика — модуль управления рекомендациями</title>
   <link rel="stylesheet" href="../tokens.css">
   <link rel="stylesheet" href="registry.css">
-  <link rel="stylesheet" href="inbox.css">
+  <!-- card.css нужен ради .form, .inp, .block, .tag, .log и .params: заявка
+       устроена как та же карточка, только встречного потока. Заводить им
+       вторую копию значило бы завести второй источник истины. -->
+  <link rel="stylesheet" href="card.css">
+  <link rel="stylesheet" href="claims.css">
 </head>
 <body>
 
 <svg style="display:none">
   <symbol id="i-bell" viewBox="0 0 16 16"><path d="M8 2a3.5 3.5 0 0 0-3.5 3.5c0 3-1 4-1 4h9s-1-1-1-4A3.5 3.5 0 0 0 8 2zM6.6 12a1.5 1.5 0 0 0 2.8 0" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-help" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M6.4 6.2A1.7 1.7 0 0 1 9.7 6.6c0 1.2-1.7 1.4-1.7 2.5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="11.4" r=".7" fill="currentColor"/></symbol>
-  <symbol id="i-next" viewBox="0 0 16 16"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-search" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="m10.2 10.2 3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
   <symbol id="i-clock" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 4.7V8l2.4 1.4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 12 12"><path d="M8.4 5.1 5.2 8.3a1.7 1.7 0 0 1-2.4-2.4l3.5-3.5a1.1 1.1 0 0 1 1.6 1.6L4.4 7.5a.5.5 0 0 1-.8-.8l3.1-3.1" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-link" viewBox="0 0 16 16"><path d="M6.6 9.4a2.8 2.8 0 0 0 4 0l2-2a2.8 2.8 0 0 0-4-4l-1 1" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M9.4 6.6a2.8 2.8 0 0 0-4 0l-2 2a2.8 2.8 0 0 0 4 4l1-1" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></symbol>
 </svg>
 
 <header class="appbar">
@@ -28,9 +34,9 @@
 <div class="layout">
   <nav class="sidenav">
     <div class="sidenav__section">Работа</div>
-    <a class="navitem is-active" href="inbox.html"><span class="navitem__label">Мои задачи</span><span class="badge badge--accent" id="navBadge">7</span></a>
+    <a class="navitem" href="inbox.html"><span class="navitem__label">Мои задачи</span><span class="badge badge--accent">7</span></a>
     <a class="navitem" href="index.html"><span class="navitem__label">Реестр рекомендаций</span></a>
-    <a class="navitem" href="claims.html"><span class="navitem__label">Заявки Заказчика</span><span class="badge">2</span></a>
+    <a class="navitem is-active" href="claims.html"><span class="navitem__label">Заявки Заказчика</span><span class="badge" id="navBadge"></span></a>
     <div class="sidenav__section">Эффект</div>
     <a class="navitem navitem--muted"><span class="navitem__label">Окна эффекта</span></a>
     <a class="navitem navitem--muted"><span class="navitem__label">Подтверждённые</span></a>
@@ -41,31 +47,34 @@
     <a class="navitem navitem--muted"><span class="navitem__label">Отчёты и выгрузки</span></a>
   </nav>
 
-  <main class="content content--inbox">
+  <main class="content content--claims">
     <div class="pagehead">
-      <h1>Мои задачи</h1>
+      <h1>Заявки Заказчика</h1>
+      <span class="pagehead__zone" id="zoneNote"></span>
       <div class="pagehead__actions">
-        <span class="nowline" id="nowline"></span>
+        <button class="iconbtn iconbtn--lg" title="Экспорт"><svg class="ic20"><use href="#i-search"/></svg></button>
       </div>
     </div>
 
-    <!-- Переключатель роли существует только в макете: без него разницу
-         инбоксов пяти ролей показать нечем. В рабочем модуле роль приходит
-         с учётной записью, и этой полосы на экране нет. -->
-    <div class="demobar">
-      <span class="demobar__flag">Демо</span>
-      <div class="seg" id="roleSeg"></div>
-      <div class="demobar__who" id="demoWho"></div>
-    </div>
+    <div class="tiles tiles--claims" id="tiles"></div>
 
-    <section class="itiles" id="tiles"></section>
-    <div class="badgenote" id="badgeNote"></div>
-    <div class="feed" id="feed"></div>
+    <div class="claimsbody">
+      <aside class="claimlist">
+        <div class="claimlist__search">
+          <svg class="ic16"><use href="#i-search"/></svg>
+          <input class="inp inp--bare" id="q" placeholder="Номер, скважина, тип обращения">
+        </div>
+        <div class="claimlist__items" id="list"></div>
+        <div class="claimlist__foot" id="listFoot"></div>
+      </aside>
+
+      <section class="panel claimcard" id="card"></section>
+    </div>
   </main>
 </div>
 
 <script src="вмап.js"></script>
 <script src="data.js"></script>
-<script src="inbox.js"></script>
+<script src="claims.js"></script>
 </body>
 </html>

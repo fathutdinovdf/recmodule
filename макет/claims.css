@@ -1,0 +1,167 @@
+/* Экран «Заявки Заказчика». Дополняет registry.css и card.css, ничего из них
+   не переопределяет. Все цвета, отступы, радиусы и кегли — через tokens.css.
+
+   Своего здесь ровно три вещи: список заявок слева, полоса двух сроков и
+   шапка карточки. Всё остальное — .block, .form, .tag, .params, .log —
+   взято у карточки рекомендации: это те же компоненты, и вторая их копия
+   разошлась бы с оригиналом при первой же правке. */
+
+.content--claims { overflow: hidden; }
+
+/* Пять плиток, а не семь: у заявки четыре статуса, и пятая плитка считает
+   просрочку поперёк статусов. */
+.tiles--claims { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+
+.claimsbody {
+  flex: 1 1 auto; min-height: 0;
+  display: grid; grid-template-columns: 340px minmax(0, 1fr);
+  gap: var(--screen-gap-default);
+}
+
+/* ------------------------------ список заявок ------------------------------ */
+
+.claimlist {
+  display: flex; flex-direction: column; min-height: 0;
+  background: var(--bg-card);
+  border-radius: var(--corner-radius-section);
+  box-shadow: var(--elevation-1);
+}
+
+.claimlist__search {
+  flex: 0 0 auto;
+  display: flex; align-items: center; gap: var(--item-gap-horizontal-s);
+  padding: var(--group-padding-s) var(--group-padding-m);
+  border-bottom: 1px solid var(--border-divider-light);
+  color: var(--icon-light);
+}
+/* Поиск без рамки: он единственный в панели, и рамка вокруг него читалась бы
+   как ещё одна граница внутри карточки. */
+.inp--bare {
+  border: 0; background: transparent; padding: 0;
+  flex: 1 1 auto; min-width: 0;
+}
+.inp--bare:focus { outline: none; }
+
+.claimlist__items { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: var(--group-padding-s); }
+
+.claimlist__foot {
+  flex: 0 0 auto;
+  padding: var(--item-padding-vertical-s) var(--group-padding-m);
+  border-top: 1px solid var(--border-divider-light);
+  font: var(--font-weight-text) var(--font-size-text-small) / 1 var(--font-family-text);
+  color: var(--text-tertiary);
+}
+
+/* Строка списка. Четыре яруса: номер со сроком, тип обращения, объект,
+   статус с датой. Порядок — от «когда горит» к «что это», потому что
+   выбирают заявку по срочности, а читают уже выбранную. */
+.ci {
+  display: flex; flex-direction: column; gap: var(--item-gap-vertical-2xs);
+  width: 100%; text-align: left;
+  padding: var(--group-padding-s);
+  border: 1px solid transparent;
+  border-radius: var(--corner-radius-m);
+  background: transparent; cursor: pointer;
+}
+.ci:hover { background: var(--state-hover); }
+.ci.is-on { background: var(--state-selected-light); border-color: var(--component-accent); }
+.ci + .ci { margin-top: var(--item-gap-vertical-2xs); }
+
+.ci__top { display: flex; align-items: center; gap: var(--item-gap-horizontal-s); flex-wrap: wrap; }
+.ci__n {
+  font: var(--font-weight-subtitle) var(--font-size-text-medium) / 1 var(--font-family-text);
+  color: var(--text-accent); font-variant-numeric: tabular-nums;
+}
+.ci__t {
+  font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  color: var(--text-primary);
+}
+.ci__m, .ci__s {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+.ci__s { display: flex; align-items: center; gap: var(--item-gap-horizontal-s); }
+
+/* ------------------------------ карточка заявки ------------------------------ */
+
+.claimcard {
+  min-width: 0; min-height: 0;
+  display: flex; flex-direction: column;
+  overflow-y: auto;
+}
+
+.claimhead {
+  flex: 0 0 auto;
+  padding: var(--group-padding-l);
+  border-bottom: 1px solid var(--border-divider-light);
+  display: flex; flex-direction: column; gap: var(--item-gap-vertical-s);
+}
+.claimhead__top { display: flex; align-items: center; gap: var(--item-gap-horizontal-m); flex-wrap: wrap; }
+.claimhead__n {
+  font: var(--font-weight-headline) var(--font-size-h4) / var(--line-height-h4) var(--font-family-headline);
+  color: var(--text-heading); font-variant-numeric: tabular-nums;
+}
+.claimhead__obj {
+  font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  color: var(--text-secondary);
+}
+
+/* Метаданные заявки — та же полоса с разделителями, что в шапке карточки
+   рекомендации: одинаковые сущности читаются одинаково. */
+.claimhead__meta { display: flex; flex-wrap: wrap; }
+.claimhead__meta > span {
+  display: flex; flex-direction: column; gap: var(--item-gap-vertical-2xs);
+  padding: 0 var(--group-padding-m);
+  border-left: 1px solid var(--border-divider-light);
+  font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  color: var(--text-primary);
+}
+.claimhead__meta > span:first-child { padding-left: 0; border-left: 0; }
+.claimhead__meta i {
+  font-style: normal;
+  font: var(--font-weight-text) var(--font-size-text-small) / 1 var(--font-family-text);
+  color: var(--text-quaternary);
+}
+
+/* Полоса двух сроков — единственное, чего нет у рекомендации. Две колонки
+   рядом, потому что вопрос всегда сравнительный: уложились ли в проверку и
+   уложились ли в ответ. */
+.clocks {
+  flex: 0 0 auto;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--block-gap-default);
+  padding: var(--group-padding-m) var(--group-padding-l);
+  border-bottom: 1px solid var(--border-divider-light);
+  background: var(--bg-secondary);
+}
+.clock { display: flex; flex-direction: column; gap: var(--item-gap-vertical-2xs); min-width: 0; }
+.clock__k {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+.clock__k i { font-style: normal; color: var(--text-quaternary); }
+.clock__v {
+  display: flex; align-items: center; gap: var(--item-gap-horizontal-s); flex-wrap: wrap;
+  font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  color: var(--text-secondary);
+}
+
+.claimbody {
+  flex: 1 1 auto;
+  padding: var(--group-padding-l);
+  display: flex; flex-direction: column; gap: var(--group-gap-m);
+}
+
+/* Параметры скважины идут в две колонки: их шесть, и в одну они растягивают
+   карточку вниз без пользы. */
+.params--wide { grid-template-columns: auto 1fr auto 1fr; column-gap: var(--group-padding-m); }
+
+@media (max-width: 1300px) {
+  .claimsbody { grid-template-columns: 300px minmax(0, 1fr); }
+  .clocks { grid-template-columns: minmax(0, 1fr); }
+  .params--wide { grid-template-columns: auto 1fr; }
+}
+
+/* Отбивка ссылки на рекомендацию от текста ответа. Инлайновый стиль тут
+   был бы размером мимо шкалы токенов. */
+.decision__hint--gap { margin-top: var(--group-gap-s); }
