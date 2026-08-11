@@ -1159,6 +1159,8 @@ const CLAIMS = buildClaims(24);
 
 /* Цена нефти и коэффициент эксплуатации от месторождения не зависят: в модели
    Заказчика цена берётся только по периоду, а КЭ — общая константа. */
+const OPERATION_MODES = { 0: 'ЭЦН', 1: 'ШГН', 2: 'ЭВН' };
+
 const ECON_GLOBAL = {
   oilPriceFact: 23222.02,   // руб/т, фактические цены
   oilPriceMsu: 27885.93,    // руб/т, макроэкономические сценарные условия
@@ -1179,104 +1181,104 @@ const ECON_RATES = [
     field: 'Восточно-Икилорское', source: 'Восточно-Икилорское',
     lift: 57.98, ppd: 8.55, transport: 28.61,
     prep: 28.27, chem: 7.43,
-    espEcn: 1030.25, espShgn: 1060.37, decline: 32.32, declineK: 0.87,
+    espEcn: 1030.25, espShgn: 1060.37, espEvn: null, decline: 32.32, declineK: 0.87,
   },
   {
     field: 'Восточно-Придорожное', source: 'Восточно-Придорожное "КНГ"',
     lift: 48.01, ppd: 37.56, transport: 23.99,
     prep: 63.07, chem: 6.08,
-    espEcn: 1030.25, espShgn: 1060.37, decline: -126.9, declineK: 1,
+    espEcn: 1030.25, espShgn: 1060.37, espEvn: null, decline: -126.9, declineK: 1,
   },
   {
     field: 'Грибное', source: 'Грибное',
     lift: 49.93, ppd: 35.3, transport: 6.92,
     prep: 6.46, chem: 8.3,
-    espEcn: 1030.25, espShgn: 1060.37, decline: 99.96, declineK: 0.87,
+    espEcn: 1030.25, espShgn: 1060.37, espEvn: null, decline: 99.96, declineK: 0.87,
   },
   {
     field: 'Дружное (Кумалиягунское и Танеевское)', source: 'Дружное',
     lift: 39.16, ppd: 42.9, transport: 21.73,
     prep: 48.56, chem: 5.6,
-    espEcn: 1030.25, espShgn: 1060.37, decline: 40.92, declineK: 0.87,
+    espEcn: 1030.25, espShgn: 1060.37, espEvn: null, decline: 40.92, declineK: 0.87,
   },
   {
     field: 'Западно-Икилорское-обнова', source: 'Западно-Икилорское',
     lift: 53.86, ppd: 19.68, transport: 18.32,
     prep: 28.47, chem: 7.37,
-    espEcn: 1030.25, espShgn: 1060.37, decline: 44.36, declineK: 0.87,
+    espEcn: 1030.25, espShgn: 1060.37, espEvn: null, decline: 44.36, declineK: 0.87,
   },
   {
     field: 'Кустовое (Видное и Восточно-Ягунское) / ЦДНГ-2 (Я)', source: 'Кустовое',
     lift: 50.27, ppd: 30.61, transport: 7.4,
     prep: 20.94, chem: 8.45,
-    espEcn: 1030.25, espShgn: 1060.37, decline: 11.97, declineK: 0.9401,
+    espEcn: 1030.25, espShgn: 1060.37, espEvn: null, decline: 11.97, declineK: 0.9401,
   },
   {
     field: 'Кустовое (Видное и Восточно-Ягунское) / ЦДНГ-7 (Я)', source: 'Кустовое',
     lift: 50.27, ppd: 30.61, transport: 7.4,
     prep: 20.94, chem: 8.45,
-    espEcn: 1030.25, espShgn: 1060.37, decline: 11.97, declineK: 0.9401,
+    espEcn: 1030.25, espShgn: 1060.37, espEvn: null, decline: 11.97, declineK: 0.9401,
   },
   {
     field: 'Новоортьягунское', source: 'Новоортьягунское',
     lift: 495.8, ppd: 0, transport: 32.44,
     prep: 48.46, chem: 5.57,
-    espEcn: 1030.25, espShgn: 1060.37, decline: 27.93, declineK: 0.87,
+    espEcn: 1030.25, espShgn: 1060.37, espEvn: null, decline: 27.93, declineK: 0.87,
   },
   {
     field: 'Равенское', source: 'Равенское',
     lift: 49.08, ppd: 4.51, transport: 108.54,
     prep: 101.04, chem: 6.13,
-    espEcn: 1030.25, espShgn: 1060.37, decline: -159.11, declineK: 1,
+    espEcn: 1030.25, espShgn: 1060.37, espEvn: null, decline: -159.11, declineK: 1,
   },
   { field: 'Разведочные площади', source: null },
   {
     field: 'Свободное', source: 'Свободное "КНГ"',
     lift: 56.33, ppd: 207.99, transport: 524.88,
     prep: 23.16, chem: 2.8,
-    espEcn: 1030.25, espShgn: 1060.37, decline: 27.11, declineK: 0.87,
+    espEcn: 1030.25, espShgn: 1060.37, espEvn: null, decline: 27.11, declineK: 0.87,
   },
   {
     field: 'Северо-Ягунское', source: 'Северо-Ягунское',
     lift: 49.93, ppd: 35.3, transport: 6.92,
     prep: 6.46, chem: 8.3,
-    espEcn: 1030.25, espShgn: 1060.37, decline: 29.14, declineK: 0.87,
+    espEcn: 1030.25, espShgn: 1060.37, espEvn: null, decline: 29.14, declineK: 0.87,
   },
   {
     field: 'Тевлинско-Русскинское', source: 'Тевлинско-Русскинское',
     lift: 41.23, ppd: 19.68, transport: 10.56,
     prep: 71.87, chem: 12.63,
-    espEcn: 1030.25, espShgn: 1060.37, decline: 7.43, declineK: 0.9628,
+    espEcn: 1030.25, espShgn: 1060.37, espEvn: null, decline: 7.43, declineK: 0.9628,
   },
   {
     field: 'Южно-Ягунское / ЦДНГ-1 (Я)', source: 'Южно-Ягунское',
     lift: 49.93, ppd: 35.3, transport: 6.92,
     prep: 6.46, chem: 8.3,
-    espEcn: 1030.25, espShgn: 1060.37, decline: 20.61, declineK: 0.897,
+    espEcn: 1030.25, espShgn: 1060.37, espEvn: null, decline: 20.61, declineK: 0.897,
   },
   {
     field: 'Южно-Ягунское / ЦДНГ-2 (Я)', source: 'Южно-Ягунское',
     lift: 49.93, ppd: 35.3, transport: 6.92,
     prep: 6.46, chem: 8.3,
-    espEcn: 1030.25, espShgn: 1060.37, decline: 20.61, declineK: 0.897,
+    espEcn: 1030.25, espShgn: 1060.37, espEvn: null, decline: 20.61, declineK: 0.897,
   },
   {
     field: 'Южно-Ягунское / ЦДНГ-3 (Я)', source: 'Южно-Ягунское',
     lift: 49.93, ppd: 35.3, transport: 6.92,
     prep: 6.46, chem: 8.3,
-    espEcn: 1030.25, espShgn: 1060.37, decline: 20.61, declineK: 0.897,
+    espEcn: 1030.25, espShgn: 1060.37, espEvn: null, decline: 20.61, declineK: 0.897,
   },
   {
     field: 'Южно-Ягунское / ЦДНГ-4 (Я)', source: 'Южно-Ягунское',
     lift: 49.93, ppd: 35.3, transport: 6.92,
     prep: 6.46, chem: 8.3,
-    espEcn: 1030.25, espShgn: 1060.37, decline: 20.61, declineK: 0.897,
+    espEcn: 1030.25, espShgn: 1060.37, espEvn: null, decline: 20.61, declineK: 0.897,
   },
   {
     field: 'Яркое', source: 'Яркое',
     lift: 51.56, ppd: 3.26, transport: 91.4,
     prep: 48.56, chem: 5.6,
-    espEcn: 1030.25, espShgn: 1060.37, decline: 22.93, declineK: 0.8854,
+    espEcn: 1030.25, espShgn: 1060.37, espEvn: null, decline: 22.93, declineK: 0.8854,
   },
 ];
 
