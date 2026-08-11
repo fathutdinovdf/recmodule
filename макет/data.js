@@ -1177,122 +1177,157 @@ const ECON_BASE = {
 const ECON_RATES = [
   {
     field: 'Восточно-Икилорское', source: 'Восточно-Икилорское',
-    ndpiFact: 16472.98, ndpiMsu: 16472.98,
     lift: 57.98, ppd: 8.55, transport: 28.61,
     prep: 28.27, chem: 7.43,
-    esp: 1030.25, decline: 32.32, declineK: 0.87,
+    espEcn: 1030.25, espShgn: 1060.37, decline: 32.32, declineK: 0.87,
   },
   {
     field: 'Восточно-Придорожное', source: 'Восточно-Придорожное "КНГ"',
-    ndpiFact: 20065.22, ndpiMsu: 20065.22,
     lift: 48.01, ppd: 37.56, transport: 23.99,
     prep: 63.07, chem: 6.08,
-    esp: 1030.25, decline: -126.9, declineK: 1,
+    espEcn: 1030.25, espShgn: 1060.37, decline: -126.9, declineK: 1,
   },
   {
     field: 'Грибное', source: 'Грибное',
-    ndpiFact: 20071.55, ndpiMsu: 20071.55,
     lift: 49.93, ppd: 35.3, transport: 6.92,
     prep: 6.46, chem: 8.3,
-    esp: 1030.25, decline: 99.96, declineK: 0.87,
+    espEcn: 1030.25, espShgn: 1060.37, decline: 99.96, declineK: 0.87,
   },
   {
     field: 'Дружное (Кумалиягунское и Танеевское)', source: 'Дружное',
-    ndpiFact: 20065.49, ndpiMsu: 20065.49,
     lift: 39.16, ppd: 42.9, transport: 21.73,
     prep: 48.56, chem: 5.6,
-    esp: 1030.25, decline: 40.92, declineK: 0.87,
+    espEcn: 1030.25, espShgn: 1060.37, decline: 40.92, declineK: 0.87,
   },
   {
     field: 'Западно-Икилорское-обнова', source: 'Западно-Икилорское',
-    ndpiFact: 16099.86, ndpiMsu: 16099.86,
     lift: 53.86, ppd: 19.68, transport: 18.32,
     prep: 28.47, chem: 7.37,
-    esp: 1030.25, decline: 44.36, declineK: 0.87,
+    espEcn: 1030.25, espShgn: 1060.37, decline: 44.36, declineK: 0.87,
   },
   {
     field: 'Кустовое (Видное и Восточно-Ягунское) / ЦДНГ-2 (Я)', source: 'Кустовое',
-    ndpiFact: 20064.76, ndpiMsu: 20064.76,
     lift: 50.27, ppd: 30.61, transport: 7.4,
     prep: 20.94, chem: 8.45,
-    esp: 1030.25, decline: 11.97, declineK: 0.9401,
+    espEcn: 1030.25, espShgn: 1060.37, decline: 11.97, declineK: 0.9401,
   },
   {
     field: 'Кустовое (Видное и Восточно-Ягунское) / ЦДНГ-7 (Я)', source: 'Кустовое',
-    ndpiFact: 20064.76, ndpiMsu: 20064.76,
     lift: 50.27, ppd: 30.61, transport: 7.4,
     prep: 20.94, chem: 8.45,
-    esp: 1030.25, decline: 11.97, declineK: 0.9401,
+    espEcn: 1030.25, espShgn: 1060.37, decline: 11.97, declineK: 0.9401,
   },
   {
     field: 'Новоортьягунское', source: 'Новоортьягунское',
-    ndpiFact: 15971.95, ndpiMsu: 15971.95,
     lift: 495.8, ppd: 0, transport: 32.44,
     prep: 48.46, chem: 5.57,
-    esp: 1030.25, decline: 27.93, declineK: 0.87,
+    espEcn: 1030.25, espShgn: 1060.37, decline: 27.93, declineK: 0.87,
   },
   {
     field: 'Равенское', source: 'Равенское',
-    ndpiFact: 20064.9, ndpiMsu: 20064.9,
     lift: 49.08, ppd: 4.51, transport: 108.54,
     prep: 101.04, chem: 6.13,
-    esp: 1030.25, decline: -159.11, declineK: 1,
+    espEcn: 1030.25, espShgn: 1060.37, decline: -159.11, declineK: 1,
   },
   { field: 'Разведочные площади', source: null },
   {
     field: 'Свободное', source: 'Свободное "КНГ"',
-    ndpiFact: 16812.43, ndpiMsu: 16812.43,
     lift: 56.33, ppd: 207.99, transport: 524.88,
     prep: 23.16, chem: 2.8,
-    esp: 1030.25, decline: 27.11, declineK: 0.87,
+    espEcn: 1030.25, espShgn: 1060.37, decline: 27.11, declineK: 0.87,
   },
   {
     field: 'Северо-Ягунское', source: 'Северо-Ягунское',
-    ndpiFact: 11661.41, ndpiMsu: 11661.41,
     lift: 49.93, ppd: 35.3, transport: 6.92,
     prep: 6.46, chem: 8.3,
-    esp: 1030.25, decline: 29.14, declineK: 0.87,
+    espEcn: 1030.25, espShgn: 1060.37, decline: 29.14, declineK: 0.87,
   },
   {
     field: 'Тевлинско-Русскинское', source: 'Тевлинско-Русскинское',
-    ndpiFact: 15289.73, ndpiMsu: 15289.73,
     lift: 41.23, ppd: 19.68, transport: 10.56,
     prep: 71.87, chem: 12.63,
-    esp: 1030.25, decline: 7.43, declineK: 0.9628,
+    espEcn: 1030.25, espShgn: 1060.37, decline: 7.43, declineK: 0.9628,
   },
   {
     field: 'Южно-Ягунское / ЦДНГ-1 (Я)', source: 'Южно-Ягунское',
-    ndpiFact: 14506.72, ndpiMsu: 14506.72,
     lift: 49.93, ppd: 35.3, transport: 6.92,
     prep: 6.46, chem: 8.3,
-    esp: 1030.25, decline: 20.61, declineK: 0.897,
+    espEcn: 1030.25, espShgn: 1060.37, decline: 20.61, declineK: 0.897,
   },
   {
     field: 'Южно-Ягунское / ЦДНГ-2 (Я)', source: 'Южно-Ягунское',
-    ndpiFact: 14506.72, ndpiMsu: 14506.72,
     lift: 49.93, ppd: 35.3, transport: 6.92,
     prep: 6.46, chem: 8.3,
-    esp: 1030.25, decline: 20.61, declineK: 0.897,
+    espEcn: 1030.25, espShgn: 1060.37, decline: 20.61, declineK: 0.897,
   },
   {
     field: 'Южно-Ягунское / ЦДНГ-3 (Я)', source: 'Южно-Ягунское',
-    ndpiFact: 14506.72, ndpiMsu: 14506.72,
     lift: 49.93, ppd: 35.3, transport: 6.92,
     prep: 6.46, chem: 8.3,
-    esp: 1030.25, decline: 20.61, declineK: 0.897,
+    espEcn: 1030.25, espShgn: 1060.37, decline: 20.61, declineK: 0.897,
   },
   {
     field: 'Южно-Ягунское / ЦДНГ-4 (Я)', source: 'Южно-Ягунское',
-    ndpiFact: 14506.72, ndpiMsu: 14506.72,
     lift: 49.93, ppd: 35.3, transport: 6.92,
     prep: 6.46, chem: 8.3,
-    esp: 1030.25, decline: 20.61, declineK: 0.897,
+    espEcn: 1030.25, espShgn: 1060.37, decline: 20.61, declineK: 0.897,
   },
   {
     field: 'Яркое', source: 'Яркое',
-    ndpiFact: 16623.14, ndpiMsu: 16623.14,
     lift: 51.56, ppd: 3.26, transport: 91.4,
     prep: 48.56, chem: 5.6,
-    esp: 1030.25, decline: 22.93, declineK: 0.8854,
+    espEcn: 1030.25, espShgn: 1060.37, decline: 22.93, declineK: 0.8854,
   },
+];
+
+
+/* Пласты и ставки НДПИ.
+
+   Ставка задана по паре «месторождение + пласт», и внутри одного
+   месторождения расходится до двух с лишним раз: у Восточно-Придорожного от
+   8 572 до 20 065 руб/т. Поэтому справочник пластовый, а не по месторождению
+   (решение 93): взять «среднюю по месторождению» значит заложить в расчёт
+   ошибку в разы на самой большой статье.
+
+   Налоговый режим хранится рядом со ставкой. У Южно-Ягунского,
+   Восточно-Икилорского и Северо-Ягунского это НДД, у остальных ДНС, а у
+   Грибного и Тевлинско-Русскинского пласты разных режимов на одном
+   месторождении. Арифметика в модуле от режима не зависит — в модели
+   Заказчика НДД тоже сведён к рублям на тонну, — но без признака через
+   полгода никто не поймёт, почему у этих ставок своя логика пересмотра.
+
+   Пласт скважины в первой выгрузке ВМАП не запрашивался: таблица
+   buf_api_rab_pl там есть, но на дев-стенде пуста. До второй выгрузки
+   (выгрузка_вмап_экономика.py) привязка скважины к пласту не заполнена, и
+   расчёт по такой скважине честно останавливается вместо того, чтобы молча
+   взять чужую ставку. */
+const NDPI_RATES = [
+  { field: 'Восточно-Икилорское', plast: 'Восточно-Икилорский', regime: 'НДД', ndpiFact: 16472.98, ndpiMsu: 16472.98 },
+  { field: 'Восточно-Придорожное', plast: '(J3-K1)BG БАЖЕНОВСКИЕ, ПЛ.Ю0/2 (Р-ОН СКВ.810, 99Р)', regime: 'ДНС', ndpiFact: 8572.2, ndpiMsu: 8572.2 },
+  { field: 'Восточно-Придорожное', plast: 'Восточно-Придорожный', regime: 'ДНС', ndpiFact: 20065.22, ndpiMsu: 20065.22 },
+  { field: 'Восточно-Придорожное', plast: 'Кечимовский', regime: 'ДНС', ndpiFact: 20065.22, ndpiMsu: 20065.22 },
+  { field: 'Грибное', plast: 'Восточно-Грибной', regime: 'ДНС', ndpiFact: 20071.55, ndpiMsu: 20071.55 },
+  { field: 'Грибное', plast: 'Грибной', regime: 'НДД', ndpiFact: 20071.55, ndpiMsu: 20071.55 },
+  { field: 'Дружное (Кумалиягунское и Танеевское)', plast: 'Дружный', regime: 'ДНС', ndpiFact: 20065.49, ndpiMsu: 20065.49 },
+  { field: 'Западно-Икилорское-обнова', plast: 'Западно-Икилорский', regime: 'ДНС', ndpiFact: 16099.86, ndpiMsu: 16099.86 },
+  { field: 'Западно-Икилорское-обнова', plast: 'ЮС 2/1, р-н 312П', regime: 'ДНС', ndpiFact: 13883.2, ndpiMsu: 13883.2 },
+  { field: 'Кустовое (Видное и Восточно-Ягунское) / ЦДНГ-2 (Я)', plast: 'Ач 1/1', regime: 'ДНС', ndpiFact: 14674.59, ndpiMsu: 14674.59 },
+  { field: 'Кустовое (Видное и Восточно-Ягунское) / ЦДНГ-2 (Я)', plast: 'Кустовой', regime: 'ДНС', ndpiFact: 20064.76, ndpiMsu: 20064.76 },
+  { field: 'Кустовое (Видное и Восточно-Ягунское) / ЦДНГ-2 (Я)', plast: 'Южно-Кустовой', regime: 'ДНС', ndpiFact: 20064.74, ndpiMsu: 20064.74 },
+  { field: 'Кустовое (Видное и Восточно-Ягунское) / ЦДНГ-7 (Я)', plast: 'Ач 1/1', regime: 'ДНС', ndpiFact: 14674.59, ndpiMsu: 14674.59 },
+  { field: 'Кустовое (Видное и Восточно-Ягунское) / ЦДНГ-7 (Я)', plast: 'Кустовой', regime: 'ДНС', ndpiFact: 20064.76, ndpiMsu: 20064.76 },
+  { field: 'Кустовое (Видное и Восточно-Ягунское) / ЦДНГ-7 (Я)', plast: 'Южно-Кустовой', regime: 'ДНС', ndpiFact: 20064.74, ndpiMsu: 20064.74 },
+  { field: 'Новоортьягунское', plast: 'Новоортъягунский', regime: 'ДНС', ndpiFact: 15971.95, ndpiMsu: 15971.95 },
+  { field: 'Равенское', plast: 'Равенский', regime: 'ДНС', ndpiFact: 20064.9, ndpiMsu: 20064.9 },
+  { field: 'Свободное', plast: 'Свободный', regime: 'ДНС', ndpiFact: 16812.43, ndpiMsu: 16812.43 },
+  { field: 'Северо-Ягунское', plast: 'Северо-Ягунский', regime: 'НДД', ndpiFact: 11661.41, ndpiMsu: 11661.41 },
+  { field: 'Тевлинско-Русскинское', plast: 'Кочевской', regime: 'ДНС', ndpiFact: 20070.94, ndpiMsu: 20070.94 },
+  { field: 'Тевлинско-Русскинское', plast: 'Северо-Когалымский', regime: 'ДНС', ndpiFact: 20070.98, ndpiMsu: 20070.98 },
+  { field: 'Тевлинско-Русскинское', plast: 'Северо-Когалымский, ЮС 1', regime: 'ДНС', ndpiFact: 14676.94, ndpiMsu: 14676.94 },
+  { field: 'Тевлинско-Русскинское', plast: 'Тевлинско-Русскинской', regime: 'НДД', ndpiFact: 15289.73, ndpiMsu: 15289.73 },
+  { field: 'Южно-Ягунское / ЦДНГ-1 (Я)', plast: 'Южно-Ягунский', regime: 'НДД', ndpiFact: 14506.72, ndpiMsu: 14506.72 },
+  { field: 'Южно-Ягунское / ЦДНГ-2 (Я)', plast: 'Южно-Ягунский', regime: 'НДД', ndpiFact: 14506.72, ndpiMsu: 14506.72 },
+  { field: 'Южно-Ягунское / ЦДНГ-3 (Я)', plast: 'Южно-Ягунский', regime: 'НДД', ndpiFact: 14506.72, ndpiMsu: 14506.72 },
+  { field: 'Южно-Ягунское / ЦДНГ-4 (Я)', plast: 'Южно-Ягунский', regime: 'НДД', ndpiFact: 14506.72, ndpiMsu: 14506.72 },
+  { field: 'Яркое', plast: 'Яркий', regime: 'ДНС', ndpiFact: 16623.14, ndpiMsu: 16623.14 },
 ];

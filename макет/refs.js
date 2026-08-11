@@ -265,15 +265,14 @@ const CLASS_TAG = {
    База умножения вынесена отдельной строкой: она важнее единиц измерения,
    потому что именно её путают. */
 const ECON_COLS = [
-  ['ndpiFact', 'НДПИ факт', 'Ставка НДПИ по фактическим ценам, руб/т нефти'],
-  ['ndpiMsu', 'НДПИ МСУ', 'Ставка НДПИ по макроэкономическим сценарным условиям, руб/т нефти'],
-  ['lift', 'Подъём', 'Электроэнергия на подъём жидкости, руб/т жидкости'],
+  ['lift', 'Подъём', 'Электроэнергия на подъём жидкости, руб/т жидкости. У фонтанной скважины статья нулевая'],
   ['ppd', 'ППД', 'Электроэнергия на поддержание пластового давления, руб/т жидкости'],
   ['transport', 'Транспорт', 'Электроэнергия на транспорт жидкости, руб/т жидкости'],
   ['prep', 'Подготовка', 'Электроэнергия на подготовку нефти, руб/т нефти'],
   ['chem', 'Реагенты', 'Деэмульгаторы, руб/т нефти'],
-  ['esp', 'Обслуживание ГНО', 'Услуги ЭПУ-сервис и НПО, тыс. руб/год на скважину'],
-  ['decline', 'Темп падения', 'Годовой темп падения дебита нефти, %'],
+  ['espEcn', 'Обслуживание ЭЦН', 'Услуги ЭПУ-сервис, тыс. руб/год на скважину с ЭЦН'],
+  ['espShgn', 'Обслуживание ШГН', 'Услуги НПО, тыс. руб/год на скважину с ШГН. У фонтанной статья нулевая'],
+  ['decline', 'Темп падения', 'Годовой темп падения дебита нефти, % в год'],
 ];
 
 const SPECS = [
@@ -464,6 +463,51 @@ const SPECS = [
         at: new Date('2026-07-08T10:15'),
         text: prose(`Ставки перенесены из «Модели оценки экономической эффективности» Заказчика,
           период декабрь. Заполнено 17 месторождений из 18.`),
+      },
+    ],
+  },
+
+  {
+    key: 'ndpi', group: 'econ', nav: 'Пласты и ставки НДПИ', title: 'Пласты и ставки НДПИ',
+    useKey: null, rowActs: ['edit'],
+    desc: `Ставка задана по паре «месторождение + пласт» и внутри одного месторождения расходится
+      более чем вдвое, поэтому справочник пластовый. Налоговый режим хранится рядом: у части
+      месторождений это НДД, и правила пересмотра ставки там свои.`,
+    build: () => NDPI_RATES.map((r, i) => ({ src: `${r.field}·${r.plast}`, id2: i, ...r })),
+    cols: [
+      {
+        key: 'field', label: 'Месторождение', filter: true,
+        render: (it) => `<div class="clip1" title="${esc(it.field)}">${esc(it.field)}</div>`,
+      },
+      {
+        key: 'plast', label: 'Пласт',
+        render: (it) => `<div class="clip1" title="${esc(it.plast)}">${esc(it.plast)}</div>`,
+      },
+      {
+        key: 'regime', label: 'Налоговый режим', w: 148, filter: true,
+        /* НДД выделен тоном: это другой налог, и правила его пересмотра
+           отличаются. Без метки строки читаются как однородные. */
+        render: (it) => (it.regime === 'НДД'
+          ? '<span class="tag tag--info">НДД</span>'
+          : '<span class="mark">ДНС</span>'),
+      },
+      {
+        key: 'ndpiFact', label: 'Ставка факт', w: 132, right: true,
+        hint: 'Ставка по фактическим ценам, руб/т нефти',
+        render: (it) => numCell(it.ndpiFact.toLocaleString('ru-RU')),
+      },
+      {
+        key: 'ndpiMsu', label: 'Ставка МСУ', w: 132, right: true,
+        hint: 'Ставка по макроэкономическим сценарным условиям, руб/т нефти',
+        render: (it) => numCell(it.ndpiMsu.toLocaleString('ru-RU')),
+      },
+      { key: 'act', label: '', w: 52, render: (it, s) => actCell(it, s) },
+    ],
+    seedLog: [
+      {
+        at: new Date('2026-07-08T10:22'),
+        text: prose(`Ставки перенесены из листа «НДПИ» модели Заказчика, период декабрь.
+          28 пар «месторождение + пласт» по 17 объектам договора.`),
       },
     ],
   },
@@ -693,14 +737,37 @@ function formHtml() {
     </div>`;
   }
 
+  if (form.kind === 'ndpi') {
+    return `<div class="form">
+      <div class="form__h">${esc(form.item.field)} — пласт «${esc(form.item.plast)}»</div>
+      <div class="form__row">
+        <label class="form__f"><span class="form__l">Ставка факт, руб/т нефти</span>
+          <input class="inp inp--num" id="f-ndpiFact" value="${esc(v.ndpiFact)}" inputmode="decimal"></label>
+        <label class="form__f"><span class="form__l">Ставка МСУ, руб/т нефти</span>
+          <input class="inp inp--num" id="f-ndpiMsu" value="${esc(v.ndpiMsu)}" inputmode="decimal"></label>
+        <label class="form__f" style="flex:0 0 200px"><span class="form__l">Налоговый режим</span>
+          <select class="inp" id="f-regime">${['ДНС', 'НДД'].map((r) =>
+            `<option${r === v.regime ? ' selected' : ''}>${r}</option>`).join('')}</select></label>
+      </div>
+      <div class="form__hint">${prose(`Ставка относится к паре «месторождение + пласт». Скважина
+        берёт ту строку, к пласту которой она отнесена; если пласт у скважины не задан, расчёт
+        по ней не пойдёт — вместо того чтобы взять чужую ставку.`)}</div>
+      ${errLine()}
+      <div class="form__btns">
+        <button class="btn btn--accent" data-act="save">Сохранить</button>
+        <button class="btn" data-act="cancel">Отмена</button>
+      </div>
+    </div>`;
+  }
+
   if (form.kind === 'econ') {
     /* Поля сгруппированы по базе умножения, а не по алфавиту: перепутать
        ставку на нефть со ставкой на жидкость — самая дорогая ошибка ввода,
        и группировка защищает от неё лучше любой подписи. */
     const группы = [
-      ['На тонну нефти', ['ndpiFact', 'ndpiMsu', 'prep', 'chem']],
+      ['На тонну нефти', ['prep', 'chem']],
       ['На тонну жидкости', ['lift', 'ppd', 'transport']],
-      ['На скважину и прочее', ['esp', 'decline']],
+      ['На скважину и прочее', ['espEcn', 'espShgn', 'decline']],
     ];
     return `<div class="form">
       <div class="form__h">${esc(form.item.field)} — ставки экономической модели</div>
@@ -979,6 +1046,11 @@ function openForm(key, id, kind) {
     const v = {};
     for (const [к] of ECON_COLS) v[к] = item[к] ?? '';
     form = { key, id, mode: 'edit', kind: 'econ', item, values: v };
+  } else if (s.key === 'ndpi') {
+    form = {
+      key, id, mode: 'edit', kind: 'ndpi', item,
+      values: { ndpiFact: item.ndpiFact, ndpiMsu: item.ndpiMsu, regime: item.regime },
+    };
   } else if (s.key === 'params') {
     form = { key, id, mode: 'edit', kind: 'param', item, values: { value: item.value } };
   } else if (s.key === 'priorities') {
@@ -998,6 +1070,12 @@ function readForm() {
   if (form.kind === 'param') { form.values.value = $('#fValue').value.trim(); return; }
   if (form.kind === 'econ') {
     for (const [к] of ECON_COLS) form.values[к] = $(`#f-${к}`).value.trim();
+    return;
+  }
+  if (form.kind === 'ndpi') {
+    form.values.ndpiFact = $('#f-ndpiFact').value.trim();
+    form.values.ndpiMsu = $('#f-ndpiMsu').value.trim();
+    form.values.regime = $('#f-regime').value;
     return;
   }
   if (form.kind === 'priority') {
@@ -1029,6 +1107,25 @@ function saveForm() {
     const was = item.code;
     item.code = v.code;
     log(key, `Узел «${item.name}»: код номера ${was ? `изменён с ${was} на ${v.code}` : `задан — ${v.code}`}.`);
+    form = null; render(); return;
+  }
+
+  if (form.kind === 'ndpi') {
+    const части = [];
+    for (const [к, подпись] of [['ndpiFact', 'ставка факт'], ['ndpiMsu', 'ставка МСУ']]) {
+      const число = Number(String(v[к]).replace(',', '.').trim());
+      if (!Number.isFinite(число) || число < 0) {
+        formErr = `«${подпись}»: нужно неотрицательное число.`;
+        render(); return;
+      }
+      if (form.item[к] !== число) части.push(`${подпись} ${form.item[к]} → ${число}`);
+      form.item[к] = число;
+    }
+    if (form.item.regime !== v.regime) {
+      части.push(`налоговый режим ${form.item.regime} → ${v.regime}`);
+      form.item.regime = v.regime;
+    }
+    if (части.length) log(key, `${form.item.field}, пласт «${form.item.plast}»: ${части.join('; ')}.`);
     form = null; render(); return;
   }
 
