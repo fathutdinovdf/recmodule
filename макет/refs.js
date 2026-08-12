@@ -298,42 +298,6 @@ const SPECS = [
     ],
   },
 
-  /* Пороги, по которым модуль решает, что пора тревожить человека. Раньше 21
-     сутки и 7 суток были константами в коде инбокса — то есть числа, которые
-     подбираются по ходу работы, менялись только релизом (решение 81).
-     Горизонт окна лежит рядом и не редактируется: видно, что настраивается,
-     а что установлено договором. */
-  {
-    key: 'params', group: 'own', nav: 'Параметры модуля', title: 'Параметры модуля',
-    useKey: null, rowActs: ['edit'],
-    desc: `Сроки, по которым модуль поднимает тревогу. Норматив ответа Заказчика сюда не входит —
-      он привязан к приоритету и живёт в справочнике «Приоритеты и нормативы».`,
-    build: () => MODULE_PARAMS.map((p) => ({
-      src: p.key, pkey: p.key, name: p.name, value: p.value,
-      unit: p.unit, hint: p.hint, fixed: !!p.fixed,
-    })),
-    cols: [
-      { key: 'name', label: 'Параметр', render: (it) => nameCell(it.name) },
-      {
-        key: 'value', label: 'Значение', w: 150, right: true,
-        render: (it) => `${numCell(it.value)} <span class="mark">${esc(it.unit)}</span>`,
-      },
-      {
-        key: 'hint', label: 'На что влияет',
-        render: (it) => `<div class="clip">${esc(it.hint)}</div>`,
-      },
-      {
-        key: 'act', label: '', w: 52,
-        /* У зафиксированного договором параметра действия нет вовсе: кнопка,
-           которая всегда отвечает «нельзя», раздражает сильнее, чем её отсутствие. */
-        render: (it, s) => (it.fixed ? '' : actCell(it, s)),
-      },
-    ],
-    seedLog: [
-      { at: new Date('2026-07-15T14:05'), text: 'Порог «согласовано, работ нет» установлен — 21 сутки.' },
-    ],
-  },
-
   {
     key: 'statuses', group: 'fixed', nav: 'Статусы', title: 'Статусы рекомендации',
     useKey: 'status',
@@ -450,7 +414,7 @@ function refState(key) {
 }
 
 const VIEWS = {
-  module: ['directions', 'actions', 'reasons', 'priorities', 'params'],
+  module: ['directions', 'reasons', 'actions', 'priorities'],
   system: ['statuses', 'decisions', 'completeness'],
   fields: ['fields'],
 };
@@ -469,8 +433,8 @@ let view = viewFromHash();
 let form = null;         // { key, id, mode, values } — раскрытая форма правки
 let formErr = '';
 let newSeq = 0;
-let historyKey = null;
-let historyReturnKey = null;
+let historyOpen = false;
+let historyReturnEl = null;
 
 /* ------------------------------ отбор и сортировка ------------------------------ */
 
@@ -507,12 +471,8 @@ function visibleRows(s) {
 
 function headHtml(key) {
   const s = SPEC[key];
-  const hasLog = !s.stub && (s.group === 'own' || s.replica);
   return `<h2 class="refsection__title" id="ref-title-${key}">${s.title}</h2>
       <div class="refsection__actions">
-        ${hasLog ? `<button class="btn ${historyKey === key ? 'is-on' : ''}" data-act="history"
-          aria-expanded="${historyKey === key}" aria-controls="refhistory">
-          <svg class="ic16"><use href="#i-history"/></svg>${s.replica ? 'Журнал синхронизации' : 'История изменений'}</button>` : ''}
         ${s.replica ? `<button class="btn" data-act="sync"><svg class="ic16"><use href="#i-sync"/></svg>Синхронизировать сейчас</button>` : ''}
         ${s.group === 'own' && s.addLabel
           ? `<button class="btn btn--accent" data-act="add"><svg class="ic16"><use href="#i-plus"/></svg>${s.addLabel}</button>` : ''}
@@ -694,27 +654,28 @@ function renderTable(key, section) {
 
 function renderLog() {
   const box = $('#refhistory');
-  if (!historyKey) {
+  if (!historyOpen) {
     box.hidden = true; box.innerHTML = ''; return;
   }
-  const s = SPEC[historyKey];
-  const entries = s.replica
-    ? sync.log.map((e) => ({
-      at: e.at, who: e.manual ? `${USER} — вручную` : 'Синхронизация с ВМАП', text: e.text,
-    }))
-    : [...refState(s.key).log].sort((a, b) => b.at - a.at);
+  const entries = Object.values(VIEWS).flat().flatMap((key) => {
+    const s = SPEC[key];
+    if (s.replica) return sync.log.map((e) => ({
+      at: e.at, source: s.title, who: e.manual ? `${USER} — вручную` : 'Синхронизация с ВМАП', text: e.text,
+    }));
+    return refState(key).log.map((e) => ({ ...e, source: s.title }));
+  }).sort((a, b) => b.at - a.at);
 
   box.hidden = false;
   box.innerHTML = `<header class="refhistory__head">
-      <div><h3 id="historyTitle">${s.replica ? 'Журнал синхронизации' : 'История изменений'}</h3>
-      <span>${esc(s.title)}</span></div>
+      <div><h3 id="historyTitle">История изменений</h3>
+      <span>Все таблицы справочников</span></div>
       <button class="iconbtn iconbtn--lg" data-act="closeHistory" title="Закрыть историю" aria-label="Закрыть историю"><svg class="ic16"><use href="#i-close"/></svg></button>
     </header>${entries.length
     ? `<div class="log">${entries.map((e) => `
         <div class="log__i">
           <div class="log__at">${fmtDT(e.at)}</div>
           <div class="log__b">
-            <div class="log__who">${esc(e.who)}</div>
+            <div class="log__who">${esc(e.source)} · ${esc(e.who)}</div>
             <div class="log__t">${esc(e.text)}</div>
           </div>
         </div>`).join('')}</div>`
@@ -722,13 +683,10 @@ function renderLog() {
 }
 
 function updateHistoryButtons() {
-  document.querySelectorAll('[data-ref-section]').forEach((section) => {
-    const button = section.querySelector('[data-act="history"]');
-    if (!button) return;
-    const open = section.dataset.refSection === historyKey;
-    button.classList.toggle('is-on', open);
-    button.setAttribute('aria-expanded', String(open));
-  });
+  const button = $('#headActions [data-act="history"]');
+  if (!button) return;
+  button.classList.toggle('is-on', historyOpen);
+  button.setAttribute('aria-expanded', String(historyOpen));
 }
 
 /* ------------------------------ отрисовка: подвал ------------------------------ */
@@ -797,6 +755,7 @@ function renderPage() {
   $('#pageTitle').textContent = VIEW_TITLES[view];
   const sections = $('#refsections');
   sections.classList.toggle('refsections--wide', view === 'fields');
+  sections.classList.toggle('refsections--module', view === 'module');
   sections.innerHTML = VIEWS[view].map(sectionHtml).join('');
   VIEWS[view].forEach(renderSection);
   document.querySelectorAll('[data-refs-view]').forEach((link) => {
@@ -804,15 +763,17 @@ function renderPage() {
     link.classList.toggle('is-active', active);
     if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
   });
-  renderLog();
-
   /* Выгрузка нужна не «на всякий случай»: отступления от договора по статусам и
      нормативам согласуются составом значений, и приложением к протоколу
      согласования форм идут именно справочники (решения 6, 60, 64). */
   $('#headActions').innerHTML = `
-    <button class="btn" title="${prose(`Все справочники модуля одним файлом — приложение
-      к протоколу согласования форм`)}">
-      <svg class="ic16"><use href="#i-export"/></svg>Выгрузка для протокола</button>`;
+    <button class="iconbtn iconbtn--lg" data-act="history" aria-expanded="${historyOpen}" aria-controls="refhistory"
+      title="История изменений" aria-label="История изменений"><svg class="ic16"><use href="#i-history"/></svg></button>
+    <button class="iconbtn iconbtn--lg" title="${prose(`Выгрузка для протокола: все справочники модуля одним файлом — приложение
+      к протоколу согласования форм`)}" aria-label="Выгрузка для протокола">
+      <svg class="ic16"><use href="#i-export"/></svg></button>`;
+  updateHistoryButtons();
+  renderLog();
 }
 
 /* ------------------------------ история ------------------------------ */
@@ -849,7 +810,7 @@ function openForm(key, id, kind) {
 
 function refreshSection(key) {
   renderSection(key);
-  if (historyKey === key) renderLog();
+  if (historyOpen) renderLog();
 }
 
 function readForm() {
@@ -1142,14 +1103,13 @@ document.addEventListener('click', (e) => {
 
     if (act === 'add') { closePopover(); openForm(key, null); return; }
     if (act === 'history') {
-      historyReturnKey = historyKey === key ? null : key;
-      historyKey = historyKey === key ? null : key;
+      historyReturnEl = btn;
+      historyOpen = !historyOpen;
       updateHistoryButtons(); renderLog(); return;
     }
     if (act === 'closeHistory') {
-      historyKey = null; updateHistoryButtons(); renderLog();
-      if (historyReturnKey) document.querySelector(`[data-ref-section="${historyReturnKey}"] [data-act="history"]`)?.focus();
-      historyReturnKey = null; return;
+      historyOpen = false; updateHistoryButtons(); renderLog();
+      historyReturnEl?.focus(); historyReturnEl = null; return;
     }
     if (act === 'edit') { closePopover(); openForm(key, id); return; }
     if (act === 'code') { askCode(btn, key, id); return; }
@@ -1185,10 +1145,9 @@ document.addEventListener('change', (e) => {
 });
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && historyKey) {
-    historyKey = null; updateHistoryButtons(); renderLog();
-    if (historyReturnKey) document.querySelector(`[data-ref-section="${historyReturnKey}"] [data-act="history"]`)?.focus();
-    historyReturnKey = null; return;
+  if (e.key === 'Escape' && historyOpen) {
+    historyOpen = false; updateHistoryButtons(); renderLog();
+    historyReturnEl?.focus(); historyReturnEl = null; return;
   }
   if (e.key === 'Escape') { closePopover(); return; }
   /* Enter сохраняет однострочную форму: значение справочника — одно поле,
@@ -1201,7 +1160,7 @@ document.addEventListener('keydown', (e) => {
 /* ------------------------------ старт ------------------------------ */
 
 window.addEventListener('hashchange', () => {
-  form = null; formErr = ''; historyKey = null; closePopover(); renderPage();
+  form = null; formErr = ''; historyOpen = false; closePopover(); renderPage();
 });
 
 if (!location.hash) history.replaceState(null, '', '#module');
