@@ -435,6 +435,7 @@ let formErr = '';
 let newSeq = 0;
 let historyOpen = false;
 let historyReturnEl = null;
+let historySource = '';
 
 /* ------------------------------ отбор и сортировка ------------------------------ */
 
@@ -660,15 +661,20 @@ function renderLog() {
   const entries = Object.values(VIEWS).flat().flatMap((key) => {
     const s = SPEC[key];
     if (s.replica) return sync.log.map((e) => ({
-      at: e.at, source: s.title, who: e.manual ? `${USER} — вручную` : 'Синхронизация с ВМАП', text: e.text,
+      at: e.at, source: s.title, sourceKey: key,
+      who: e.manual ? `${USER} — вручную` : 'Синхронизация с ВМАП', text: e.text,
     }));
-    return refState(key).log.map((e) => ({ ...e, source: s.title }));
-  }).sort((a, b) => b.at - a.at);
+    return refState(key).log.map((e) => ({ ...e, source: s.title, sourceKey: key }));
+  }).filter((e) => !historySource || e.sourceKey === historySource)
+    .sort((a, b) => b.at - a.at);
+  const sourceOptions = Object.values(VIEWS).flat().map((key) =>
+    `<option value="${key}" ${historySource === key ? 'selected' : ''}>${esc(SPEC[key].title)}</option>`).join('');
 
   box.hidden = false;
   box.innerHTML = `<header class="refhistory__head">
       <div><h3 id="historyTitle">История изменений</h3>
-      <span>Все таблицы справочников</span></div>
+      <label class="history-filter"><span>Справочник</span><select class="inp" data-role="history-source" aria-label="Справочник в истории">
+        <option value="">Все справочники</option>${sourceOptions}</select></label></div>
       <button class="iconbtn iconbtn--lg" data-act="closeHistory" title="Закрыть историю" aria-label="Закрыть историю"><svg class="ic16"><use href="#i-close"/></svg></button>
     </header>${entries.length
     ? `<div class="log">${entries.map((e) => `
@@ -1136,6 +1142,11 @@ document.addEventListener('click', (e) => {
 });
 
 document.addEventListener('change', (e) => {
+  if (e.target.matches('[data-role="history-source"]')) {
+    historySource = e.target.value;
+    renderLog();
+    return;
+  }
   if (e.target.matches('[data-role="show-archived"]')) {
     const section = e.target.closest('[data-ref-section]');
     const key = section.dataset.refSection;

@@ -159,6 +159,12 @@
   font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
   color: var(--text-tertiary);
 }
+.history-filter { display: flex; flex-direction: column; gap: var(--item-gap-vertical-s); margin-top: var(--group-gap-s); }
+.history-filter > span {
+  font: var(--font-weight-subtitle) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-secondary);
+}
+.history-filter .inp { height: 28px; padding-top: 0; padding-bottom: 0; font-size: var(--font-size-text-small); }
 .refhistory .log { padding: var(--group-padding-m); }
 .refhistory .log__i { flex-direction: column; gap: var(--item-gap-vertical-s); }
 .refhistory .log__at { flex-basis: auto; }
