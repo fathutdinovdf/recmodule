@@ -1,0 +1,350 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - button "Уведомления" [ref=e4] [cursor=pointer]
+      - button "Помощь" [ref=e8] [cursor=pointer]
+      - generic [ref=e11]:
+        - generic [ref=e12]: ФД
+        - text: Фатхутдинов Д.Ф.
+  - generic [ref=e13]:
+    - navigation [ref=e14]:
+      - generic [ref=e15]: Работа
+      - link "Мои задачи 7" [ref=e16] [cursor=pointer]:
+        - /url: inbox.html
+        - generic [ref=e17]: Мои задачи
+        - generic [ref=e18]: "7"
+      - link "Реестр рекомендаций" [ref=e19] [cursor=pointer]:
+        - /url: index.html
+      - link "Заявки Заказчика 2" [ref=e21] [cursor=pointer]:
+        - /url: claims.html
+        - generic [ref=e22]: Заявки Заказчика
+        - generic [ref=e23]: "2"
+      - generic [ref=e24]: Эффект
+      - generic [ref=e25]: Окна эффекта
+      - generic [ref=e27]: Подтверждённые
+      - generic [ref=e29]: Настройка
+      - link "Справочники" [ref=e30] [cursor=pointer]:
+        - /url: refs.html
+      - link "Пользователи и роли" [ref=e32] [cursor=pointer]:
+        - /url: users.html
+      - link "Календарь и SLA" [ref=e34] [cursor=pointer]:
+        - /url: sla.html
+      - generic [ref=e36]: Отчёты и выгрузки
+    - main [ref=e38]:
+      - generic [ref=e39]:
+        - heading "Справочники" [level=1] [ref=e40]
+        - button "Выгрузка для протокола" [ref=e1081] [cursor=pointer]
+      - generic [ref=e45]:
+        - navigation [ref=e46]:
+          - generic [ref=e1084]: Справочники модуля
+          - generic [ref=e1085]: Значения правятся, добавляются и уходят в архив; каждое изменение попадает в историю справочника.
+          - generic [ref=e1086] [cursor=pointer]:
+            - generic [ref=e1087]: Направления
+            - generic [ref=e1088]: "6"
+          - generic [ref=e1089] [cursor=pointer]:
+            - generic [ref=e1090]: Рекомендуемые мероприятия
+            - generic [ref=e1091]: "7"
+          - generic [ref=e1092] [cursor=pointer]:
+            - generic [ref=e1093]: Причины отклонения
+            - generic [ref=e1094]: "6"
+          - generic [ref=e1095] [cursor=pointer]:
+            - generic [ref=e1096]: Приоритеты и нормативы
+            - generic [ref=e1097]: "3"
+          - generic [ref=e1098] [cursor=pointer]:
+            - generic [ref=e1099]: Параметры модуля
+            - generic [ref=e1100]: "3"
+          - generic [ref=e1101]: Системные справочники
+          - generic [ref=e1102]: За каждым значением стоят переходы статусов, права и расчёт норматива. Меняются вместе с логикой модуля.
+          - generic [ref=e1103] [cursor=pointer]:
+            - generic [ref=e1104]: Статусы
+            - generic [ref=e1105]: "10"
+          - generic [ref=e1106] [cursor=pointer]:
+            - generic [ref=e1107]: Решения Заказчика
+            - generic [ref=e1108]: "3"
+          - generic [ref=e1109] [cursor=pointer]:
+            - generic [ref=e1110]: Полнота реализации
+            - generic [ref=e1111]: "2"
+          - generic [ref=e1112]: Данные ВМАП
+          - generic [ref=e1113]: Приходят из ВМАП и обновляются синхронизацией. В модуле не редактируются.
+          - generic [ref=e1114] [cursor=pointer]:
+            - generic [ref=e1115]: Месторождения
+            - generic [ref=e1116]: "18"
+          - generic [ref=e1117]: Экономическая модель
+          - generic [ref=e1118]: "Ставки, из которых считается эффект мероприятия. Правка действует вперёд: расчёты, уже вошедшие в акт, не пересчитываются."
+          - generic [ref=e1119] [cursor=pointer]:
+            - generic [ref=e1120]: Ставки по месторождениям
+            - generic [ref=e1121]: "18"
+          - generic [ref=e1122] [cursor=pointer]:
+            - generic [ref=e1123]: Пласты и ставки НДПИ
+            - generic [ref=e1124]: "28"
+        - generic [ref=e88]:
+          - generic [ref=e89]:
+            - generic [ref=e1125]:
+              - heading "Ставки по месторождениям" [level=2] [ref=e1126]
+              - generic [ref=e1127]: редактируемый
+            - generic [ref=e1128]: "Из этих ставок собирается эффект мероприятия: выручка минус НДПИ минус энергетика и реагенты. Разрез — месторождение ВМАП; там, где в модели Заказчика месторождение не разрезано по цехам, значения у соседних узлов совпадают."
+            - generic [ref=e1129]:
+              - generic [ref=e1130]: 18 месторождений, заполнено 17
+              - generic [ref=e1131]: "·Цена нефти: факт 23 222,02 руб/т, МСУ 27 885,93 руб/т"
+              - generic [ref=e1132]: "·Коэффициент эксплуатации: 0.98"
+              - generic [ref=e1133]: "·Изменений в истории: 1"
+          - table [ref=e107]:
+            - rowgroup [ref=e112]:
+              - row [ref=e1145]:
+                - columnheader "Месторождение" [ref=e1146]:
+                  - generic "Месторождение — сортировать" [ref=e1148] [cursor=pointer]: Месторождение
+                - columnheader "Подъём" [ref=e1150]:
+                  - generic "Электроэнергия на подъём жидкости, руб/т жидкости. У фонтанной скважины статья нулевая" [ref=e1152] [cursor=pointer]: Подъём
+                - columnheader "ППД" [ref=e1154]:
+                  - generic "Электроэнергия на поддержание пластового давления, руб/т жидкости" [ref=e1156] [cursor=pointer]: ППД
+                - columnheader "Транспорт" [ref=e1158]:
+                  - generic "Электроэнергия на транспорт жидкости, руб/т жидкости" [ref=e1160] [cursor=pointer]: Транспорт
+                - columnheader "Подготовка" [ref=e1162]:
+                  - generic "Электроэнергия на подготовку нефти, руб/т нефти" [ref=e1164] [cursor=pointer]: Подготовка
+                - columnheader "Реагенты" [ref=e1166]:
+                  - generic "Деэмульгаторы, руб/т нефти" [ref=e1168] [cursor=pointer]: Реагенты
+                - columnheader "Обслуживание ЭЦН" [ref=e1170]:
+                  - generic "Услуги ЭПУ-сервис, тыс. руб/год на скважину с ЭЦН" [ref=e1172] [cursor=pointer]: Обслуживание ЭЦН
+                - columnheader "Обслуживание ШГН" [ref=e1174]:
+                  - generic "Услуги НПО, тыс. руб/год на скважину с ШГН" [ref=e1176] [cursor=pointer]: Обслуживание ШГН
+                - columnheader "Обслуживание ЭВН" [ref=e1178]:
+                  - generic "Тыс. руб/год на скважину с электровинтовым насосом. В модели Заказчика ставки для ЭВН нет — заполняется отдельно" [ref=e1180] [cursor=pointer]: Обслуживание ЭВН
+                - columnheader "Темп падения" [ref=e1182]:
+                  - generic "Годовой темп падения дебита нефти, % в год" [ref=e1184] [cursor=pointer]: Темп падения
+                - columnheader [ref=e1186]
+            - rowgroup [ref=e123]:
+              - row [ref=e1187]:
+                - cell "Восточно-Икилорское" [ref=e1188]
+                - cell "57,98" [ref=e1190]
+                - cell "8,55" [ref=e1191]
+                - cell "28,61" [ref=e1192]
+                - cell "28,27" [ref=e1193]
+                - cell "7,43" [ref=e1194]
+                - cell "1 030,25" [ref=e1195]
+                - cell "1 060,37" [ref=e1196]
+                - cell "не задано" [ref=e1197]
+                - cell "32,32" [ref=e1198]
+                - cell [ref=e1199]:
+                  - button "Изменить" [ref=e1201] [cursor=pointer]
+              - row [ref=e1204]:
+                - cell "Восточно-Придорожное" [ref=e1205]
+                - cell "48,01" [ref=e1207]
+                - cell "37,56" [ref=e1208]
+                - cell "23,99" [ref=e1209]
+                - cell "63,07" [ref=e1210]
+                - cell "6,08" [ref=e1211]
+                - cell "1 030,25" [ref=e1212]
+                - cell "1 060,37" [ref=e1213]
+                - cell "не задано" [ref=e1214]
+                - cell "-126,9" [ref=e1215]
+                - cell [ref=e1216]:
+                  - button "Изменить" [ref=e1218] [cursor=pointer]
+              - row [ref=e1221]:
+                - cell "Грибное" [ref=e1222]
+                - cell "49,93" [ref=e1224]
+                - cell "35,3" [ref=e1225]
+                - cell "6,92" [ref=e1226]
+                - cell "6,46" [ref=e1227]
+                - cell "8,3" [ref=e1228]
+                - cell "1 030,25" [ref=e1229]
+                - cell "1 060,37" [ref=e1230]
+                - cell "не задано" [ref=e1231]
+                - cell "99,96" [ref=e1232]
+                - cell [ref=e1233]:
+                  - button "Изменить" [ref=e1235] [cursor=pointer]
+              - row [ref=e1238]:
+                - cell "Дружное (Кумалиягунское и Танеевское)" [ref=e1239]
+                - cell "39,16" [ref=e1241]
+                - cell "42,9" [ref=e1242]
+                - cell "21,73" [ref=e1243]
+                - cell "48,56" [ref=e1244]
+                - cell "5,6" [ref=e1245]
+                - cell "1 030,25" [ref=e1246]
+                - cell "1 060,37" [ref=e1247]
+                - cell "не задано" [ref=e1248]
+                - cell "40,92" [ref=e1249]
+                - cell [ref=e1250]:
+                  - button "Изменить" [ref=e1252] [cursor=pointer]
+              - row [ref=e1255]:
+                - cell "Западно-Икилорское-обнова" [ref=e1256]
+                - cell "53,86" [ref=e1258]
+                - cell "19,68" [ref=e1259]
+                - cell "18,32" [ref=e1260]
+                - cell "28,47" [ref=e1261]
+                - cell "7,37" [ref=e1262]
+                - cell "1 030,25" [ref=e1263]
+                - cell "1 060,37" [ref=e1264]
+                - cell "не задано" [ref=e1265]
+                - cell "44,36" [ref=e1266]
+                - cell [ref=e1267]:
+                  - button "Изменить" [ref=e1269] [cursor=pointer]
+              - row [ref=e1272]:
+                - cell "Кустовое (Видное и Восточно-Ягунское) / ЦДНГ-2 (Я)" [ref=e1273]
+                - cell "50,27" [ref=e1275]
+                - cell "30,61" [ref=e1276]
+                - cell "7,4" [ref=e1277]
+                - cell "20,94" [ref=e1278]
+                - cell "8,45" [ref=e1279]
+                - cell "1 030,25" [ref=e1280]
+                - cell "1 060,37" [ref=e1281]
+                - cell "не задано" [ref=e1282]
+                - cell "11,97" [ref=e1283]
+                - cell [ref=e1284]:
+                  - button "Изменить" [ref=e1286] [cursor=pointer]
+              - row [ref=e1289]:
+                - cell "Кустовое (Видное и Восточно-Ягунское) / ЦДНГ-7 (Я)" [ref=e1290]
+                - cell "50,27" [ref=e1292]
+                - cell "30,61" [ref=e1293]
+                - cell "7,4" [ref=e1294]
+                - cell "20,94" [ref=e1295]
+                - cell "8,45" [ref=e1296]
+                - cell "1 030,25" [ref=e1297]
+                - cell "1 060,37" [ref=e1298]
+                - cell "не задано" [ref=e1299]
+                - cell "11,97" [ref=e1300]
+                - cell [ref=e1301]:
+                  - button "Изменить" [ref=e1303] [cursor=pointer]
+              - row [ref=e1306]:
+                - cell "Новоортьягунское" [ref=e1307]
+                - cell "495,8" [ref=e1309]
+                - cell "0" [ref=e1310]
+                - cell "32,44" [ref=e1311]
+                - cell "48,46" [ref=e1312]
+                - cell "5,57" [ref=e1313]
+                - cell "1 030,25" [ref=e1314]
+                - cell "1 060,37" [ref=e1315]
+                - cell "не задано" [ref=e1316]
+                - cell "27,93" [ref=e1317]
+                - cell [ref=e1318]:
+                  - button "Изменить" [ref=e1320] [cursor=pointer]
+              - row [ref=e1323]:
+                - cell "Равенское" [ref=e1324]
+                - cell "49,08" [ref=e1326]
+                - cell "4,51" [ref=e1327]
+                - cell "108,54" [ref=e1328]
+                - cell "101,04" [ref=e1329]
+                - cell "6,13" [ref=e1330]
+                - cell "1 030,25" [ref=e1331]
+                - cell "1 060,37" [ref=e1332]
+                - cell "не задано" [ref=e1333]
+                - cell "-159,11" [ref=e1334]
+                - cell [ref=e1335]:
+                  - button "Изменить" [ref=e1337] [cursor=pointer]
+              - row [ref=e1340]:
+                - cell "Разведочные площади" [ref=e1341]
+                - cell "не задано" [ref=e1343]
+                - cell "не задано" [ref=e1344]
+                - cell "не задано" [ref=e1345]
+                - cell "не задано" [ref=e1346]
+                - cell "не задано" [ref=e1347]
+                - cell "не задано" [ref=e1348]
+                - cell "не задано" [ref=e1349]
+                - cell "не задано" [ref=e1350]
+                - cell "не задано" [ref=e1351]
+                - cell [ref=e1352]:
+                  - button "Изменить" [ref=e1354] [cursor=pointer]
+              - row [ref=e1357]:
+                - cell "Свободное" [ref=e1358]
+                - cell "56,33" [ref=e1360]
+                - cell "207,99" [ref=e1361]
+                - cell "524,88" [ref=e1362]
+                - cell "23,16" [ref=e1363]
+                - cell "2,8" [ref=e1364]
+                - cell "1 030,25" [ref=e1365]
+                - cell "1 060,37" [ref=e1366]
+                - cell "не задано" [ref=e1367]
+                - cell "27,11" [ref=e1368]
+                - cell [ref=e1369]:
+                  - button "Изменить" [ref=e1371] [cursor=pointer]
+              - row [ref=e1374]:
+                - cell "Северо-Ягунское" [ref=e1375]
+                - cell "49,93" [ref=e1377]
+                - cell "35,3" [ref=e1378]
+                - cell "6,92" [ref=e1379]
+                - cell "6,46" [ref=e1380]
+                - cell "8,3" [ref=e1381]
+                - cell "1 030,25" [ref=e1382]
+                - cell "1 060,37" [ref=e1383]
+                - cell "не задано" [ref=e1384]
+                - cell "29,14" [ref=e1385]
+                - cell [ref=e1386]:
+                  - button "Изменить" [ref=e1388] [cursor=pointer]
+              - row [ref=e1391]:
+                - cell "Тевлинско-Русскинское" [ref=e1392]
+                - cell "41,23" [ref=e1394]
+                - cell "19,68" [ref=e1395]
+                - cell "10,56" [ref=e1396]
+                - cell "71,87" [ref=e1397]
+                - cell "12,63" [ref=e1398]
+                - cell "1 030,25" [ref=e1399]
+                - cell "1 060,37" [ref=e1400]
+                - cell "не задано" [ref=e1401]
+                - cell "7,43" [ref=e1402]
+                - cell [ref=e1403]:
+                  - button "Изменить" [ref=e1405] [cursor=pointer]
+              - row [ref=e1408]:
+                - cell "Южно-Ягунское / ЦДНГ-1 (Я)" [ref=e1409]
+                - cell "49,93" [ref=e1411]
+                - cell "35,3" [ref=e1412]
+                - cell "6,92" [ref=e1413]
+                - cell "6,46" [ref=e1414]
+                - cell "8,3" [ref=e1415]
+                - cell "1 030,25" [ref=e1416]
+                - cell "1 060,37" [ref=e1417]
+                - cell "не задано" [ref=e1418]
+                - cell "20,61" [ref=e1419]
+                - cell [ref=e1420]:
+                  - button "Изменить" [ref=e1422] [cursor=pointer]
+              - row [ref=e1425]:
+                - cell "Южно-Ягунское / ЦДНГ-2 (Я)" [ref=e1426]
+                - cell "49,93" [ref=e1428]
+                - cell "35,3" [ref=e1429]
+                - cell "6,92" [ref=e1430]
+                - cell "6,46" [ref=e1431]
+                - cell "8,3" [ref=e1432]
+                - cell "1 030,25" [ref=e1433]
+                - cell "1 060,37" [ref=e1434]
+                - cell "не задано" [ref=e1435]
+                - cell "20,61" [ref=e1436]
+                - cell [ref=e1437]:
+                  - button "Изменить" [ref=e1439] [cursor=pointer]
+              - row [ref=e1442]:
+                - cell "Южно-Ягунское / ЦДНГ-3 (Я)" [ref=e1443]
+                - cell "49,93" [ref=e1445]
+                - cell "35,3" [ref=e1446]
+                - cell "6,92" [ref=e1447]
+                - cell "6,46" [ref=e1448]
+                - cell "8,3" [ref=e1449]
+                - cell "1 030,25" [ref=e1450]
+                - cell "1 060,37" [ref=e1451]
+                - cell "не задано" [ref=e1452]
+                - cell "20,61" [ref=e1453]
+                - cell [ref=e1454]:
+                  - button "Изменить" [ref=e1456] [cursor=pointer]
+              - row [ref=e1459]:
+                - cell "Южно-Ягунское / ЦДНГ-4 (Я)" [ref=e1460]
+                - cell "49,93" [ref=e1462]
+                - cell "35,3" [ref=e1463]
+                - cell "6,92" [ref=e1464]
+                - cell "6,46" [ref=e1465]
+                - cell "8,3" [ref=e1466]
+                - cell "1 030,25" [ref=e1467]
+                - cell "1 060,37" [ref=e1468]
+                - cell "не задано" [ref=e1469]
+                - cell "20,61" [ref=e1470]
+                - cell [ref=e1471]:
+                  - button "Изменить" [ref=e1473] [cursor=pointer]
+              - row [ref=e1476]:
+                - cell "Яркое" [ref=e1477]
+                - cell "51,56" [ref=e1479]
+                - cell "3,26" [ref=e1480]
+                - cell "91,4" [ref=e1481]
+                - cell "48,56" [ref=e1482]
+                - cell "5,6" [ref=e1483]
+                - cell "1 030,25" [ref=e1484]
+                - cell "1 060,37" [ref=e1485]
+                - cell "не задано" [ref=e1486]
+                - cell "22,93" [ref=e1487]
+                - cell [ref=e1488]:
+                  - button "Изменить" [ref=e1490] [cursor=pointer]
+          - generic [ref=e208]: 18 значений

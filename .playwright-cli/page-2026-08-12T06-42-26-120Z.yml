@@ -1,0 +1,103 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - button "Уведомления" [ref=e4] [cursor=pointer]
+      - button "Помощь" [ref=e8] [cursor=pointer]
+      - generic [ref=e11]:
+        - generic [ref=e12]: ФД
+        - text: Фатхутдинов Д.Ф.
+  - generic [ref=e13]:
+    - navigation [ref=e14]:
+      - generic [ref=e15]: Работа
+      - link "Мои задачи 7" [ref=e16] [cursor=pointer]:
+        - /url: inbox.html
+        - generic [ref=e17]: Мои задачи
+        - generic [ref=e18]: "7"
+      - link "Реестр рекомендаций" [ref=e19] [cursor=pointer]:
+        - /url: index.html
+      - link "Заявки Заказчика 2" [ref=e21] [cursor=pointer]:
+        - /url: claims.html
+        - generic [ref=e22]: Заявки Заказчика
+        - generic [ref=e23]: "2"
+      - generic [ref=e24]: Эффект
+      - generic [ref=e25]: Окна эффекта
+      - generic [ref=e27]: Подтверждённые
+      - generic [ref=e29]: Настройка
+      - link "Справочники" [ref=e30] [cursor=pointer]:
+        - /url: refs.html
+      - link "Пользователи и роли" [ref=e32] [cursor=pointer]:
+        - /url: users.html
+      - link "Календарь и SLA" [ref=e34] [cursor=pointer]:
+        - /url: sla.html
+      - generic [ref=e36]: Отчёты и выгрузки
+    - main [ref=e38]:
+      - generic [ref=e39]:
+        - heading "Справочники" [level=1] [ref=e40]
+        - button "Выгрузка для протокола" [ref=e1653] [cursor=pointer]
+      - generic [ref=e45]:
+        - navigation [ref=e46]:
+          - generic [ref=e1656]: Справочники модуля
+          - generic [ref=e1657]: Значения правятся, добавляются и уходят в архив; каждое изменение попадает в историю справочника.
+          - generic [ref=e1658] [cursor=pointer]:
+            - generic [ref=e1659]: Направления
+            - generic [ref=e1660]: "6"
+          - generic [ref=e1661] [cursor=pointer]:
+            - generic [ref=e1662]: Рекомендуемые мероприятия
+            - generic [ref=e1663]: "7"
+          - generic [ref=e1664] [cursor=pointer]:
+            - generic [ref=e1665]: Причины отклонения
+            - generic [ref=e1666]: "6"
+          - generic [ref=e1667] [cursor=pointer]:
+            - generic [ref=e1668]: Приоритеты и нормативы
+            - generic [ref=e1669]: "3"
+          - generic [ref=e1670] [cursor=pointer]:
+            - generic [ref=e1671]: Параметры модуля
+            - generic [ref=e1672]: "3"
+          - generic [ref=e1673]: Системные справочники
+          - generic [ref=e1674]: За каждым значением стоят переходы статусов, права и расчёт норматива. Меняются вместе с логикой модуля.
+          - generic [ref=e1675] [cursor=pointer]:
+            - generic [ref=e1676]: Статусы
+            - generic [ref=e1677]: "10"
+          - generic [ref=e1678] [cursor=pointer]:
+            - generic [ref=e1679]: Решения Заказчика
+            - generic [ref=e1680]: "3"
+          - generic [ref=e1681] [cursor=pointer]:
+            - generic [ref=e1682]: Полнота реализации
+            - generic [ref=e1683]: "2"
+          - generic [ref=e1684]: Данные ВМАП
+          - generic [ref=e1685]: Приходят из ВМАП и обновляются синхронизацией. В модуле не редактируются.
+          - generic [ref=e1686] [cursor=pointer]:
+            - generic [ref=e1687]: Месторождения
+            - generic [ref=e1688]: "18"
+          - generic [ref=e1689]: Экономическая модель
+          - generic [ref=e1690]: "Ставки, из которых считается эффект мероприятия. Правка действует вперёд: расчёты, уже вошедшие в акт, не пересчитываются."
+          - generic [ref=e1691] [cursor=pointer]:
+            - generic [ref=e1692]: Ставки по месторождениям
+            - generic [ref=e1693]: "18"
+          - generic [ref=e1694] [cursor=pointer]:
+            - generic [ref=e1695]: Пласты и ставки НДПИ
+            - generic [ref=e1696]: "28"
+        - generic [ref=e88]:
+          - generic [ref=e89]:
+            - generic [ref=e1697]:
+              - heading "Направления" [level=2] [ref=e1698]
+              - generic [ref=e1699]: редактируемый
+              - generic [ref=e1701]:
+                - button "Значения" [ref=e1702] [cursor=pointer]
+                - button "История изменений" [ref=e1703] [cursor=pointer]
+            - generic [ref=e1704]: Направление задаёт, к какому виду работ относится рекомендация. Обязательное поле мастера, колонка и фильтр реестра, разрез отчётности по договору.
+            - generic [ref=e1705]:
+              - generic [ref=e1706]: 6 значений
+              - generic [ref=e1707]: "·Используется в рекомендациях: 6 из 6"
+              - generic [ref=e1708]: "·Изменений в истории: 2"
+          - generic [ref=e1710]:
+            - generic [ref=e1711]:
+              - generic [ref=e1712]: 12.06.2026 10:14
+              - generic [ref=e1713]:
+                - generic [ref=e1714]: Фатхутдинов Д.Ф.
+                - generic [ref=e1715]: Добавлено значение «Сопровождение осложненного фонда скважин».
+            - generic [ref=e1716]:
+              - generic [ref=e1717]: 05.06.2026 15:02
+              - generic [ref=e1718]:
+                - generic [ref=e1719]: Фатхутдинов Д.Ф.
+                - generic [ref=e1720]: Справочник заведён из листа «Справочники» Формы 2 — шесть значений.

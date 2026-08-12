@@ -105,9 +105,9 @@ function shownValue(value) {
 
 function parseValue(scope, field, raw) {
   if (field === 'regime') {
-    return ['ДНС', 'НДД'].includes(raw)
+    return ['НДПИ', 'НДД'].includes(raw)
       ? { value: raw, error: '' }
-      : { value: null, error: 'Выберите ДНС или НДД.' };
+      : { value: null, error: 'Выберите НДПИ или НДД.' };
   }
 
   const spec = fieldSpec(scope, field);
@@ -186,7 +186,7 @@ function renderNdpi() {
         <td class="cell-plast"><div class="clip1" title="${esc(item.plast)}">${esc(item.plast)}</div></td>
         <td class="econcell cell-regime ${dirty.has(regimeKey) ? 'is-dirty' : ''}" data-cell-key="${regimeKey}">
           <select class="econinput" data-scope="ndpi" data-row="${row}" data-field="regime" aria-label="Налоговый режим: ${esc(item.field)}, ${esc(item.plast)}" ${CAN_EDIT ? '' : 'disabled'}>
-            ${['ДНС', 'НДД'].map((v) => `<option ${valueFor('ndpi', row, 'regime') === v ? 'selected' : ''}>${v}</option>`).join('')}
+            ${['НДПИ', 'НДД'].map((v) => `<option ${valueFor('ndpi', row, 'regime') === v ? 'selected' : ''}>${v}</option>`).join('')}
           </select></td>
         ${NDPI_FIELDS.map((f) => inputHtml('ndpi', row, f.key, `${f.full}: ${item.field}, ${item.plast}`)).join('')}</tr>`;
     }).join('')}</tbody></table></div>`;
