@@ -8,7 +8,7 @@
      2. Системные справочники   — перечисления, за которыми стоят переходы
                                   статусов, права и расчёт норматива; правка
                                   такого списка — правка логики, а не данных.
-     3. Данные ВМАП             — источник истины вне модуля, синхронизация
+     3. Месторождения           — источник истины вне модуля, синхронизация
                                   раз в 15 минут, редактировать нечего.
 
    Класс показывается тегом у названия и объяснён один раз в списке слева, а не
@@ -222,17 +222,13 @@ const COL_USE = {
   },
 };
 
+/* На странице месторождений число относится не к техническому использованию
+   строки справочника, а непосредственно к рекомендациям по объекту. */
+const COL_RECOMMENDATIONS = { ...COL_USE, label: 'Рекомендаций' };
+
 const COL_ACT = { key: 'act', label: '', w: 92, render: (it, s) => actCell(it, s) };
 
 /* ------------------------------ справочники ------------------------------ */
-
-/* Названия групп деловые: «наши» и «зашито в модуль» звучали разговорно, а
-   экран открывают обе стороны договора (решение 84). */
-const GROUPS = [
-  { key: 'own', title: 'Справочники модуля' },
-  { key: 'fixed', title: 'Системные справочники' },
-  { key: 'replica', title: 'Данные ВМАП' },
-];
 
 const SPECS = [
   {
@@ -425,7 +421,7 @@ const SPECS = [
       },
       { key: 'kusts', label: 'Кустов', w: 84, right: true, render: (it) => numCell(it.kusts) },
       { key: 'wells', label: 'Скважин', w: 88, right: true, render: (it) => numCell(it.wells) },
-      COL_USE,
+      COL_RECOMMENDATIONS,
       { key: 'act', label: '', w: 52, render: (it, s) => actCell(it, s) },
     ],
   },
@@ -453,12 +449,28 @@ function refState(key) {
   return store[key];
 }
 
-let current = 'directions';
+const VIEWS = {
+  module: ['directions', 'actions', 'reasons', 'priorities', 'params'],
+  system: ['statuses', 'decisions', 'completeness'],
+  fields: ['fields'],
+};
+const VIEW_TITLES = {
+  module: 'Справочники модуля',
+  system: 'Системные справочники',
+  fields: 'Месторождения',
+};
+
+function viewFromHash() {
+  const key = location.hash.slice(1).split('/')[0];
+  return VIEWS[key] ? key : 'module';
+}
+
+let view = viewFromHash();
 let form = null;         // { key, id, mode, values } — раскрытая форма правки
 let formErr = '';
 let newSeq = 0;
-let historyOpen = false;
-const collapsedGroups = new Set();
+let historyKey = null;
+let historyReturnKey = null;
 
 /* ------------------------------ отбор и сортировка ------------------------------ */
 
@@ -491,44 +503,20 @@ function visibleRows(s) {
   return rows;
 }
 
-/* ------------------------------ отрисовка: навигация ------------------------------ */
-
-function renderNav() {
-  const html = GROUPS.map((g) => {
-    const items = SPECS.filter((s) => s.group === g.key);
-    if (!items.length) return '';
-    const collapsed = collapsedGroups.has(g.key);
-    return `<section class="reflist__group"><button class="reflist__section ${collapsed ? 'is-collapsed' : ''}" data-group="${g.key}"
-        aria-expanded="${!collapsed}" aria-controls="refgroup-${g.key}"><span>${g.title}</span>
-        <svg class="ic16 reflist__caret"><use href="#i-caret"/></svg></button>
-      <div class="reflist__items" id="refgroup-${g.key}" ${collapsed ? 'hidden' : ''}>${items.map((s) => {
-        const n = s.stub ? null : refState(s.key).items.filter((it) => !it.archived).length;
-        return `<button class="navitem ${s.key === current ? 'is-active' : ''}" type="button"
-          data-ref="${s.key}" ${s.key === current ? 'aria-current="page"' : ''}>
-          <span class="navitem__label">${s.nav}</span>
-          ${n === null ? '' : `<span class="badge">${n}</span>`}</button>`;
-      }).join('')}</div></section>`;
-  }).join('');
-  $('#reflist').innerHTML = html;
-}
-
 /* ------------------------------ отрисовка: шапка ------------------------------ */
 
-function renderHead() {
-  const s = SPEC[current];
+function headHtml(key) {
+  const s = SPEC[key];
   const hasLog = !s.stub && (s.group === 'own' || s.replica);
-
-  $('#refhead').innerHTML = `
-    <div class="refhead__top">
-      <h2 class="refhead__t">${s.title}</h2>
-      <div class="refhead__act">
-        ${hasLog ? `<button class="btn ${historyOpen ? 'is-on' : ''}" data-act="history">
+  return `<h2 class="refsection__title" id="ref-title-${key}">${s.title}</h2>
+      <div class="refsection__actions">
+        ${hasLog ? `<button class="btn ${historyKey === key ? 'is-on' : ''}" data-act="history"
+          aria-expanded="${historyKey === key}" aria-controls="refhistory">
           <svg class="ic16"><use href="#i-history"/></svg>${s.replica ? 'Журнал синхронизации' : 'История изменений'}</button>` : ''}
         ${s.replica ? `<button class="btn" data-act="sync"><svg class="ic16"><use href="#i-sync"/></svg>Синхронизировать сейчас</button>` : ''}
         ${s.group === 'own' && s.addLabel
           ? `<button class="btn btn--accent" data-act="add"><svg class="ic16"><use href="#i-plus"/></svg>${s.addLabel}</button>` : ''}
-      </div>
-    </div>`;
+      </div>`;
 }
 
 /* ------------------------------ отрисовка: форма ------------------------------ */
@@ -623,9 +611,9 @@ function formHtml() {
   </div>`;
 }
 
-function renderForm() {
-  const box = $('#refform');
-  if (!form || form.key !== current) { box.hidden = true; box.innerHTML = ''; return; }
+function renderForm(key, section) {
+  const box = section.querySelector('[data-role="form"]');
+  if (!form || form.key !== key) { box.hidden = true; box.innerHTML = ''; return; }
   box.hidden = false;
   box.innerHTML = formHtml();
 }
@@ -659,20 +647,20 @@ function actCell(it, s) {
   </div>`;
 }
 
-function renderTable() {
-  const s = SPEC[current];
+function renderTable(key, section) {
+  const s = SPEC[key];
   const st = refState(s.key);
   const rows = visibleRows(s);
+  const table = section.querySelector('table');
+  const cg = table.querySelector('colgroup');
+  const thead = table.querySelector('thead');
+  const tbody = table.querySelector('tbody');
 
-  /* У большинства справочников колонок мало, и таблица занимает всю ширину
-     панели. У ставок их одиннадцать: там ширина набирается из колонок, а
-     панель прокручивается вбок, первая колонка при этом закреплена. */
-  $('#tbl').style.width = s.wide ? 'max-content' : '100%';
-  $('#tablewrap').classList.toggle('tablewrap--wide', !!s.wide);
-  $('#cg').innerHTML = s.cols.map((c) =>
+  table.style.width = '100%';
+  cg.innerHTML = s.cols.map((c) =>
     `<col${c.w ? ` style="width:${c.w}px"` : ''}>`).join('');
 
-  $('#thead').innerHTML = '<tr>' + s.cols.map((c) => {
+  thead.innerHTML = '<tr>' + s.cols.map((c) => {
     const sort = st.ui.sort;
     const on = sort && sort.key === c.key;
     const filterOn = st.ui.filters[c.key] && st.ui.filters[c.key].size;
@@ -690,12 +678,12 @@ function renderTable() {
   }).join('') + '</tr>';
 
   if (!rows.length) {
-    $('#tbody').innerHTML = `<tr><td colspan="${s.cols.length}" class="empty">
+    tbody.innerHTML = `<tr><td colspan="${s.cols.length}" class="empty">
       Ничего не найдено. Снимите фильтр.</td></tr>`;
     return;
   }
 
-  $('#tbody').innerHTML = rows.map((it) => `
+  tbody.innerHTML = rows.map((it) => `
     <tr class="${it.archived ? 'row-muted' : ''}">${s.cols.map((c) => `
       <td class="${c.right ? 'cell-use' : ''}">${c.render(it, s)}${
         c.key === 'name' && it.archived ? ' <span class="tag tag--default">в архиве</span>' : ''}</td>`).join('')}
@@ -705,11 +693,11 @@ function renderTable() {
 /* ------------------------------ отрисовка: история ------------------------------ */
 
 function renderLog() {
-  const s = SPEC[current];
   const box = $('#refhistory');
-  if (!historyOpen || s.stub || (s.group !== 'own' && !s.replica)) {
+  if (!historyKey) {
     box.hidden = true; box.innerHTML = ''; return;
   }
+  const s = SPEC[historyKey];
   const entries = s.replica
     ? sync.log.map((e) => ({
       at: e.at, who: e.manual ? `${USER} — вручную` : 'Синхронизация с ВМАП', text: e.text,
@@ -733,11 +721,21 @@ function renderLog() {
     : '<div class="empty">Записей нет.</div>'}`;
 }
 
+function updateHistoryButtons() {
+  document.querySelectorAll('[data-ref-section]').forEach((section) => {
+    const button = section.querySelector('[data-act="history"]');
+    if (!button) return;
+    const open = section.dataset.refSection === historyKey;
+    button.classList.toggle('is-on', open);
+    button.setAttribute('aria-expanded', String(open));
+  });
+}
+
 /* ------------------------------ отрисовка: подвал ------------------------------ */
 
-function renderPager() {
-  const s = SPEC[current];
-  const box = $('#pager');
+function renderPager(key, section) {
+  const s = SPEC[key];
+  const box = section.querySelector('[data-role="pager"]');
   if (s.stub) { box.hidden = true; return; }
   box.hidden = false;
 
@@ -749,7 +747,7 @@ function renderPager() {
   const controls = `
     ${anyFilter ? '<button class="btn btn--ghost btn--small" data-act="resetFilters">Сбросить фильтры</button>' : ''}
     ${s.group === 'own' && !s.rowActs ? `<label class="pager__sw">
-      <input type="checkbox" id="swArch" ${st.ui.showArchived ? 'checked' : ''}>
+      <input type="checkbox" data-role="show-archived" ${st.ui.showArchived ? 'checked' : ''}>
       Показывать архивные${arch ? ` (${arch})` : ''}</label>` : ''}`;
   box.hidden = !controls.trim();
   box.innerHTML = controls;
@@ -757,9 +755,9 @@ function renderPager() {
 
 /* ------------------------------ отрисовка: заглушка ------------------------------ */
 
-function renderStub() {
-  const s = SPEC[current];
-  const box = $('#refstub');
+function renderStub(key, section) {
+  const s = SPEC[key];
+  const box = section.querySelector('[data-role="stub"]');
   if (!s.stub) { box.hidden = true; return; }
   box.hidden = false;
   box.innerHTML = `<h3>${s.stub.h}</h3>
@@ -767,18 +765,46 @@ function renderStub() {
     <button class="btn">Перейти в «Пользователи и роли»</button>`;
 }
 
-/* ------------------------------ общая отрисовка ------------------------------ */
+/* Каждая таблица получает собственный DOM-контекст: одинаковые секции нельзя
+   собирать из глобальных id, иначе действие во второй таблице обновит первую. */
+function sectionHtml(key) {
+  return `<section class="panel refsection" data-ref-section="${key}" aria-labelledby="ref-title-${key}">
+    <header class="refsection__head">${headHtml(key)}</header>
+    <div class="refsection__body">
+      <div class="refform" data-role="form" hidden></div>
+      <div class="refsection__tablewrap" data-role="tablewrap"><table class="tbl" aria-labelledby="ref-title-${key}">
+        <colgroup></colgroup><thead></thead><tbody></tbody></table></div>
+      <div class="refstub" data-role="stub" hidden></div>
+    </div>
+    <footer class="pager" data-role="pager"></footer>
+  </section>`;
+}
 
-function render() {
-  const s = SPEC[current];
-  renderNav();
-  renderHead();
-  renderForm();
-  renderStub();
-  $('#tablewrap').hidden = !!s.stub;
-  if (!s.stub) renderTable();
+function renderSection(key) {
+  const section = document.querySelector(`[data-ref-section="${key}"]`);
+  if (!section) return;
+  const s = SPEC[key];
+  section.querySelector('.refsection__head').innerHTML = headHtml(key);
+  renderForm(key, section);
+  renderStub(key, section);
+  section.querySelector('[data-role="tablewrap"]').hidden = !!s.stub;
+  if (!s.stub) renderTable(key, section);
+  renderPager(key, section);
+}
+
+function renderPage() {
+  view = viewFromHash();
+  $('#pageTitle').textContent = VIEW_TITLES[view];
+  const sections = $('#refsections');
+  sections.classList.toggle('refsections--wide', view === 'fields');
+  sections.innerHTML = VIEWS[view].map(sectionHtml).join('');
+  VIEWS[view].forEach(renderSection);
+  document.querySelectorAll('[data-refs-view]').forEach((link) => {
+    const active = link.dataset.refsView === view;
+    link.classList.toggle('is-active', active);
+    if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
+  });
   renderLog();
-  renderPager();
 
   /* Выгрузка нужна не «на всякий случай»: отступления от договора по статусам и
      нормативам согласуются составом значений, и приложением к протоколу
@@ -798,6 +824,7 @@ function log(key, text) {
 /* ------------------------------ действия над значениями ------------------------------ */
 
 function openForm(key, id, kind) {
+  const previousKey = form && form.key;
   const s = SPEC[key];
   const st = refState(key);
   const item = id ? st.items.find((it) => it.id === id) : null;
@@ -814,9 +841,15 @@ function openForm(key, id, kind) {
   } else {
     form = { key, id: null, mode: 'add', kind: 'text', item: null, values: { name: '' } };
   }
-  render();
+  if (previousKey && previousKey !== key) renderSection(previousKey);
+  renderSection(key);
   const el = $('#fName') || $('#fCode');
-  if (el) el.focus();
+  if (el) { el.focus(); el.scrollIntoView({ block: 'nearest' }); }
+}
+
+function refreshSection(key) {
+  renderSection(key);
+  if (historyKey === key) renderLog();
 }
 
 function readForm() {
@@ -840,25 +873,25 @@ function saveForm() {
   if (form.kind === 'code') {
     if (!/^[А-ЯЁA-Z0-9]{2,4}$/.test(v.code)) {
       formErr = 'Код — от двух до четырёх заглавных букв или цифр: он читается внутри номера рекомендации.';
-      render(); return;
+      refreshSection(key); return;
     }
     const busy = st.items.find((it) => it.id !== form.id && it.code === v.code);
     if (busy) {
       formErr = `Код «${v.code}» уже занят узлом «${busy.name}». Номера двух объектов совпадать не могут.`;
-      render(); return;
+      refreshSection(key); return;
     }
     const item = st.items.find((it) => it.id === form.id);
     const was = item.code;
     item.code = v.code;
     log(key, `Узел «${item.name}»: код номера ${was ? `изменён с ${was} на ${v.code}` : `задан — ${v.code}`}.`);
-    form = null; render(); return;
+    form = null; refreshSection(key); return;
   }
 
   if (form.kind === 'param') {
     const n = Number(v.value);
     if (!Number.isInteger(n) || n < 1 || n > 365) {
       formErr = 'Значение — целое число суток от 1 до 365.';
-      render(); return;
+      refreshSection(key); return;
     }
     const item = st.items.find((it) => it.id === form.id);
     if (item.value !== n) {
@@ -869,15 +902,15 @@ function saveForm() {
       const src = MODULE_PARAMS.find((p) => p.key === item.pkey);
       if (src) src.value = n;
     }
-    form = null; render(); return;
+    form = null; refreshSection(key); return;
   }
 
   if (form.kind === 'priority') {
     const sla = Number(v.sla);
-    if (!v.name) { formErr = 'Название приоритета не заполнено.'; render(); return; }
+    if (!v.name) { formErr = 'Название приоритета не заполнено.'; refreshSection(key); return; }
     if (!Number.isInteger(sla) || sla < 1 || sla > 99) {
       formErr = 'Норматив ответа — целое число рабочих часов от 1 до 99.';
-      render(); return;
+      refreshSection(key); return;
     }
     const item = st.items.find((it) => it.id === form.id);
     const parts = [];
@@ -887,16 +920,16 @@ function saveForm() {
     if (parts.length) {
       log(key, `Приоритет ${item.code}: ${parts.join('; ')}. Требует внесения в протокол согласования форм.`);
     }
-    form = null; render(); return;
+    form = null; refreshSection(key); return;
   }
 
-  if (!v.name) { formErr = 'Значение не заполнено.'; render(); return; }
+  if (!v.name) { formErr = 'Значение не заполнено.'; refreshSection(key); return; }
   const dup = st.items.find((it) => it.id !== form.id && it.name.toLowerCase() === v.name.toLowerCase());
   if (dup) {
     formErr = dup.archived
       ? 'Такое значение уже есть, оно в архиве. Верните его из архива, а не заводите второе: иначе в отчётности будут две строки об одном и том же.'
       : 'Такое значение в справочнике уже есть.';
-    render(); return;
+    refreshSection(key); return;
   }
 
   if (form.mode === 'add') {
@@ -909,7 +942,7 @@ function saveForm() {
     if (item.name !== v.name) log(key, `Значение «${item.name}» переименовано в «${v.name}».`);
     item.name = v.name;
   }
-  form = null; render();
+  form = null; refreshSection(key);
 }
 
 function archiveItem(key, id) {
@@ -918,7 +951,7 @@ function archiveItem(key, id) {
   item.archived = true;
   log(key, `Значение «${item.name}» убрано из выбора (архив).`);
   if (form && form.id === id) form = null;
-  render();
+  refreshSection(key);
 }
 
 function restoreItem(key, id) {
@@ -926,7 +959,7 @@ function restoreItem(key, id) {
   const item = st.items.find((it) => it.id === id);
   item.archived = false;
   log(key, `Значение «${item.name}» возвращено из архива.`);
-  render();
+  refreshSection(key);
 }
 
 function deleteItem(key, id) {
@@ -935,7 +968,7 @@ function deleteItem(key, id) {
   st.items = st.items.filter((it) => it.id !== id);
   log(key, `Значение «${item.name}» удалено: ни одна рекомендация на него не ссылалась.`);
   if (form && form.id === id) form = null;
-  render();
+  refreshSection(key);
 }
 
 /* ------------------------------ поповеры ------------------------------ */
@@ -978,7 +1011,7 @@ function askDelete(anchor, key, id) {
         значение, не зная, ссылается ли на него хоть одна рекомендация, нельзя. Доступен архив:
         значение уйдёт из формы отклонения, но останется в уже принятых решениях.`)}</div>
       <div class="popover__foot">
-        <button class="btn" data-act="doArchive" data-row="${id}">Убрать в архив</button>
+        <button class="btn" data-act="doArchive" data-key="${key}" data-row="${id}">Убрать в архив</button>
         <button class="btn btn--ghost" data-act="closePop">Отмена</button></div>
     </div>`);
     return;
@@ -990,7 +1023,7 @@ function askDelete(anchor, key, id) {
       <div class="confirm__t">Ни одна рекомендация на это значение не ссылается — удаление
         безопасно и попадёт в историю справочника.</div>
       <div class="popover__foot">
-        <button class="btn btn--no" data-act="doDelete" data-row="${id}">Удалить</button>
+        <button class="btn btn--no" data-act="doDelete" data-key="${key}" data-row="${id}">Удалить</button>
         <button class="btn btn--ghost" data-act="closePop">Отмена</button></div>
     </div>`);
     return;
@@ -1005,7 +1038,7 @@ function askDelete(anchor, key, id) {
       решения оно больше не предлагается, а в старых рекомендациях, в реестре и в фильтрах остаётся
       на месте. Вернуть из архива можно в любой момент.`)}</div>
     <div class="popover__foot">
-      <button class="btn" data-act="doArchive" data-row="${id}">Убрать в архив</button>
+      <button class="btn" data-act="doArchive" data-key="${key}" data-row="${id}">Убрать в архив</button>
       <button class="btn btn--ghost" data-act="closePop">Отмена</button></div>
   </div>`);
 }
@@ -1034,8 +1067,8 @@ function askCode(anchor, key, id) {
   </div>`);
 }
 
-function openFilterPopover(anchor, colKey) {
-  const s = SPEC[current];
+function openFilterPopover(anchor, key, colKey) {
+  const s = SPEC[key];
   const st = refState(s.key);
   const col = s.cols.find((c) => c.key === colKey);
 
@@ -1071,11 +1104,11 @@ function openFilterPopover(anchor, colKey) {
         if (row.querySelector('input').checked) set.add(row.dataset.v);
       });
       if (set.size) st.ui.filters[colKey] = set; else delete st.ui.filters[colKey];
-      closePopover(); render();
+      closePopover(); refreshSection(key);
     });
     p.querySelector('#pfReset').addEventListener('click', () => {
       delete st.ui.filters[colKey];
-      closePopover(); render();
+      closePopover(); refreshSection(key);
     });
   });
 }
@@ -1083,62 +1116,59 @@ function openFilterPopover(anchor, colKey) {
 /* ------------------------------ события ------------------------------ */
 
 document.addEventListener('click', (e) => {
-  const nav = e.target.closest('[data-ref]');
-  if (nav) {
-    current = nav.dataset.ref;
-    form = null; formErr = ''; historyOpen = false;
-    closePopover(); render(); return;
-  }
-
-  const group = e.target.closest('[data-group]');
-  if (group) {
-    const key = group.dataset.group;
-    if (SPEC[current].group === key) return;
-    if (collapsedGroups.has(key)) collapsedGroups.delete(key); else collapsedGroups.add(key);
-    renderNav(); return;
-  }
+  const section = e.target.closest('[data-ref-section]');
+  const sectionKey = section && section.dataset.refSection;
 
   const sort = e.target.closest('[data-sort]');
-  if (sort) {
+  if (sort && sectionKey) {
     /* Три такта, как в реестре: включить → сменить направление → выключить. */
-    const st = refState(current);
+    const st = refState(sectionKey);
     const key = sort.dataset.sort;
     const cur = st.ui.sort;
     if (!cur || cur.key !== key) st.ui.sort = { key, dir: 'asc' };
     else if (cur.dir === 'asc') st.ui.sort = { key, dir: 'desc' };
     else st.ui.sort = null;
-    closePopover(); render(); return;
+    closePopover(); refreshSection(sectionKey); return;
   }
 
   const flt = e.target.closest('[data-filter]');
-  if (flt) { openFilterPopover(flt, flt.dataset.filter); return; }
+  if (flt && sectionKey) { openFilterPopover(flt, sectionKey, flt.dataset.filter); return; }
 
   const btn = e.target.closest('[data-act]');
   if (btn) {
     const act = btn.dataset.act;
     const id = btn.dataset.row;
+    const key = btn.dataset.key || sectionKey;
 
-    if (act === 'add') { closePopover(); openForm(current, null); return; }
-    if (act === 'history') { historyOpen = !historyOpen; render(); return; }
-    if (act === 'closeHistory') { historyOpen = false; render(); return; }
-    if (act === 'edit') { closePopover(); openForm(current, id); return; }
-    if (act === 'code') { askCode(btn, current, id); return; }
-    if (act === 'archive') { closePopover(); archiveItem(current, id); return; }
-    if (act === 'restore') { closePopover(); restoreItem(current, id); return; }
-    if (act === 'del') { askDelete(btn, current, id); return; }
-    if (act === 'doArchive') { closePopover(); archiveItem(current, id); return; }
-    if (act === 'doDelete') { closePopover(); deleteItem(current, id); return; }
+    if (act === 'add') { closePopover(); openForm(key, null); return; }
+    if (act === 'history') {
+      historyReturnKey = historyKey === key ? null : key;
+      historyKey = historyKey === key ? null : key;
+      updateHistoryButtons(); renderLog(); return;
+    }
+    if (act === 'closeHistory') {
+      historyKey = null; updateHistoryButtons(); renderLog();
+      if (historyReturnKey) document.querySelector(`[data-ref-section="${historyReturnKey}"] [data-act="history"]`)?.focus();
+      historyReturnKey = null; return;
+    }
+    if (act === 'edit') { closePopover(); openForm(key, id); return; }
+    if (act === 'code') { askCode(btn, key, id); return; }
+    if (act === 'archive') { closePopover(); archiveItem(key, id); return; }
+    if (act === 'restore') { closePopover(); restoreItem(key, id); return; }
+    if (act === 'del') { askDelete(btn, key, id); return; }
+    if (act === 'doArchive') { closePopover(); archiveItem(key, id); return; }
+    if (act === 'doDelete') { closePopover(); deleteItem(key, id); return; }
     if (act === 'closePop') { closePopover(); return; }
     if (act === 'save') { saveForm(); return; }
-    if (act === 'cancel') { form = null; formErr = ''; render(); return; }
-    if (act === 'resetFilters') { refState(current).ui.filters = {}; render(); return; }
+    if (act === 'cancel') { form = null; formErr = ''; refreshSection(key); return; }
+    if (act === 'resetFilters') { refState(key).ui.filters = {}; refreshSection(key); return; }
     if (act === 'sync') {
       /* Ручная синхронизация — тот же рейс, что по расписанию, просто раньше
          срока. Отдельной записи «запущено вручную» в журнале мало: важно, что
          именно приехало, поэтому строка та же, что у планового рейса. */
       sync.at = NOW;
       sync.log.unshift({ at: NOW, manual: true, text: 'Изменений нет.' });
-      closePopover(); render(); return;
+      closePopover(); refreshSection(key); return;
     }
   }
 
@@ -1146,21 +1176,33 @@ document.addEventListener('click', (e) => {
 });
 
 document.addEventListener('change', (e) => {
-  if (e.target.id === 'swArch') {
-    refState(current).ui.showArchived = e.target.checked;
-    render();
+  if (e.target.matches('[data-role="show-archived"]')) {
+    const section = e.target.closest('[data-ref-section]');
+    const key = section.dataset.refSection;
+    refState(key).ui.showArchived = e.target.checked;
+    refreshSection(key);
   }
 });
 
 document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && historyKey) {
+    historyKey = null; updateHistoryButtons(); renderLog();
+    if (historyReturnKey) document.querySelector(`[data-ref-section="${historyReturnKey}"] [data-act="history"]`)?.focus();
+    historyReturnKey = null; return;
+  }
   if (e.key === 'Escape') { closePopover(); return; }
   /* Enter сохраняет однострочную форму: значение справочника — одно поле,
      и тянуться мышью до кнопки после одного слова незачем. */
-  if (e.key === 'Enter' && form && e.target.closest('#refform') && e.target.tagName === 'INPUT') {
+  if (e.key === 'Enter' && form && e.target.closest('[data-role="form"]') && e.target.tagName === 'INPUT') {
     e.preventDefault(); saveForm();
   }
 });
 
 /* ------------------------------ старт ------------------------------ */
 
-render();
+window.addEventListener('hashchange', () => {
+  form = null; formErr = ''; historyKey = null; closePopover(); renderPage();
+});
+
+if (!location.hash) history.replaceState(null, '', '#module');
+renderPage();

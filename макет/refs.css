@@ -1,131 +1,42 @@
-/* Экран «Справочники». Дополняет registry.css, ничего из него не переопределяет.
-   Все цвета, отступы, радиусы и кегли — через переменные tokens.css.
+/* На странице подряд идут все таблицы выбранной группы. Вертикальная прокрутка
+   принадлежит странице целиком: отдельные скроллы внутри коротких таблиц
+   разрушали бы чтение последовательности. */
+.content--refs { overflow-x: hidden; overflow-y: auto; }
 
-   Экран двухчастный: слева список справочников, справа значения выбранного.
-   Список слева — второй уровень навигации, поэтому он собран из тех же
-   .navitem, что и главное меню: это одна и та же операция «выбрать раздел»,
-   и выглядеть она должна одинаково. */
-
-.content--refs { overflow: hidden; }
-
-.refsbody {
-  flex: 1 1 auto; min-height: 0;
-  display: flex; align-items: flex-start; gap: var(--screen-gap-default);
+.refsworkspace {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start; gap: var(--screen-gap-default);
 }
-
-/* ------------------------------ список справочников ------------------------------ */
-
-/* Внутренняя навигация уже главного меню: это второй уровень, а не ещё одна
-   равноправная область приложения. Размер собран из токенов, чтобы не вводить
-   отдельную магическую ширину ради одного экрана. */
-.reflist {
-  width: calc(var(--layout-sidebar-width) - var(--section-padding-extra-wide) - var(--screen-gap-default));
-  flex: 0 0 auto;
-  align-self: stretch;
-  background: var(--bg-card);
-  border-radius: var(--corner-radius-section);
-  box-shadow: var(--elevation-1);
-  padding: var(--group-padding-s);
-  overflow-y: auto;
+.refsections {
+  min-width: 0; width: 100%;
+  max-width: calc(var(--sizing-context-column-max) * 3);
+  display: flex; flex-direction: column; gap: var(--screen-gap-default);
 }
-
-/* Группа — самостоятельный переключатель, а не декоративная подпись: её можно
-   свернуть, когда пользователь работает с другим классом справочников. */
-.reflist__section {
-  width: 100%; border: 0; background: transparent; cursor: pointer;
-  display: flex; align-items: center; justify-content: space-between;
-  font: var(--font-weight-subtitle) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
-  letter-spacing: var(--letter-spacing-text-caption);
-  text-transform: uppercase;
-  color: var(--text-secondary);
-  padding: var(--group-padding-m) var(--item-padding-horizontal-s) var(--item-padding-vertical-xs);
-  margin-top: var(--group-gap-s);
-  border-top: 1px solid var(--border-divider);
-}
-.reflist__group:first-child .reflist__section { margin-top: 0; padding-top: 0; border-top: 0; }
-.reflist__section:hover { color: var(--text-accent); }
-.reflist__section:focus-visible { box-shadow: var(--focus-component); }
-.reflist__section.is-collapsed .reflist__caret { transform: rotate(-90deg); }
-.reflist__items { display: flex; flex-direction: column; }
-
-.reflist .navitem { width: 100%; border: 0; background: transparent; text-align: left; align-items: flex-start; }
-.reflist .navitem__label { font-size: var(--font-size-text-small); line-height: var(--line-height-text-small); }
-.reflist .badge { margin-top: var(--item-padding-vertical-2xs); }
+.refsections--wide { max-width: none; }
+.refsection { flex: 0 0 auto; min-width: 0; overflow: hidden; }
 
 /* ------------------------------ шапка справочника ------------------------------ */
 
-.panel--refs {
-  min-width: 0; width: 100%;
-  flex: 1 1 0; align-self: flex-start;
-  max-height: 100%;
-}
-
-.refhead {
+.refsection__head {
   flex: 0 0 auto;
   padding: var(--group-padding-m);
   border-bottom: 1px solid var(--border-divider-light);
-  display: flex; flex-direction: column; gap: var(--item-gap-vertical-s);
+  display: flex; align-items: center; gap: var(--item-gap-horizontal-m); flex-wrap: wrap;
 }
-
-.refhead__top {
-  display: flex; align-items: center; gap: var(--item-gap-horizontal-m);
-  flex-wrap: wrap;
-}
-.refhead__t {
+.refsection__title {
   margin: 0;
   font: var(--font-weight-headline) var(--font-size-h5) / var(--line-height-h5) var(--font-family-headline);
   color: var(--text-heading);
 }
-.refhead__act { margin-left: auto; display: flex; align-items: center; gap: var(--item-gap-horizontal-m); }
-
-.refhead__desc {
-  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
-  color: var(--text-tertiary);
-  max-width: 96ch;
-}
-
-/* Метаданные идут одной строкой через точку-разделитель: без неё «6 значений»
-   и «Изменений в истории: 2» слипаются в одну фразу. */
-.refhead__meta {
-  display: flex; flex-wrap: wrap; gap: var(--item-gap-horizontal-m);
-  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
-  color: var(--text-quaternary);
-}
-.refhead__meta > span + span::before {
-  content: '·'; margin-right: var(--item-gap-horizontal-m); color: var(--text-quaternary);
-}
-.refhead__meta b { font-weight: var(--font-weight-subtitle); color: var(--text-secondary); }
-
-/* Сегмент-контрол «Значения / История» — компонент ВМАП, для него в токенах
-   есть отдельная поверхность component-segmented. */
-.seg {
-  display: inline-flex; padding: var(--item-padding-vertical-2xs);
-  background: var(--component-inverse-tertiary);
-  border-radius: var(--corner-radius-medium-component);
-  gap: var(--item-gap-horizontal-xs);
-}
-.seg__b {
-  border: 0; background: transparent; cursor: pointer;
-  padding: var(--item-padding-vertical-xs) var(--item-padding-medium-horizontal-s);
-  border-radius: var(--corner-radius-component);
-  color: var(--text-tertiary);
-  font: var(--font-weight-text) var(--font-size-text-small) / 1 var(--font-family-text);
-}
-.seg__b:hover { color: var(--text-secondary); }
-.seg__b.is-on {
-  background: var(--component-segmented);
-  color: var(--text-primary);
-  font-weight: var(--font-weight-subtitle);
-  box-shadow: var(--elevation-1);
-}
+.refsection__actions { margin-left: auto; display: flex; align-items: center; gap: var(--item-gap-horizontal-m); }
 
 /* ------------------------------ тело панели ------------------------------ */
 
-.refbody { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
-.panel--refs .tablewrap { flex: 0 1 auto; max-height: 100%; }
+.refsection__body { display: flex; flex-direction: column; min-width: 0; }
+.refsection__tablewrap { overflow-x: auto; }
 
-.panel--refs .th__t,
-.panel--refs .th__i {
+.refsection .th__t,
+.refsection .th__i {
   border: 0; padding: 0; background: transparent;
   color: inherit; font: inherit;
 }
@@ -192,7 +103,6 @@
 
 /* ------------------------------ история изменений ------------------------------ */
 
-.logwrap { flex: 1 1 auto; overflow-y: auto; min-height: 0; padding: var(--group-padding-m); }
 .log { display: flex; flex-direction: column; gap: var(--block-gap-default); }
 .log__i {
   display: flex; gap: var(--group-gap-m);
@@ -219,7 +129,9 @@
    значение и его изменения можно было читать одновременно. */
 .refhistory {
   width: var(--sizing-context-column-max); flex: 0 0 auto;
-  max-height: 100%; overflow-y: auto;
+  position: sticky; top: 0;
+  max-height: calc(100vh - var(--layout-header-height) - var(--screen-padding-default) * 2);
+  overflow-y: auto;
   background: var(--bg-card);
   border-radius: var(--corner-radius-section);
   box-shadow: var(--elevation-1);
@@ -335,37 +247,12 @@
   color: var(--text-tertiary);
 }
 
-/* ------------------------------ широкая таблица ------------------------------
-
-   У ставок экономической модели одиннадцать числовых колонок: в ширину панели
-   они не помещаются и в любой раскладке сожмутся до нечитаемого. Поэтому
-   таблица набирает ширину из колонок и прокручивается вбок, а месторождение
-   закрепляется слева — иначе, уехав к последним колонкам, человек перестаёт
-   понимать, чью строку читает. Это тот же приём, что в Excel, откуда эти
-   ставки и пришли. */
-.tablewrap--wide { overflow-x: auto; }
-.tablewrap--wide th:first-child,
-.tablewrap--wide td:first-child {
-  position: sticky; left: 0; z-index: 1;
-  background: var(--bg-card);
-}
-/* Закреплённая колонка перекрывает соседнюю при прокрутке — отделяем линией,
-   иначе текст наезжает на текст без всякой границы. */
-.tablewrap--wide th:first-child::after,
-.tablewrap--wide td:first-child::after {
-  content: ''; position: absolute; top: 0; right: 0; bottom: 0;
-  border-right: 1px solid var(--border-divider-light);
-}
-
 @media (max-width: 1280px) {
-  .reflist {
-    width: calc(var(--layout-sidebar-width) - var(--section-padding-extra-wide) * 2 - var(--screen-gap-default));
-  }
   .refhistory {
     position: absolute; z-index: 20;
     top: var(--screen-padding-default); right: var(--screen-padding-default); bottom: var(--screen-padding-default);
     width: min(var(--sizing-context-column-max), calc(100% - var(--screen-padding-wide)));
     box-shadow: var(--elevation-3);
   }
-  .refsbody { position: relative; }
+  .refsworkspace { position: relative; grid-template-columns: minmax(0, 1fr); }
 }

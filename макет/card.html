@@ -40,7 +40,7 @@
     <a class="navitem navitem--muted"><span class="navitem__label">Окна эффекта</span></a>
     <a class="navitem navitem--muted"><span class="navitem__label">Подтверждённые</span></a>
     <div class="sidenav__section">Настройка</div>
-    <a class="navitem" href="refs.html"><span class="navitem__label">Справочники</span></a>
+    <details class="navdisclosure" data-refs-menu><summary class="navitem"><span class="navitem__label">Справочники</span><span class="navdisclosure__caret"></span></summary><div class="navsubmenu"><a class="navsubmenu__item" href="refs.html#module">Справочники модуля</a><a class="navsubmenu__item" href="refs.html#system">Системные справочники</a><a class="navsubmenu__item" href="refs.html#fields">Месторождения</a></div></details>
     <a class="navitem" href="economy.html"><span class="navitem__label">Экономическая модель</span></a>
     <a class="navitem" href="users.html"><span class="navitem__label">Пользователи и роли</span></a>
     <a class="navitem" href="sla.html"><span class="navitem__label">Календарь и SLA</span></a>
@@ -61,6 +61,7 @@
   </main>
 </div>
 
+<script src="sidenav.js"></script>
 <script src="вмап.js"></script>
 <script src="data.js"></script>
 <script src="card.js"></script>

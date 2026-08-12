@@ -119,6 +119,35 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .navitem--muted:hover { background: transparent; }
 .navitem__label { flex: 1 1 auto; }
 
+/* «Справочники» раскрываются прямо в основном меню: это второй уровень
+   раздела, а не ещё одна колонка внутри рабочей области. Нативный details
+   сохраняет управление мышью и клавиатурой на всех статических страницах. */
+.navdisclosure { margin: 0; }
+.navdisclosure > summary { list-style: none; }
+.navdisclosure > summary::-webkit-details-marker { display: none; }
+.navdisclosure__caret {
+  width: var(--sizing-element-xs); height: var(--sizing-element-xs);
+  border-right: 1px solid currentColor; border-bottom: 1px solid currentColor;
+  transform: rotate(45deg); margin: 0 var(--item-padding-horizontal-s) var(--item-padding-vertical-xs) 0;
+}
+.navdisclosure[open] .navdisclosure__caret { transform: rotate(225deg); margin-bottom: 0; }
+.navsubmenu {
+  display: flex; flex-direction: column;
+  margin: var(--item-gap-vertical-xs) 0 var(--item-gap-vertical-s);
+  padding-left: var(--group-padding-m);
+}
+.navsubmenu__item {
+  padding: var(--item-padding-vertical-s) var(--item-padding-horizontal-s);
+  border-radius: var(--corner-radius-component);
+  color: var(--text-tertiary); text-decoration: none;
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+}
+.navsubmenu__item:hover { background: var(--state-hover); color: var(--text-secondary); }
+.navsubmenu__item.is-active,
+.navsubmenu__item[aria-current="page"] { color: var(--text-accent); font-weight: var(--font-weight-subtitle); }
+.navdisclosure > summary:focus-visible,
+.navsubmenu__item:focus-visible { outline: none; box-shadow: var(--focus-component); }
+
 .badge {
   min-width: 18px; height: 16px; padding: 0 var(--item-padding-horizontal-xs);
   border-radius: var(--corner-radius-component);
