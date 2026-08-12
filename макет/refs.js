@@ -229,51 +229,9 @@ const COL_ACT = { key: 'act', label: '', w: 92, render: (it, s) => actCell(it, s
 /* Названия групп деловые: «наши» и «зашито в модуль» звучали разговорно, а
    экран открывают обе стороны договора (решение 84). */
 const GROUPS = [
-  {
-    key: 'own', title: 'Справочники модуля',
-    note: 'Значения правятся, добавляются и уходят в архив; каждое изменение попадает в историю справочника.',
-  },
-  {
-    key: 'fixed', title: 'Системные справочники',
-    note: 'За каждым значением стоят переходы статусов, права и расчёт норматива. Меняются вместе с логикой модуля.',
-  },
-  {
-    key: 'replica', title: 'Данные ВМАП',
-    note: 'Приходят из ВМАП и обновляются синхронизацией. В модуле не редактируются.',
-  },
-  /* Экономика вынесена в свою группу, а не положена к справочникам модуля:
-     это не перечисления для полей рекомендации, а ставки, из которых считаются
-     деньги по договору. Цена ошибки здесь другая, и владеет ими другой
-     человек (решение 92). */
-  {
-    key: 'econ', title: 'Экономическая модель',
-    note: 'Ставки, из которых считается эффект мероприятия. Правка действует вперёд: расчёты, уже вошедшие в акт, не пересчитываются.',
-  },
-];
-
-/* У данных ВМАП тег такой же, как у системных: пользователю важно одно — что
-   править нельзя. Откуда именно приходит значение, сказано в заголовке группы. */
-const CLASS_TAG = {
-  own: '<span class="tag tag--accent tag--lg">редактируемый</span>',
-  fixed: '<span class="tag tag--default tag--lg">не редактируется</span>',
-  replica: '<span class="tag tag--default tag--lg">не редактируется</span>',
-  econ: '<span class="tag tag--accent tag--lg">редактируемый</span>',
-};
-
-/* Одиннадцать числовых колонок с длинными названиями не помещаются в шапку,
-   поэтому подпись короткая, а полная — в заголовке столбца по наведению.
-   База умножения вынесена отдельной строкой: она важнее единиц измерения,
-   потому что именно её путают. */
-const ECON_COLS = [
-  ['lift', 'Подъём', 'Электроэнергия на подъём жидкости, руб/т жидкости. У фонтанной скважины статья нулевая'],
-  ['ppd', 'ППД', 'Электроэнергия на поддержание пластового давления, руб/т жидкости'],
-  ['transport', 'Транспорт', 'Электроэнергия на транспорт жидкости, руб/т жидкости'],
-  ['prep', 'Подготовка', 'Электроэнергия на подготовку нефти, руб/т нефти'],
-  ['chem', 'Реагенты', 'Деэмульгаторы, руб/т нефти'],
-  ['espEcn', 'Обслуживание ЭЦН', 'Услуги ЭПУ-сервис, тыс. руб/год на скважину с ЭЦН'],
-  ['espShgn', 'Обслуживание ШГН', 'Услуги НПО, тыс. руб/год на скважину с ШГН'],
-  ['espEvn', 'Обслуживание ЭВН', 'Тыс. руб/год на скважину с электровинтовым насосом. В модели Заказчика ставки для ЭВН нет — заполняется отдельно'],
-  ['decline', 'Темп падения', 'Годовой темп падения дебита нефти, % в год'],
+  { key: 'own', title: 'Справочники модуля' },
+  { key: 'fixed', title: 'Системные справочники' },
+  { key: 'replica', title: 'Данные ВМАП' },
 ];
 
 const SPECS = [
@@ -438,82 +396,6 @@ const SPECS = [
   },
 
   {
-    key: 'econ', group: 'econ', nav: 'Ставки по месторождениям', title: 'Ставки по месторождениям',
-    useKey: null, rowActs: ['edit'], wide: true,
-    desc: `Из этих ставок собирается эффект мероприятия: выручка минус НДПИ минус энергетика и реагенты.
-      Разрез — месторождение ВМАП; там, где в модели Заказчика месторождение не разрезано по цехам,
-      значения у соседних узлов совпадают.`,
-    build: () => ECON_RATES.map((r) => ({ src: r.field, ...r, name: r.field })),
-    cols: [
-      {
-        key: 'name', label: 'Месторождение', w: 210, sticky: true,
-        render: (it) => `<div class="clip1" title="${esc(it.name)}">${esc(it.name)}</div>`,
-      },
-      ...ECON_COLS.map(([key, label, hint]) => ({
-        key, label, w: 108, right: true, hint,
-        /* Незаполненная ставка помечается словом, а не нулём: ноль в расчёте
-           молча занизит эффект, а «не задано» его остановит. */
-        render: (it) => (it[key] === undefined || it[key] === null
-          ? '<span class="mark">не задано</span>'
-          : numCell(it[key].toLocaleString('ru-RU'))),
-      })),
-      { key: 'act', label: '', w: 52, render: (it, s) => actCell(it, s) },
-    ],
-    seedLog: [
-      {
-        at: new Date('2026-07-08T10:15'),
-        text: prose(`Ставки перенесены из «Модели оценки экономической эффективности» Заказчика,
-          период декабрь. Заполнено 17 месторождений из 18.`),
-      },
-    ],
-  },
-
-  {
-    key: 'ndpi', group: 'econ', nav: 'Пласты и ставки НДПИ', title: 'Пласты и ставки НДПИ',
-    useKey: null, rowActs: ['edit'],
-    desc: `Ставка задана по паре «месторождение + пласт» и внутри одного месторождения расходится
-      более чем вдвое, поэтому справочник пластовый. Налоговый режим хранится рядом: у части
-      месторождений это НДД, и правила пересмотра ставки там свои.`,
-    build: () => NDPI_RATES.map((r, i) => ({ src: `${r.field}·${r.plast}`, id2: i, ...r })),
-    cols: [
-      {
-        key: 'field', label: 'Месторождение', filter: true,
-        render: (it) => `<div class="clip1" title="${esc(it.field)}">${esc(it.field)}</div>`,
-      },
-      {
-        key: 'plast', label: 'Пласт',
-        render: (it) => `<div class="clip1" title="${esc(it.plast)}">${esc(it.plast)}</div>`,
-      },
-      {
-        key: 'regime', label: 'Налоговый режим', w: 148, filter: true,
-        /* НДД выделен тоном: это другой налог, и правила его пересмотра
-           отличаются. Без метки строки читаются как однородные. */
-        render: (it) => (it.regime === 'НДД'
-          ? '<span class="tag tag--info">НДД</span>'
-          : '<span class="mark">ДНС</span>'),
-      },
-      {
-        key: 'ndpiFact', label: 'Ставка факт', w: 132, right: true,
-        hint: 'Ставка по фактическим ценам, руб/т нефти',
-        render: (it) => numCell(it.ndpiFact.toLocaleString('ru-RU')),
-      },
-      {
-        key: 'ndpiMsu', label: 'Ставка МСУ', w: 132, right: true,
-        hint: 'Ставка по макроэкономическим сценарным условиям, руб/т нефти',
-        render: (it) => numCell(it.ndpiMsu.toLocaleString('ru-RU')),
-      },
-      { key: 'act', label: '', w: 52, render: (it, s) => actCell(it, s) },
-    ],
-    seedLog: [
-      {
-        at: new Date('2026-07-08T10:22'),
-        text: prose(`Ставки перенесены из листа «НДПИ» модели Заказчика, период декабрь.
-          28 пар «месторождение + пласт» по 17 объектам договора.`),
-      },
-    ],
-  },
-
-  {
     key: 'fields', group: 'replica', nav: 'Месторождения', title: 'Месторождения',
     useKey: 'field', replica: true,
     src: 'ois_vmap."OrganizationUnits", OrganizationUnitType = 3',
@@ -572,10 +454,11 @@ function refState(key) {
 }
 
 let current = 'directions';
-let view = 'values';     // values | log
 let form = null;         // { key, id, mode, values } — раскрытая форма правки
 let formErr = '';
 let newSeq = 0;
+let historyOpen = false;
+const collapsedGroups = new Set();
 
 /* ------------------------------ отбор и сортировка ------------------------------ */
 
@@ -614,104 +497,38 @@ function renderNav() {
   const html = GROUPS.map((g) => {
     const items = SPECS.filter((s) => s.group === g.key);
     if (!items.length) return '';
-    return `<div class="reflist__section">${g.title}</div>
-      ${g.note ? `<div class="reflist__note">${prose(g.note)}</div>` : ''}
-      ${items.map((s) => {
+    const collapsed = collapsedGroups.has(g.key);
+    return `<section class="reflist__group"><button class="reflist__section ${collapsed ? 'is-collapsed' : ''}" data-group="${g.key}"
+        aria-expanded="${!collapsed}" aria-controls="refgroup-${g.key}"><span>${g.title}</span>
+        <svg class="ic16 reflist__caret"><use href="#i-caret"/></svg></button>
+      <div class="reflist__items" id="refgroup-${g.key}" ${collapsed ? 'hidden' : ''}>${items.map((s) => {
         const n = s.stub ? null : refState(s.key).items.filter((it) => !it.archived).length;
-        return `<a class="navitem ${s.key === current ? 'is-active' : ''}" data-ref="${s.key}">
+        return `<button class="navitem ${s.key === current ? 'is-active' : ''}" type="button"
+          data-ref="${s.key}" ${s.key === current ? 'aria-current="page"' : ''}>
           <span class="navitem__label">${s.nav}</span>
-          ${n === null ? '' : `<span class="badge">${n}</span>`}</a>`;
-      }).join('')}`;
+          ${n === null ? '' : `<span class="badge">${n}</span>`}</button>`;
+      }).join('')}</div></section>`;
   }).join('');
   $('#reflist').innerHTML = html;
 }
 
 /* ------------------------------ отрисовка: шапка ------------------------------ */
 
-function headMeta(s) {
-  if (s.stub) return '';
-  const st = refState(s.key);
-  const n = st.items.filter((it) => !it.archived).length;
-  const arch = st.items.filter((it) => it.archived).length;
-
-  /* Цена нефти и коэффициент эксплуатации от месторождения не зависят, и
-     строки в таблице им заводить незачем — они стоят в шапке справочника,
-     рядом со счётчиком. */
-  if (s.key === 'econ') {
-    /* Заполненность считается по источнику, а не по отдельной ставке: строка
-       либо перенесена из модели Заказчика целиком, либо пуста. Раньше
-       считалось по НДПИ — он уехал в пластовый справочник, и счётчик замер
-       на нуле. */
-    const заполнено = st.items.filter((it) => it.source).length;
-    return `<div class="refhead__meta">
-      <span><b>${n}</b> ${plural(n, ['месторождение', 'месторождения', 'месторождений'])},
-        заполнено <b>${заполнено}</b></span>
-      <span>Цена нефти: факт <b>${ECON_GLOBAL.oilPriceFact.toLocaleString('ru-RU')}</b> руб/т,
-        МСУ <b>${ECON_GLOBAL.oilPriceMsu.toLocaleString('ru-RU')}</b> руб/т</span>
-      <span>Коэффициент эксплуатации: <b>${ECON_GLOBAL.uptime}</b></span>
-      <span>Изменений в истории: <b>${st.log.length}</b></span>
-    </div>`;
-  }
-
-  if (s.replica) {
-    const next = new Date(sync.at.getTime() + 15 * 60000);
-    return `<div class="refhead__meta">
-      <span><b>${n}</b> ${plural(n, ['значение', 'значения', 'значений'])}</span>
-      ${/* Имя схемы и таблицы («ois_vmap."OrganizationUnits", OrganizationUnitType = 3»)
-            с экрана убрано: пользователю справочника нужно знать, что данные из ВМАП
-            и когда они обновлялись, а не как называется таблица. В коде поле src
-            оставлено — оно понадобится при переносе в React. */''}
-      <span>Источник: <b>ВМАП</b></span>
-      <span>Синхронизация: <b>${fmtTime(sync.at)}</b>, ${agoPhrase(sync.at)} · следующая в ${fmtTime(next)}</span>
-    </div>`;
-  }
-  const used = st.items.filter((it) => !it.archived && (useOf(s, it) || 0) > 0).length;
-  return `<div class="refhead__meta">
-    <span><b>${n}</b> ${plural(n, ['значение', 'значения', 'значений'])}</span>
-    ${arch ? `<span><b>${arch}</b> в архиве</span>` : ''}
-    ${s.useKey ? `<span>Используется в рекомендациях: <b>${used}</b> из ${n}</span>` : ''}
-    ${s.group === 'own' ? `<span>Изменений в истории: <b>${st.log.length}</b></span>` : ''}
-  </div>`;
-}
-
 function renderHead() {
   const s = SPEC[current];
   const hasLog = !s.stub && (s.group === 'own' || s.replica);
-  const logLabel = s.replica ? 'Журнал синхронизации' : 'История изменений';
 
   $('#refhead').innerHTML = `
     <div class="refhead__top">
       <h2 class="refhead__t">${s.title}</h2>
-      ${CLASS_TAG[s.group]}
       <div class="refhead__act">
-        ${hasLog ? `<div class="seg">
-          <button class="seg__b ${view === 'values' ? 'is-on' : ''}" data-view="values">Значения</button>
-          <button class="seg__b ${view === 'log' ? 'is-on' : ''}" data-view="log">${logLabel}</button>
-        </div>` : ''}
+        ${hasLog ? `<button class="btn ${historyOpen ? 'is-on' : ''}" data-act="history">
+          <svg class="ic16"><use href="#i-history"/></svg>${s.replica ? 'Журнал синхронизации' : 'История изменений'}</button>` : ''}
         ${s.replica ? `<button class="btn" data-act="sync"><svg class="ic16"><use href="#i-sync"/></svg>Синхронизировать сейчас</button>` : ''}
-        ${s.group === 'own' && s.addLabel && view === 'values'
+        ${s.group === 'own' && s.addLabel
           ? `<button class="btn btn--accent" data-act="add"><svg class="ic16"><use href="#i-plus"/></svg>${s.addLabel}</button>` : ''}
       </div>
-    </div>
-    ${s.desc ? `<div class="refhead__desc">${prose(s.desc)}</div>` : ''}
-    ${headMeta(s)}`;
-}
-
-/* ------------------------------ отрисовка: пояснение ------------------------------ */
-
-function renderNotice() {
-  const s = SPEC[current];
-  const box = $('#refnotice');
-  const n = s.notice;
-  if (!n || view !== 'values') { box.hidden = true; return; }
-
-  box.hidden = false;
-  box.className = `refnotice ${n.kind === 'info' ? 'refnotice--info' : ''}`;
-  box.innerHTML = `
-    <div class="refnotice__h">
-      <svg class="ic16"><use href="#i-info"/></svg>${n.h}
-    </div>
-    <div class="refnotice__t">${prose(n.t)}</div>`;
+    </div>`;
 }
 
 /* ------------------------------ отрисовка: форма ------------------------------ */
@@ -734,64 +551,6 @@ function formHtml() {
       <div class="form__hint">Код войдёт в номера новых рекомендаций по этому узлу:
         <b>${esc(v.code || 'ХХ')}-26-0001</b>. Код свой у каждого месторождения — общий код на
         четыре Южно-Ягунских давал бы одинаковые номера разным объектам.</div>
-      ${errLine()}
-      <div class="form__btns">
-        <button class="btn btn--accent" data-act="save">Сохранить</button>
-        <button class="btn" data-act="cancel">Отмена</button>
-      </div>
-    </div>`;
-  }
-
-  if (form.kind === 'ndpi') {
-    return `<div class="form">
-      <div class="form__h">${esc(form.item.field)} — пласт «${esc(form.item.plast)}»</div>
-      <div class="form__row">
-        <label class="form__f"><span class="form__l">Ставка факт, руб/т нефти</span>
-          <input class="inp inp--num" id="f-ndpiFact" value="${esc(v.ndpiFact)}" inputmode="decimal"></label>
-        <label class="form__f"><span class="form__l">Ставка МСУ, руб/т нефти</span>
-          <input class="inp inp--num" id="f-ndpiMsu" value="${esc(v.ndpiMsu)}" inputmode="decimal"></label>
-        <label class="form__f" style="flex:0 0 200px"><span class="form__l">Налоговый режим</span>
-          <select class="inp" id="f-regime">${['ДНС', 'НДД'].map((r) =>
-            `<option${r === v.regime ? ' selected' : ''}>${r}</option>`).join('')}</select></label>
-      </div>
-      <div class="form__hint">${prose(`Ставка относится к паре «месторождение + пласт». Скважина
-        берёт ту строку, к пласту которой она отнесена; если пласт у скважины не задан, расчёт
-        по ней не пойдёт — вместо того чтобы взять чужую ставку.`)}</div>
-      ${errLine()}
-      <div class="form__btns">
-        <button class="btn btn--accent" data-act="save">Сохранить</button>
-        <button class="btn" data-act="cancel">Отмена</button>
-      </div>
-    </div>`;
-  }
-
-  if (form.kind === 'econ') {
-    /* Поля сгруппированы по базе умножения, а не по алфавиту: перепутать
-       ставку на нефть со ставкой на жидкость — самая дорогая ошибка ввода,
-       и группировка защищает от неё лучше любой подписи. */
-    const группы = [
-      ['На тонну нефти', ['prep', 'chem']],
-      ['На тонну жидкости', ['lift', 'ppd', 'transport']],
-      ['Обслуживание, тыс. руб/год на скважину', ['espEcn', 'espShgn', 'espEvn']],
-      ['Прочее', ['decline']],
-    ];
-    return `<div class="form">
-      <div class="form__h">${esc(form.item.field)} — ставки экономической модели</div>
-      ${группы.map(([заголовок, ключи]) => `
-        <div class="form__l">${заголовок}</div>
-        <div class="form__row">${ключи.map((к) => {
-          const [, подпись, всплывающая] = ECON_COLS.find(([x]) => x === к);
-          return `<label class="form__f" title="${esc(всплывающая)}">
-            <span class="form__l">${подпись}</span>
-            <input class="inp inp--num" id="f-${к}" value="${esc(v[к] ?? '')}"
-              inputmode="decimal" placeholder="не задано"></label>`;
-        }).join('')}</div>`).join('')}
-      <div class="form__hint">${prose(`Пустое поле означает, что ставка не задана: расчёт по этому
-        месторождению не пойдёт и скажет, чего не хватает. Ноль — это утверждение, что затрат нет.
-        Коэффициент падения выводится из темпа автоматически.`)}</div>
-      <div class="form__hint">${prose(`Правка действует вперёд. Расчёты, уже вошедшие в подписанный
-        акт верификации, не пересчитываются: договор требует считать по параметрам, действующим
-        на дату расчёта.`)}</div>
       ${errLine()}
       <div class="form__btns">
         <button class="btn btn--accent" data-act="save">Сохранить</button>
@@ -866,7 +625,7 @@ function formHtml() {
 
 function renderForm() {
   const box = $('#refform');
-  if (!form || form.key !== current || view !== 'values') { box.hidden = true; box.innerHTML = ''; return; }
+  if (!form || form.key !== current) { box.hidden = true; box.innerHTML = ''; return; }
   box.hidden = false;
   box.innerHTML = formHtml();
 }
@@ -879,26 +638,24 @@ function actCell(it, s) {
   if (s.replica) {
     return `<div class="rowact">
       <button class="iconbtn iconbtn--xs" data-row="${it.id}" data-act="code"
-        title="Код месторождения для номера рекомендации"><svg class="ic12"><use href="#i-pencil"/></svg></button>
+        title="Код месторождения для номера рекомендации" aria-label="Изменить код месторождения"><svg class="ic12"><use href="#i-pencil"/></svg></button>
     </div>`;
   }
-  /* Правятся справочники модуля и экономическая модель. У остальных строка
-     действий пуста: системные справочники меняются вместе с логикой, данные
-     ВМАП приходят синхронизацией. */
-  if (s.group !== 'own' && s.group !== 'econ') return '';
-  /* У приоритетов и у ставок доступна только правка: состав строк задан
-     извне — статусной моделью, Формой 2 или деревом ВМАП. */
+  /* Правятся только справочники модуля. У остальных строка действий пуста:
+     системные справочники меняются вместе с логикой, данные ВМАП приходят синхронизацией. */
+  if (s.group !== 'own') return '';
+  /* У приоритетов доступна только правка: состав строк задан статусной моделью. */
   const only = s.rowActs;
   return `<div class="rowact">
     <button class="iconbtn iconbtn--xs" data-row="${it.id}" data-act="edit"
-      title="Изменить"><svg class="ic12"><use href="#i-pencil"/></svg></button>
+      title="Изменить" aria-label="Изменить значение"><svg class="ic12"><use href="#i-pencil"/></svg></button>
     ${only ? '' : it.archived
       ? `<button class="iconbtn iconbtn--xs" data-row="${it.id}" data-act="restore"
-          title="Вернуть из архива"><svg class="ic12"><use href="#i-restore"/></svg></button>`
+          title="Вернуть из архива" aria-label="Вернуть значение из архива"><svg class="ic12"><use href="#i-restore"/></svg></button>`
       : `<button class="iconbtn iconbtn--xs" data-row="${it.id}" data-act="archive"
-          title="Убрать из выбора — в архив"><svg class="ic12"><use href="#i-archive"/></svg></button>`}
+          title="Убрать из выбора — в архив" aria-label="Убрать значение в архив"><svg class="ic12"><use href="#i-archive"/></svg></button>`}
     ${only ? '' : `<button class="iconbtn iconbtn--xs" data-row="${it.id}" data-act="del"
-      title="Удалить"><svg class="ic12"><use href="#i-trash"/></svg></button>`}
+      title="Удалить" aria-label="Удалить значение"><svg class="ic12"><use href="#i-trash"/></svg></button>`}
   </div>`;
 }
 
@@ -920,15 +677,15 @@ function renderTable() {
     const on = sort && sort.key === c.key;
     const filterOn = st.ui.filters[c.key] && st.ui.filters[c.key].size;
     if (!c.label) return '<th></th>';
-    return `<th class="${c.right ? 'th--right' : ''}">
+    return `<th class="${c.right ? 'th--right' : ''}" aria-sort="${on ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}">
       <span class="th">
-        <span class="th__t ${on ? 'is-sorted' : ''}" data-sort="${c.key}" title="${
+        <button type="button" class="th__t ${on ? 'is-sorted' : ''}" data-sort="${c.key}" title="${
           esc(c.hint || `${c.label} — сортировать`)}">
           <span class="th__label">${c.label}</span>
           ${on ? `<svg class="ic-th th__arrow ${sort.dir === 'asc' ? 'is-asc' : ''}"><use href="#i-sort"/></svg>` : ''}
-        </span>
-        ${c.filter ? `<span class="th__i ${filterOn ? 'is-on' : ''}" data-filter="${c.key}"
-          title="Фильтр"><svg class="ic-th"><use href="#i-funnel"/></svg></span>` : ''}
+        </button>
+        ${c.filter ? `<button type="button" class="th__i ${filterOn ? 'is-on' : ''}" data-filter="${c.key}"
+          title="Фильтр" aria-label="Фильтр колонки ${esc(c.label)}"><svg class="ic-th"><use href="#i-funnel"/></svg></button>` : ''}
       </span></th>`;
   }).join('') + '</tr>';
 
@@ -949,13 +706,22 @@ function renderTable() {
 
 function renderLog() {
   const s = SPEC[current];
+  const box = $('#refhistory');
+  if (!historyOpen || s.stub || (s.group !== 'own' && !s.replica)) {
+    box.hidden = true; box.innerHTML = ''; return;
+  }
   const entries = s.replica
     ? sync.log.map((e) => ({
       at: e.at, who: e.manual ? `${USER} — вручную` : 'Синхронизация с ВМАП', text: e.text,
     }))
     : [...refState(s.key).log].sort((a, b) => b.at - a.at);
 
-  $('#logwrap').innerHTML = entries.length
+  box.hidden = false;
+  box.innerHTML = `<header class="refhistory__head">
+      <div><h3 id="historyTitle">${s.replica ? 'Журнал синхронизации' : 'История изменений'}</h3>
+      <span>${esc(s.title)}</span></div>
+      <button class="iconbtn iconbtn--lg" data-act="closeHistory" title="Закрыть историю" aria-label="Закрыть историю"><svg class="ic16"><use href="#i-close"/></svg></button>
+    </header>${entries.length
     ? `<div class="log">${entries.map((e) => `
         <div class="log__i">
           <div class="log__at">${fmtDT(e.at)}</div>
@@ -964,7 +730,7 @@ function renderLog() {
             <div class="log__t">${esc(e.text)}</div>
           </div>
         </div>`).join('')}</div>`
-    : '<div class="empty">Записей нет.</div>';
+    : '<div class="empty">Записей нет.</div>'}`;
 }
 
 /* ------------------------------ отрисовка: подвал ------------------------------ */
@@ -972,25 +738,21 @@ function renderLog() {
 function renderPager() {
   const s = SPEC[current];
   const box = $('#pager');
-  if (s.stub || view === 'log') { box.hidden = true; return; }
+  if (s.stub) { box.hidden = true; return; }
   box.hidden = false;
 
   const st = refState(s.key);
   const rows = visibleRows(s);
-  const total = st.items.filter((it) => !it.archived).length;
   const arch = st.items.filter((it) => it.archived).length;
   const anyFilter = Object.values(st.ui.filters).some((x) => x && x.size);
 
-  const info = anyFilter
-    ? `${rows.length} из ${total} ${plural(total, ['значения', 'значений', 'значений'])}`
-    : `${total} ${plural(total, ['значение', 'значения', 'значений'])}`;
-
-  box.innerHTML = `
-    <div class="pager__info">${info}</div>
+  const controls = `
     ${anyFilter ? '<button class="btn btn--ghost btn--small" data-act="resetFilters">Сбросить фильтры</button>' : ''}
     ${s.group === 'own' && !s.rowActs ? `<label class="pager__sw">
       <input type="checkbox" id="swArch" ${st.ui.showArchived ? 'checked' : ''}>
       Показывать архивные${arch ? ` (${arch})` : ''}</label>` : ''}`;
+  box.hidden = !controls.trim();
+  box.innerHTML = controls;
 }
 
 /* ------------------------------ отрисовка: заглушка ------------------------------ */
@@ -1011,16 +773,11 @@ function render() {
   const s = SPEC[current];
   renderNav();
   renderHead();
-  renderNotice();
   renderForm();
   renderStub();
-
-  const showTable = !s.stub && view === 'values';
-  $('#tablewrap').hidden = !showTable;
-  $('#logwrap').hidden = s.stub || view !== 'log';
-
-  if (showTable) renderTable();
-  if (!s.stub && view === 'log') renderLog();
+  $('#tablewrap').hidden = !!s.stub;
+  if (!s.stub) renderTable();
+  renderLog();
   renderPager();
 
   /* Выгрузка нужна не «на всякий случай»: отступления от договора по статусам и
@@ -1048,15 +805,6 @@ function openForm(key, id, kind) {
 
   if (kind === 'code') {
     form = { key, id, mode: 'edit', kind: 'code', item, values: { code: item.code, name: item.name } };
-  } else if (s.key === 'econ') {
-    const v = {};
-    for (const [к] of ECON_COLS) v[к] = item[к] ?? '';
-    form = { key, id, mode: 'edit', kind: 'econ', item, values: v };
-  } else if (s.key === 'ndpi') {
-    form = {
-      key, id, mode: 'edit', kind: 'ndpi', item,
-      values: { ndpiFact: item.ndpiFact, ndpiMsu: item.ndpiMsu, regime: item.regime },
-    };
   } else if (s.key === 'params') {
     form = { key, id, mode: 'edit', kind: 'param', item, values: { value: item.value } };
   } else if (s.key === 'priorities') {
@@ -1074,16 +822,6 @@ function openForm(key, id, kind) {
 function readForm() {
   if (form.kind === 'code') { form.values.code = $('#fCode').value.trim().toUpperCase(); return; }
   if (form.kind === 'param') { form.values.value = $('#fValue').value.trim(); return; }
-  if (form.kind === 'econ') {
-    for (const [к] of ECON_COLS) form.values[к] = $(`#f-${к}`).value.trim();
-    return;
-  }
-  if (form.kind === 'ndpi') {
-    form.values.ndpiFact = $('#f-ndpiFact').value.trim();
-    form.values.ndpiMsu = $('#f-ndpiMsu').value.trim();
-    form.values.regime = $('#f-regime').value;
-    return;
-  }
   if (form.kind === 'priority') {
     form.values.name = $('#fName').value.trim();
     form.values.sla = $('#fSla').value.trim();
@@ -1116,53 +854,6 @@ function saveForm() {
     form = null; render(); return;
   }
 
-  if (form.kind === 'ndpi') {
-    const части = [];
-    for (const [к, подпись] of [['ndpiFact', 'ставка факт'], ['ndpiMsu', 'ставка МСУ']]) {
-      const число = Number(String(v[к]).replace(',', '.').trim());
-      if (!Number.isFinite(число) || число < 0) {
-        formErr = `«${подпись}»: нужно неотрицательное число.`;
-        render(); return;
-      }
-      if (form.item[к] !== число) части.push(`${подпись} ${form.item[к]} → ${число}`);
-      form.item[к] = число;
-    }
-    if (form.item.regime !== v.regime) {
-      части.push(`налоговый режим ${form.item.regime} → ${v.regime}`);
-      form.item.regime = v.regime;
-    }
-    if (части.length) log(key, `${form.item.field}, пласт «${form.item.plast}»: ${части.join('; ')}.`);
-    form = null; render(); return;
-  }
-
-  if (form.kind === 'econ') {
-    const было = {};
-    const стало = {};
-    for (const [к, подпись] of ECON_COLS) {
-      const строка = String(v[к]).replace(',', '.').trim();
-      /* Пустое поле — законное значение: оно означает «ставка не задана», и
-         расчёт по такому месторождению не пойдёт. Ноль означал бы «затрат
-         нет», а это другое утверждение. */
-      const число = строка === '' ? null : Number(строка);
-      if (число !== null && (!Number.isFinite(число) || число < 0)) {
-        formErr = `«${подпись}»: нужно неотрицательное число или пустое поле.`;
-        render(); return;
-      }
-      const прежнее = form.item[к] ?? null;
-      if (прежнее !== число) { было[подпись] = прежнее; стало[подпись] = число; }
-      form.item[к] = число;
-    }
-    /* Коэффициент падения выводится из темпа по формуле модели Заказчика,
-       руками не вводится: два поля, связанные формулой, разъезжаются. */
-    form.item.declineK = form.item.decline === null ? null
-      : +Math.max(0.87, (100 - form.item.decline / 2) / 100).toFixed(4);
-
-    const части = Object.keys(стало)
-      .map((п) => `${п}: ${было[п] ?? 'не задано'} → ${стало[п] ?? 'не задано'}`);
-    if (части.length) log(key, `${form.item.field} — ${части.join('; ')}.`);
-    form = null; render(); return;
-  }
-
   if (form.kind === 'param') {
     const n = Number(v.value);
     if (!Number.isInteger(n) || n < 1 || n > 365) {
@@ -1184,7 +875,7 @@ function saveForm() {
   if (form.kind === 'priority') {
     const sla = Number(v.sla);
     if (!v.name) { formErr = 'Название приоритета не заполнено.'; render(); return; }
-    if (!Number.isFinite(sla) || sla < 1 || sla > 99) {
+    if (!Number.isInteger(sla) || sla < 1 || sla > 99) {
       formErr = 'Норматив ответа — целое число рабочих часов от 1 до 99.';
       render(); return;
     }
@@ -1395,12 +1086,17 @@ document.addEventListener('click', (e) => {
   const nav = e.target.closest('[data-ref]');
   if (nav) {
     current = nav.dataset.ref;
-    view = 'values'; form = null; formErr = '';
+    form = null; formErr = ''; historyOpen = false;
     closePopover(); render(); return;
   }
 
-  const seg = e.target.closest('[data-view]');
-  if (seg) { view = seg.dataset.view; closePopover(); render(); return; }
+  const group = e.target.closest('[data-group]');
+  if (group) {
+    const key = group.dataset.group;
+    if (SPEC[current].group === key) return;
+    if (collapsedGroups.has(key)) collapsedGroups.delete(key); else collapsedGroups.add(key);
+    renderNav(); return;
+  }
 
   const sort = e.target.closest('[data-sort]');
   if (sort) {
@@ -1423,6 +1119,8 @@ document.addEventListener('click', (e) => {
     const id = btn.dataset.row;
 
     if (act === 'add') { closePopover(); openForm(current, null); return; }
+    if (act === 'history') { historyOpen = !historyOpen; render(); return; }
+    if (act === 'closeHistory') { historyOpen = false; render(); return; }
     if (act === 'edit') { closePopover(); openForm(current, id); return; }
     if (act === 'code') { askCode(btn, current, id); return; }
     if (act === 'archive') { closePopover(); archiveItem(current, id); return; }

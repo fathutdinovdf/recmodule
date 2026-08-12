@@ -10,16 +10,18 @@
 
 .refsbody {
   flex: 1 1 auto; min-height: 0;
-  display: flex; gap: var(--screen-gap-default);
+  display: flex; align-items: flex-start; gap: var(--screen-gap-default);
 }
 
 /* ------------------------------ список справочников ------------------------------ */
 
-/* Ширина взята той же переменной, что и главное меню: две колонки навигации
-   рядом, и разная ширина у них читалась бы как разный уровень вложенности. */
+/* Внутренняя навигация уже главного меню: это второй уровень, а не ещё одна
+   равноправная область приложения. Размер собран из токенов, чтобы не вводить
+   отдельную магическую ширину ради одного экрана. */
 .reflist {
-  width: var(--layout-sidebar-width);
+  width: calc(var(--layout-sidebar-width) - var(--section-padding-extra-wide) - var(--screen-gap-default));
   flex: 0 0 auto;
+  align-self: stretch;
   background: var(--bg-card);
   border-radius: var(--corner-radius-section);
   box-shadow: var(--elevation-1);
@@ -27,9 +29,11 @@
   overflow-y: auto;
 }
 
-/* Заголовок класса справочников набирается так же, как заголовки групп в
-   боковом меню: это деление списка, а не сноска к нему. */
+/* Группа — самостоятельный переключатель, а не декоративная подпись: её можно
+   свернуть, когда пользователь работает с другим классом справочников. */
 .reflist__section {
+  width: 100%; border: 0; background: transparent; cursor: pointer;
+  display: flex; align-items: center; justify-content: space-between;
   font: var(--font-weight-subtitle) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
   letter-spacing: var(--letter-spacing-text-caption);
   text-transform: uppercase;
@@ -38,23 +42,23 @@
   margin-top: var(--group-gap-s);
   border-top: 1px solid var(--border-divider);
 }
-.reflist__section:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.reflist__group:first-child .reflist__section { margin-top: 0; padding-top: 0; border-top: 0; }
+.reflist__section:hover { color: var(--text-accent); }
+.reflist__section:focus-visible { box-shadow: var(--focus-component); }
+.reflist__section.is-collapsed .reflist__caret { transform: rotate(-90deg); }
+.reflist__items { display: flex; flex-direction: column; }
 
-/* Подпись под заголовком группы объясняет класс справочников один раз, а не
-   на каждой строке: почему у одних есть кнопки правки, а у других нет. */
-.reflist__note {
-  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
-  color: var(--text-tertiary);
-  padding: 0 var(--item-padding-horizontal-s) var(--item-padding-vertical-s);
-}
-
-.reflist .navitem { align-items: flex-start; }
+.reflist .navitem { width: 100%; border: 0; background: transparent; text-align: left; align-items: flex-start; }
 .reflist .navitem__label { font-size: var(--font-size-text-small); line-height: var(--line-height-text-small); }
 .reflist .badge { margin-top: var(--item-padding-vertical-2xs); }
 
 /* ------------------------------ шапка справочника ------------------------------ */
 
-.panel--refs { min-width: 0; }
+.panel--refs {
+  min-width: 0; width: 100%;
+  flex: 1 1 0; align-self: flex-start;
+  max-height: 100%;
+}
 
 .refhead {
   flex: 0 0 auto;
@@ -117,32 +121,14 @@
 
 /* ------------------------------ тело панели ------------------------------ */
 
-.refbody { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.refbody { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.panel--refs .tablewrap { flex: 0 1 auto; max-height: 100%; }
 
-/* Пояснение к справочнику, где у данных есть известная проблема: расщеплённое
-   месторождение, куст «0», неразрешённые скважины. Проблему надо показывать
-   на экране, а не прятать в документ вопросов — иначе её увидит только тот,
-   кто документ читал. */
-.refnotice {
-  flex: 0 0 auto;
-  margin: var(--group-padding-m) var(--group-padding-m) 0;
-  padding: var(--group-padding-s) var(--group-padding-m);
-  background: var(--bg-secondary);
-  border-left: 3px solid var(--status-warning);
-  border-radius: var(--corner-radius-m);
-  display: flex; flex-direction: column; gap: var(--item-gap-vertical-s);
+.panel--refs .th__t,
+.panel--refs .th__i {
+  border: 0; padding: 0; background: transparent;
+  color: inherit; font: inherit;
 }
-.refnotice--info { border-left-color: var(--status-processing); }
-.refnotice__h {
-  display: flex; align-items: center; gap: var(--item-gap-horizontal-m);
-  font: var(--font-weight-subtitle) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
-  color: var(--text-secondary);
-}
-.refnotice__t {
-  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
-  color: var(--text-tertiary);
-}
-.refnotice__act { display: flex; align-items: center; gap: var(--item-gap-horizontal-m); flex-wrap: wrap; }
 
 .refform {
   flex: 0 0 auto;
@@ -228,6 +214,36 @@
   font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
   color: var(--text-tertiary);
 }
+
+/* История не заменяет таблицу: она открывается отдельной правой панелью, чтобы
+   значение и его изменения можно было читать одновременно. */
+.refhistory {
+  width: var(--sizing-context-column-max); flex: 0 0 auto;
+  max-height: 100%; overflow-y: auto;
+  background: var(--bg-card);
+  border-radius: var(--corner-radius-section);
+  box-shadow: var(--elevation-1);
+}
+.refhistory__head {
+  position: sticky; top: 0; z-index: 2;
+  display: flex; align-items: flex-start; gap: var(--group-gap-m);
+  padding: var(--group-padding-m);
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-divider-light);
+}
+.refhistory__head > div { flex: 1 1 auto; min-width: 0; }
+.refhistory__head h3 {
+  margin: 0;
+  font: var(--font-weight-headline) var(--font-size-h6) / var(--line-height-h6) var(--font-family-headline);
+  color: var(--text-heading);
+}
+.refhistory__head span {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+.refhistory .log { padding: var(--group-padding-m); }
+.refhistory .log__i { flex-direction: column; gap: var(--item-gap-vertical-s); }
+.refhistory .log__at { flex-basis: auto; }
 
 /* ------------------------------ подвал ------------------------------ */
 
@@ -339,4 +355,17 @@
 .tablewrap--wide td:first-child::after {
   content: ''; position: absolute; top: 0; right: 0; bottom: 0;
   border-right: 1px solid var(--border-divider-light);
+}
+
+@media (max-width: 1280px) {
+  .reflist {
+    width: calc(var(--layout-sidebar-width) - var(--section-padding-extra-wide) * 2 - var(--screen-gap-default));
+  }
+  .refhistory {
+    position: absolute; z-index: 20;
+    top: var(--screen-padding-default); right: var(--screen-padding-default); bottom: var(--screen-padding-default);
+    width: min(var(--sizing-context-column-max), calc(100% - var(--screen-padding-wide)));
+    box-shadow: var(--elevation-3);
+  }
+  .refsbody { position: relative; }
 }

@@ -14,8 +14,8 @@
      3. Отбор по ответственному — у эксперта АКЭ рекомендация именная: он её
         выдал и он же ведёт её по телеметрии.
 
-   Прав на уровне полей здесь нет и не планируется: модуль различает роли, а
-   не отдельные атрибуты записи. Паролей, входа и связи с учётными записями
+   Права на действия с рекомендациями задаются ролью. Редактирование экономической модели —
+   отдельное полномочие: его нельзя неявно вывести из стороны или права решения. Паролей, входа и связи с учётными записями
    ВМАП тоже нет — в рабочем модуле человек приходит уже опознанным, а этот
    экран задаёт, что ему в модуле доступно.
 
@@ -146,7 +146,7 @@ const SIDE_NOTE = {
    отбирает, и в общие данные он попал бы мёртвым грузом. Заведён здесь —
    до тех пор, пока список пользователей не станет отдельной сущностью. */
 const ADMIN = {
-  key: 'admin', who: ME, side: 'Исполнитель', zone: [], canDecide: false,
+  key: 'admin', who: ME, side: 'Исполнитель', zone: [], canDecide: false, canEditEconomy: true,
 };
 
 let seq = 0;
@@ -160,6 +160,7 @@ function makePerson(src, log) {
     zone: [...src.zone],
     executor: src.executor || null,
     canDecide: !!src.canDecide,
+    canEditEconomy: ECONOMY_EDITORS.includes(src.who) || !!src.canEditEconomy,
     home: spec.home,
     active: true,
     log: log.map((e) => ({ who: ME, ...e })),
@@ -521,6 +522,23 @@ function decideBlock() {
   </div>`;
 }
 
+function economyBlock() {
+  const p = person();
+  return `<div class="ublock">
+    <div class="block__h">Экономическая модель</div>
+    <label class="sw">
+      <input type="checkbox" id="swEconomy" ${p.canEditEconomy ? 'checked' : ''}>
+      <span class="sw__t"></span>
+      <span class="sw__l">${p.canEditEconomy ? 'Может редактировать' : 'Только просмотр'}</span>
+    </label>
+    <div class="ublock__t">${p.canEditEconomy
+      ? prose(`Пользователь может менять общие параметры, ставки по месторождениям и НДПИ по пластам.
+          Публикация требует причины и записывается в историю отдельной версией.`)
+      : prose(`Экономическая модель доступна для просмотра вместе с историей. Изменять значения
+          и публиковать новую версию пользователь не может.`)}</div>
+  </div>`;
+}
+
 function executorBlock() {
   const p = person();
   const spec = ROLE[p.role];
@@ -572,7 +590,7 @@ function render() {
   $('#userbody').innerHTML = view === 'log'
     ? logHtml()
     : `${form && form.kind === 'user' ? `<div class="ublock">${userFormHtml()}</div>` : ''}
-       ${adding ? '' : `${accountBlock()}${zoneBlock()}${decideBlock()}${executorBlock()}`}`;
+       ${adding ? '' : `${accountBlock()}${zoneBlock()}${decideBlock()}${economyBlock()}${executorBlock()}`}`;
 
   $('#headActions').innerHTML = `
     <button class="btn btn--accent" data-act="add"><svg class="ic16"><use href="#i-plus"/></svg>Добавить пользователя</button>`;
@@ -634,7 +652,7 @@ function saveUserForm() {
     const p = {
       id: `u-${seq++}`, name: v.name, role: v.role, zone: [],
       executor: spec.byExecutor ? (v.executor || null) : null,
-      canDecide: spec.canDecide, home: v.home, active: true, log: [],
+      canDecide: spec.canDecide, canEditEconomy: false, home: v.home, active: true, log: [],
     };
     people.push(p);
     current = p.id;
@@ -812,6 +830,17 @@ document.addEventListener('click', (e) => {
 });
 
 document.addEventListener('change', (e) => {
+  if (e.target.id === 'swEconomy') {
+    const p = person();
+    p.canEditEconomy = e.target.checked;
+    const known = ECONOMY_EDITORS.indexOf(p.name);
+    if (p.canEditEconomy && known < 0) ECONOMY_EDITORS.push(p.name);
+    if (!p.canEditEconomy && known >= 0) ECONOMY_EDITORS.splice(known, 1);
+    note(p, p.canEditEconomy
+      ? 'Выдано отдельное право редактировать экономическую модель.'
+      : 'Право редактировать экономическую модель снято; сохранён доступ на просмотр и к истории.');
+    render(); return;
+  }
   if (e.target.id === 'swDecide') {
     const p = person();
     p.canDecide = e.target.checked;
