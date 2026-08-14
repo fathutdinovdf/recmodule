@@ -6,8 +6,8 @@
  * Однажды здесь лежали их копии, и таблица реестра поехала — свои padding и
  * white-space перебили макетные.
  *
- * Сюда попадает только то, чего в макете нет: страница расчёта эффекта и
- * поправки на замену <button> ссылкой.
+ * Сюда попадает только общее для всего приложения: сброс, body и поправки на
+ * замену <button> ссылкой. Стили отдельных экранов живут рядом с ними.
  */
 
 * { box-sizing: border-box; }
@@ -28,70 +28,19 @@ body {
 .tile { text-decoration: none; color: inherit; }
 .pgbtn { text-decoration: none; display: inline-grid; place-items: center; }
 
-/* ------------------------------ страница расчёта эффекта ------------------------------
-   Собственные классы служебного экрана. Имена намеренно не пересекаются с
-   макетными, чтобы этот файл ничего не перебивал. */
+/* Классы служебной страницы расчёта (calc-*) отсюда убраны вместе с самой
+   страницей: расчёт переехал во вкладку карточки, его стили — в card-extra.css.
+   Здесь остаётся только общее для всего приложения. */
 
-.calc-page {
-  padding: var(--screen-padding-default);
-  display: flex;
-  flex-direction: column;
-  gap: var(--screen-gap-default);
+/* ------------------------------ выбор пользователя ------------------------------
+   Заглушка входа в шапке: в рабочем контуре пользователь приходит из ВМАП. Ведёт
+   себя как надпись с именем в макете, пока в неё не ткнули, — отсюда прозрачный
+   фон и наследование шрифта. Стрелку списка оставляем: без неё никто не догадается,
+   что имя переключается. */
+.userpick {
+  font: inherit; color: inherit;
+  background: transparent; border: 0; padding: 0;
+  cursor: pointer; max-width: 260px;
 }
-
-.calc-kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: var(--block-gap-default);
-}
-
-.calc-kpi {
-  display: flex;
-  flex-direction: column;
-  gap: var(--item-gap-vertical-s);
-  padding: var(--item-padding-vertical-m) var(--item-padding-horizontal-m);
-  background: var(--bg-page);
-  border-radius: var(--corner-radius-component);
-}
-
-.calc-kpi__k {
-  font-size: var(--font-size-text-small);
-  color: var(--text-tertiary);
-}
-
-.calc-kpi__v {
-  font: var(--font-weight-headline) var(--font-size-h5) / var(--line-height-h5)
-        var(--font-family-headline);
-  color: var(--text-heading);
-  font-variant-numeric: tabular-nums;
-}
-
-.calc-kpi__v small {
-  font: var(--font-weight-text) var(--font-size-text-small) / 1 var(--font-family-text);
-  color: var(--text-quaternary);
-  margin-left: var(--item-gap-horizontal-s);
-}
-
-.calc-sub {
-  font-size: var(--font-size-text-small);
-  line-height: var(--line-height-text-small);
-  color: var(--text-tertiary);
-}
-
-.calc-warn {
-  display: flex;
-  flex-direction: column;
-  gap: var(--item-gap-vertical-s);
-  padding: var(--item-padding-vertical-m) var(--item-padding-horizontal-m);
-  background: var(--status-warning-light-bg);
-  color: var(--status-warning-text);
-  border-radius: var(--corner-radius-component);
-  font-size: var(--font-size-text-small);
-}
-
-.is-good { color: var(--status-success-text); }
-.is-bad  { color: var(--status-error-text); }
-
-/* Сутки, где значение протянуто с прошлых, а не измерено. */
-.row-carried td { color: var(--text-quaternary); }
-.row-empty td { color: var(--text-quaternary); font-style: italic; }
+.userpick:focus-visible { outline: none; box-shadow: var(--focus-component); border-radius: var(--corner-radius-component); }
+.userpick:disabled { opacity: .6; cursor: progress; }

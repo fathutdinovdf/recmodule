@@ -11,7 +11,7 @@
  *            запроса, в которой нет и не будет ничего, кроме SELECT.
  */
 
-import { Pool, type QueryResultRow } from 'pg';
+import { Pool, type PoolClient, type QueryResultRow } from 'pg';
 
 /* В dev-режиме Next перезагружает модули при каждой правке файла. Пул,
    созданный на уровне модуля, при этом создавался бы заново, а старый оставался
@@ -63,6 +63,29 @@ export async function query<T extends QueryResultRow>(
 ): Promise<T[]> {
   const res = await modulePool.query<T>(text, params);
   return res.rows;
+}
+
+/**
+ * Транзакция в базе модуля.
+ *
+ * Нужна везде, где действие пользователя меняет несколько таблиц сразу:
+ * решение Заказчика — это одновременно запись в `decisions`, новый статус
+ * рекомендации и строка в хронологии. Записанные порознь, они дают карточку,
+ * которая сама себе противоречит: статус «Отклонено» без обоснования отказа.
+ */
+export async function transaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
+  const client = await modulePool.connect();
+  try {
+    await client.query('BEGIN');
+    const результат = await fn(client);
+    await client.query('COMMIT');
+    return результат;
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
 }
 
 /**
