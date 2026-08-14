@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Icon } from '@/components/Icons';
 import { Hint } from '@/components/ui/Hint';
 import {
@@ -11,27 +12,43 @@ import {
 
 interface ActionItem {
   label: string;
+  /** Куда ведёт пункт: вкладка и параметр, раскрывающий форму действия. */
+  href: string;
   destructive?: boolean;
 }
 
-/* Состав действий повторяет HEAD_ACTIONS из макета. Пока серверные операции
-   для них не реализованы, пункты намеренно disabled: меню можно оценить как
-   компонент, но оно не создаёт ложного ощущения, что действие уже работает. */
+/* Состав действий повторяет HEAD_ACTIONS из макета.
+ *
+ * Каждый пункт — ссылка на вкладку с раскрытой формой, а не действие прямо из
+ * меню: все они меняют состояние рекомендации необратимо, и подтверждение с
+ * объяснением последствий обязательно. Заодно действие переживает
+ * перезагрузку и работает без JavaScript, как остальные формы карточки.
+ */
 const ACTIONS: Record<string, ActionItem[]> = {
   draft: [
-    { label: 'Зарегистрировать' },
-    { label: 'Удалить', destructive: true },
+    { label: 'Зарегистрировать', href: 'summary?form=register' },
+    { label: 'Удалить', href: 'summary?form=delete', destructive: true },
   ],
-  registered: [{ label: 'Отменить', destructive: true }],
-  clarify: [{ label: 'Внести уточнение и передать' }],
-  approved: [{ label: 'Зафиксировать реализацию' }],
-  windowOpen: [{ label: 'Закрыть окно досрочно', destructive: true }],
-  rejected: [{ label: 'Создать новую на основе' }],
-  cancelled: [{ label: 'Создать новую на основе' }],
+  registered: [{ label: 'Отменить', href: 'summary?form=cancel', destructive: true }],
+  sent: [{ label: 'Отменить', href: 'summary?form=cancel', destructive: true }],
+  review: [{ label: 'Отменить', href: 'summary?form=cancel', destructive: true }],
+  clarify: [
+    { label: 'Внести уточнение и передать', href: 'summary?form=resend' },
+    { label: 'Отменить', href: 'summary?form=cancel', destructive: true },
+  ],
+  approved: [{ label: 'Зафиксировать реализацию', href: 'impl?form=fact' }],
+  windowOpen: [{ label: 'Закрыть окно досрочно', href: 'impl?form=close', destructive: true }],
+  rejected: [{ label: 'Создать новую на основе', href: 'summary?form=copy' }],
+  cancelled: [{ label: 'Создать новую на основе', href: 'summary?form=copy' }],
 };
 
-export function CardActionsMenu({ status }: { status: string }) {
-  const actions = ACTIONS[status] ?? [];
+export function CardActionsMenu({ status, recId, executor }: {
+  status: string;
+  recId: number;
+  /** Все действия меню — действия Исполнителя; Заказчику меню не показывается. */
+  executor: boolean;
+}) {
+  const actions = executor ? ACTIONS[status] ?? [] : [];
   if (!actions.length) return null;
 
   return (
@@ -50,10 +67,10 @@ export function CardActionsMenu({ status }: { status: string }) {
         {actions.map((action) => (
           <DropdownMenuItem
             key={action.label}
-            disabled
+            asChild
             variant={action.destructive ? 'destructive' : 'default'}
           >
-            {action.label}
+            <Link href={`/rec/${recId}/${action.href}`}>{action.label}</Link>
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

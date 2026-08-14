@@ -28,6 +28,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { ФормаФиксации } from './fix-form';
 import { зафиксировать, оспоритьДату, принятьДату, отклонитьВозражение } from './actions';
+import { закрытьОкноДосрочно } from '../lifecycle';
 
 export const dynamic = 'force-dynamic';
 
@@ -121,6 +122,13 @@ export default async function Page({ params, searchParams }: {
         {impl.note && <div className="block__b" style={{ marginTop: 'var(--item-gap-vertical-s)' }}>{impl.note}</div>}
       </div>
 
+      {/* Досрочное закрытие приходит из меню шапки и раскрывается здесь: окно
+          живёт на этой вкладке, и решение о его закрытии принимают, глядя на
+          даты окна, а не на пункт меню. */}
+      {form === 'close' && исполнитель && !закрыто && (
+        <ФормаЗакрытия card={card} ошибка={err} />
+      )}
+
       <БлокСпора card={card} спор={спор} исполнитель={исполнитель} user={user}
                  закрыто={закрыто} форма={form} ошибка={err} />
     </>
@@ -162,6 +170,36 @@ function ФактНеЗафиксирован({ card, исполнитель, ф
             Фиксацию делает Исполнитель, когда увидит изменение режима в телеметрии.
           </div>
         )}
+    </div>
+  );
+}
+
+/* ------------------------------ досрочное закрытие ------------------------------ */
+
+function ФормаЗакрытия({ card, ошибка }: { card: Card; ошибка?: string }) {
+  return (
+    <div className="form" style={{ marginBottom: 'var(--section-gap-default)' }}>
+      <div className="form__h">Закрыть окно досрочно</div>
+      <div className="form__hint">
+        Сутки после закрытия в расчёт эффекта не войдут, накопленный итог станет окончательным
+        и перестанет пересчитываться. Обратного действия нет: заново окно открывается только
+        новой фиксацией реализации, которой по завершённой рекомендации не будет.
+      </div>
+
+      <form action={закрытьОкноДосрочно.bind(null, card.id)}>
+        <Field data-invalid={Boolean(ошибка)}>
+          <FieldLabel htmlFor="close-reason">
+            Причина <span className="text-muted-foreground">обязательно</span>
+          </FieldLabel>
+          <Textarea id="close-reason" name="text" rows={3} aria-invalid={Boolean(ошибка)}
+                    placeholder="Например: скважина остановлена в ремонт, дальнейшие сутки к мероприятию отношения не имеют." />
+          {ошибка && <FieldError>{ошибка}</FieldError>}
+        </Field>
+        <div className="form__btns">
+          <Button type="submit" variant="destructive">Закрыть окно</Button>
+          <Button variant="outline" asChild><Link href="?">Отмена</Link></Button>
+        </div>
+      </form>
     </div>
   );
 }

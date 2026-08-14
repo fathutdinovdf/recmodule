@@ -22,6 +22,7 @@ import { forecastTotal } from '@/domain/effect';
 import { control, fmtDur } from '@/domain/workhours';
 import { WINDOW_DAYS } from '@/services/effect-store';
 import { дата, число, прирост, рубли } from '@/lib/format';
+import { currentUser } from '@/lib/session';
 import { Tabs } from './tabs';
 import { CardActionsMenu } from './card-actions-menu';
 import '../../card.css';
@@ -50,7 +51,8 @@ export default async function CardLayout({
   const card = await getCard(Number(id));
   if (!card) notFound();
 
-  const [соседи, история, econ, скважина] = await Promise.all([
+  const [пользователь, соседи, история, econ, скважина] = await Promise.all([
+    currentUser(),
     getNeighbours(card.id),
     getWellHistory(card.wellNumber, card.fieldId, card.id),
     card.fieldId === null ? null : getWellEconomy(card.fieldId, card.wellNumber),
@@ -118,7 +120,8 @@ export default async function CardLayout({
                     : <span className="cnbtn is-off" aria-label="Следующей рекомендации нет"><Icon id="next" /></span>}
                 </Hint>
               </div>
-              <CardActionsMenu status={card.status} />
+              <CardActionsMenu status={card.status} recId={card.id}
+                               executor={пользователь?.side === 'executor'} />
             </div>
           </div>
 

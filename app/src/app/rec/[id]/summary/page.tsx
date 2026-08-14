@@ -28,6 +28,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field
 import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
 import { Separator } from '@/components/ui/separator';
 import { решить, отметитьОткрытие } from '../actions';
+import { ФормаДействия, ЖИЗНЕННЫЕ_ФОРМЫ, type ЖизненнаяФорма } from './lifecycle-forms';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,8 +51,15 @@ export default async function Page({ params, searchParams }: {
   const открытая: Форма | null = form === 'accept' || form === 'reject' || form === 'clarify'
     ? form : null;
 
+  /* Форма действия из меню шапки показывается только Исполнителю: все эти
+     операции — его. Заказчику меню и не отдаётся, но адрес можно ввести руками. */
+  const действие = user?.side === 'executor'
+    && ЖИЗНЕННЫЕ_ФОРМЫ.includes(form as ЖизненнаяФорма)
+    ? form as ЖизненнаяФорма : null;
+
   return (
     <>
+      {действие && <ФормаДействия card={card} вид={действие} ошибка={err} />}
       <div className="mb-[var(--section-gap-default)] flex flex-col gap-4">
         <section className="flex flex-col gap-1.5">
           <h2 className="m-0 text-sm font-medium text-muted-foreground">Проблема / отклонение</h2>

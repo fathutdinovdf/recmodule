@@ -45,6 +45,33 @@ export function workHoursBetween(a: Date, b: Date): number {
   return acc;
 }
 
+/**
+ * Момент, наступающий через заданное число РАБОЧИХ часов после `from`.
+ *
+ * Обратная к `workHoursBetween`: ею считается срок ответа при передаче
+ * рекомендации Заказчику. Отсчёт начинается с ближайшего рабочего момента —
+ * переданная в пятницу вечером рекомендация тратит норматив с утра
+ * понедельника, а не всю субботу.
+ */
+export function addWorkHours(from: Date, hours: number): Date {
+  let cur = toWindow(from);
+  let осталось = hours;
+
+  while (осталось > 0) {
+    const конецДня = new Date(cur);
+    конецДня.setHours(WORK_TO, 0, 0, 0);
+    const вДне = (конецДня.getTime() - cur.getTime()) / 3_600_000;
+
+    if (осталось <= вДне) {
+      cur = new Date(cur.getTime() + осталось * 3_600_000);
+      break;
+    }
+    осталось -= вДне;
+    cur = toWindow(конецДня);
+  }
+  return cur;
+}
+
 export type ControlKind = 'none' | 'pending' | 'ok' | 'late' | 'overdue' | 'waiting';
 
 export interface Control {
