@@ -1,0 +1,290 @@
+'use server';
+
+/* Действия вкладки «Расчёт эффекта»: спор о базовых значениях.
+ *
+ * База — вторая после даты реализации величина, которую определяет одна
+ * сторона, а живёт с ней другая: Исполнитель вносит базу при регистрации,
+ * Заказчик потом принимает по ней эффект. Поэтому у базы тот же круг, что у
+ * даты: Заказчик подаёт свою версию с обоснованием, Исполнитель принимает или
+ * отклоняет.
+ *
+ * Отличие от спора о дате одно, но важное: предложенная версия — это не поле в
+ * споре, а полноценная строка в `rec.baselines` со status = 'proposed'. Причина
+ * в том, что база многозначна (три показателя, период, источник), и она же
+ * ссылается из кэша расчёта: `effect_daily.baseline_id` должен указывать на
+ * версию, по которой сутки посчитаны. Хранить предложение отдельным форматом
+ * значило бы держать два описания одной сущности.
+ *
+ * Границы, которых в договоре нет и которые приняты по аналогии со спором о
+ * дате (см. отчёт по задаче):
+ *
+ *   верхняя — закрытие окна эффекта. После закрытия итог финализирован, и
+ *             спорить о базе, по которой он посчитан, поздно: это уже
+ *             разбирательство по разделу 10 договора, а не действие в модуле;
+ *   нижняя  — согласование рекомендации Заказчиком. До него база спорна вместе
+ *             со всей рекомендацией: не согласен с базой — не согласовывай или
+ *             запроси уточнение, отдельный спор для этого не нужен.
+ *
+ * Валидация вся здесь: формы отправляются обычным POST и работают без
+ * JavaScript, а права — тем более не дело клиента.
+ */
+
+import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
+import { transaction } from '@/db/pool';
+import { currentUser } from '@/lib/session';
+import { число as числоНаЭкран } from '@/lib/format';
+
+/** Статусы, на которых базу ещё можно оспорить. */
+const СТАТУСЫ_СПОРА = new Set(['approved', 'windowOpen']);
+
+/* Число приходит из поля ввода в том виде, в каком его набрали. Запятая
+   принимается наравне с точкой: на русской раскладке десятичный разделитель —
+   запятая, и «26,5» человек наберёт скорее, чем «26.5». */
+function числоИзФормы(v: unknown): number | null {
+  const s = String(v ?? '').trim().replace(',', '.').replace(/\s/g, '');
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function вернуться(recId: number, form: string, ошибка: string): never {
+  redirect(`/rec/${recId}/effect?form=${form}&err=${encodeURIComponent(ошибка)}`);
+}
+
+function готово(recId: number): never {
+  revalidatePath(`/rec/${recId}`, 'layout');
+  redirect(`/rec/${recId}/effect`);
+}
+
+/* ------------------------------ подача возражения ------------------------------ */
+
+/**
+ * Возражение Заказчика по базовым значениям.
+ *
+ * Пишет свою версию базы отдельной строкой со status = 'proposed' и спор,
+ * который на неё ссылается. Действующая база при этом не трогается: пока спор
+ * не разобран, эффект считается по ней, а итог помечается предварительным —
+ * это делает `effect-store` по наличию открытого спора.
+ */
+export async function оспоритьБазу(recId: number, form: FormData): Promise<void> {
+  const qzh = числоИзФормы(form.get('base_qzh'));
+  const qn = числоИзФормы(form.get('base_qn'));
+  const ee = числоИзФормы(form.get('base_ee'));
+  const обоснование = String(form.get('text') ?? '').trim();
+
+  /* Жидкость и нефть обязательны: без любой из них расчёт денег встаёт целиком
+     (часть статей висит на жидкости, часть на нефти). ЭЭ необязательна — она в
+     формулу не входит вовсе, источника факта по ней пока нет. */
+  if (qzh === null || Number.isNaN(qzh)) вернуться(recId, 'baseDispute', 'Укажите базовый дебит жидкости числом.');
+  if (qn === null || Number.isNaN(qn)) вернуться(recId, 'baseDispute', 'Укажите базовый дебит нефти числом.');
+  if (Number.isNaN(ee)) вернуться(recId, 'baseDispute', 'Энергопотребление указано не числом.');
+  if (qzh! < 0 || qn! < 0 || (ee ?? 0) < 0) вернуться(recId, 'baseDispute', 'Базовые значения не могут быть отрицательными.');
+  /* Нефть не может превышать жидкость даже при нулевой обводнённости: нефть в
+     тоннах, жидкость в кубометрах, и плотность нефти всегда меньше тонны на
+     куб. Проверка грубая, но ловит перепутанные местами поля. */
+  if (qn! > qzh!) вернуться(recId, 'baseDispute', 'Дебит нефти больше дебита жидкости — проверьте, не перепутаны ли поля.');
+  if (!обоснование) {
+    вернуться(recId, 'baseDispute', 'Обоснование обязательно: Исполнителю нужно понять, откуда взяты предлагаемые значения.');
+  }
+
+  const user = await currentUser();
+  if (!user || user.side !== 'customer') {
+    вернуться(recId, 'baseDispute', 'Оспорить базовые значения может только Заказчик.');
+  }
+
+  const ошибка = await transaction(async (client) => {
+    const { rows } = await client.query(`
+      SELECT r.status, i.closed_at,
+             b.id AS baseline_id, b.base_qzh, b.base_qn, b.base_ee
+      FROM rec.recommendations r
+      LEFT JOIN rec.implementations i ON i.rec_id = r.id
+      LEFT JOIN LATERAL (
+        SELECT b2.id, b2.base_qzh, b2.base_qn, b2.base_ee
+        FROM rec.baselines b2
+        WHERE b2.rec_id = r.id AND b2.status = 'accepted'
+        ORDER BY b2.created_at DESC, b2.id DESC LIMIT 1
+      ) b ON true
+      WHERE r.id = $1 AND r.deleted_at IS NULL
+      FOR UPDATE OF r
+    `, [recId]);
+
+    const rec = rows[0];
+    if (!rec) return 'Рекомендация не найдена.';
+    if (!rec.baseline_id) return 'Базовые значения не заданы — оспаривать нечего.';
+    if (!СТАТУСЫ_СПОРА.has(rec.status)) {
+      return rec.status === 'windowClosed'
+        ? 'Окно подтверждения эффекта закрыто: базовые значения больше не оспорить.'
+        : 'Оспорить базовые значения можно после согласования рекомендации и до закрытия окна эффекта.';
+    }
+    if (rec.closed_at) return 'Окно подтверждения эффекта закрыто: базовые значения больше не оспорить.';
+
+    /* Сравниваем через Number: numeric приезжает из pg строкой, и «26.494»
+       против 26.494 разошлись бы как разные значения. */
+    const тоЖе = (a: unknown, b: number | null) =>
+      (a === null || a === undefined ? null : Number(a)) === b;
+    if (тоЖе(rec.base_qzh, qzh) && тоЖе(rec.base_qn, qn) && тоЖе(rec.base_ee, ee)) {
+      return 'Предлагаемые значения совпадают с действующей базой.';
+    }
+
+    const { rows: открытые } = await client.query(`
+      SELECT 1 FROM rec.disputes
+       WHERE rec_id = $1 AND subject = 'baseline' AND state = 'open'
+    `, [recId]);
+    if (открытые.length) return 'Возражение по базовым значениям уже подано и ещё не рассмотрено.';
+
+    /* Период у предложенной версии не заполняется: Заказчик называет значения,
+       а не считает их договорным способом за отрезок. Откуда они взялись —
+       в обосновании спора. */
+    const { rows: созданная } = await client.query(`
+      INSERT INTO rec.baselines
+        (rec_id, base_qzh, base_qn, base_ee, source, status, created_by, author_name, note)
+      VALUES ($1,$2,$3,$4,'disputed','proposed',$5,$6,$7)
+      RETURNING id
+    `, [recId, qzh, qn, ee, user!.id, user!.fullName, обоснование]);
+
+    await client.query(`
+      INSERT INTO rec.disputes (rec_id, subject, opened_by, opened_by_name, reason, proposed_baseline_id)
+      VALUES ($1,'baseline',$2,$3,$4,$5)
+    `, [recId, user!.id, user!.fullName, обоснование, созданная[0].id]);
+
+    await client.query(`
+      INSERT INTO rec.recommendation_events (rec_id, kind, actor_id, actor_name, text)
+      VALUES ($1,'dispute',$2,$3,$4)
+    `, [recId, user!.id, user!.fullName,
+      `Заказчик оспорил базовые значения, предлагает Qж ${числоНаЭкран(qzh)} м³/сут, Qн ${числоНаЭкран(qn)} т/сут`]);
+
+    return null;
+  });
+
+  if (ошибка) вернуться(recId, 'baseDispute', ошибка);
+  готово(recId);
+}
+
+/* ------------------------------ разбор возражения ------------------------------ */
+
+/**
+ * Исполнитель принимает базу Заказчика.
+ *
+ * Предложенная версия становится действующей, прежняя уходит в `superseded` —
+ * не удаляется: по ней уже был посчитан эффект, и в акте должно быть видно, от
+ * чего считали раньше. Кэш `effect_daily` удаляется целиком: каждые сутки в нём
+ * посчитаны как разность с прежней базой, и «поправить» их нечем.
+ */
+export async function принятьБазу(recId: number, disputeId: number): Promise<void> {
+  const user = await currentUser();
+  /* Ошибка возвращается в окно ПРИНЯТИЯ, а не отклонения: иначе на нажатие
+     «Принять» открывается окно «Отклонить» с претензией, и человек читает
+     ответ не на свой вопрос. */
+  if (!user || user.side !== 'executor') {
+    вернуться(recId, 'baseAccept', 'Разбирать возражение по базе может только Исполнитель.');
+  }
+
+  const ошибка = await transaction(async (client) => {
+    const { rows } = await client.query(`
+      SELECT d.state, d.proposed_baseline_id, r.status, i.closed_at,
+             b.base_qzh, b.base_qn
+      FROM rec.disputes d
+      JOIN rec.recommendations r ON r.id = d.rec_id
+      LEFT JOIN rec.implementations i ON i.rec_id = d.rec_id
+      LEFT JOIN rec.baselines b ON b.id = d.proposed_baseline_id
+      WHERE d.id = $1 AND d.rec_id = $2 AND d.subject = 'baseline'
+      FOR UPDATE OF d
+    `, [disputeId, recId]);
+
+    const d = rows[0];
+    if (!d) return 'Возражение не найдено.';
+    if (d.state !== 'open') return 'Возражение уже рассмотрено. Обновите страницу.';
+    if (!d.proposed_baseline_id) return 'К возражению не приложена предложенная версия базы.';
+    if (d.closed_at || d.status === 'windowClosed') {
+      return 'Окно закрыто: менять базу, по которой посчитан окончательный итог, уже нельзя.';
+    }
+
+    /* Прежние принятые версии закрываются все разом, а не «последняя»: если в
+       базе почему-то оказалось две accepted, молча оставить одну хуже, чем
+       закрыть обе. Действующей карточка считает последнюю accepted. */
+    await client.query(`
+      UPDATE rec.baselines SET status = 'superseded'
+       WHERE rec_id = $1 AND status = 'accepted'
+    `, [recId]);
+
+    await client.query(`
+      UPDATE rec.baselines SET status = 'accepted' WHERE id = $1
+    `, [d.proposed_baseline_id]);
+
+    /* Кэш посчитан по старой базе — сутки в нём неверны все до одного.
+       Пересчёт произойдёт сам при следующем открытии вкладки. */
+    await client.query('DELETE FROM rec.effect_daily WHERE rec_id = $1', [recId]);
+
+    await client.query(`
+      UPDATE rec.disputes
+         SET state = 'accepted', resolved_at = now(), resolved_by = $2
+       WHERE id = $1
+    `, [disputeId, user!.id]);
+
+    await client.query(`
+      INSERT INTO rec.recommendation_events (rec_id, kind, actor_id, actor_name, text)
+      VALUES ($1,'dispute',$2,$3,$4)
+    `, [recId, user!.id, user!.fullName,
+      `Базовые значения изменены по возражению Заказчика на Qж ${числоНаЭкран(Number(d.base_qzh))} м³/сут, `
+      + `Qн ${числоНаЭкран(Number(d.base_qn))} т/сут, эффект пересчитан`]);
+
+    return null;
+  });
+
+  if (ошибка) вернуться(recId, 'baseAccept', ошибка);
+  готово(recId);
+}
+
+/**
+ * Исполнитель отклоняет возражение: действующая база остаётся, предложенная
+ * версия уходит в `rejected` и остаётся в карточке — по ней видно, что именно
+ * предлагал Заказчик и чем ему ответили.
+ */
+export async function отклонитьВозражениеПоБазе(
+  recId: number, disputeId: number, form: FormData,
+): Promise<void> {
+  const обоснование = String(form.get('text') ?? '').trim();
+  if (!обоснование) {
+    вернуться(recId, 'baseDecline', 'Обоснование обязательно: Заказчику нужно знать, почему база остаётся прежней.');
+  }
+
+  const user = await currentUser();
+  if (!user || user.side !== 'executor') {
+    вернуться(recId, 'baseDecline', 'Разбирать возражение по базе может только Исполнитель.');
+  }
+
+  const ошибка = await transaction(async (client) => {
+    const { rows } = await client.query(`
+      SELECT state, proposed_baseline_id FROM rec.disputes
+       WHERE id = $1 AND rec_id = $2 AND subject = 'baseline'
+       FOR UPDATE
+    `, [disputeId, recId]);
+
+    const d = rows[0];
+    if (!d) return 'Возражение не найдено.';
+    if (d.state !== 'open') return 'Возражение уже рассмотрено. Обновите страницу.';
+
+    await client.query(`
+      UPDATE rec.disputes
+         SET state = 'rejected', resolved_at = now(), resolved_by = $2, resolution_note = $3
+       WHERE id = $1
+    `, [disputeId, user!.id, обоснование]);
+
+    if (d.proposed_baseline_id) {
+      await client.query(`
+        UPDATE rec.baselines SET status = 'rejected' WHERE id = $1
+      `, [d.proposed_baseline_id]);
+    }
+
+    await client.query(`
+      INSERT INTO rec.recommendation_events (rec_id, kind, actor_id, actor_name, text)
+      VALUES ($1,'dispute',$2,$3,'Возражение Заказчика по базовым значениям отклонено')
+    `, [recId, user!.id, user!.fullName]);
+
+    return null;
+  });
+
+  if (ошибка) вернуться(recId, 'baseDecline', ошибка);
+  готово(recId);
+}

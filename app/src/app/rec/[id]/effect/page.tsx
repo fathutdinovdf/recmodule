@@ -11,27 +11,33 @@
  */
 
 import { notFound } from 'next/navigation';
-import { getBaseline, getCard, type CardBaseline } from '@/db/card';
+import { getCard, type Card } from '@/db/card';
 import { getEffect, WINDOW_DAYS, type EffectView } from '@/services/effect-store';
 import { forecastTotal } from '@/domain/effect';
 import { getWell } from '@/db/vmap';
+import { currentUser, type SessionUser } from '@/lib/session';
 import type { EffectDay } from '@/services/effect-window';
 import { дата, рубли, сутки, число, прирост } from '@/lib/format';
+import { БлокБазы } from './baseline-block';
 
 export const dynamic = 'force-dynamic';
 
-export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+export default async function Page({ params, searchParams }: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ form?: string; err?: string }>;
+}) {
   const { id } = await params;
+  const { form, err } = await searchParams;
   const card = await getCard(Number(id));
   if (!card) notFound();
 
-  const eff = await getEffect(card);
-  if (!eff) return <ОкнаНет status={card.status} baseline={card.baseline} />;
+  const user = await currentUser();
 
-  const спорОБазе = card.disputes.find((d) => d.subject === 'baseline' && d.state === 'open');
+  const eff = await getEffect(card);
+  if (!eff) return <ОкнаНет card={card} user={user} форма={form} ошибка={err} />;
+
   const спорОДате = card.disputes.find((d) => d.subject === 'fact_date' && d.state === 'open');
-  const предложенная = спорОБазе?.proposedBaselineId
-    ? await getBaseline(спорОБазе.proposedBaselineId) : null;
+  const спорОБазе = card.disputes.find((d) => d.subject === 'baseline' && d.state === 'open');
 
   /* Плотности берутся у скважины, а не из расчёта: расчёт закрытого окна
      приходит из кэша, где их нет, — а шкала прогноза нужна и там. Запрос
@@ -79,64 +85,14 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         <section><ПочемуНеПосчитано problems={eff.problems} частично /></section>
       )}
 
-      <section>
-        <div className="eff__h">База, от которой считается прирост</div>
-        {card.baseline ? (
-          <>
-            <div className="eff-base">
-              <ЯчейкаБазы k="Дебит жидкости" v={card.baseline.baseQzh} ед="м³/сут" />
-              <ЯчейкаБазы k="Дебит нефти" v={card.baseline.baseQn} ед="т/сут" />
-              <ЯчейкаБазы k="Энергопотребление" v={card.baseline.baseEe} ед="кВт·ч/сут" знаков={0} />
-            </div>
-            <div className="eff__note" style={{ marginTop: 'var(--item-gap-vertical-s)' }}>
-              {ИСТОЧНИК_БАЗЫ[card.baseline.source]}
-              {card.baseline.periodFrom && ` за период ${дата(card.baseline.periodFrom)} — ${дата(card.baseline.periodTo)}`}
-              {`; внесена ${card.baseline.authorName}, ${дата(card.baseline.createdAt, true)}.`}
-              {card.baseline.note && ` ${card.baseline.note}`}
-            </div>
-          </>
-        ) : (
-          <div className="block__b">
-            База не задана. Прирост считать не от чего — вводится Исполнителем при регистрации.
-          </div>
-        )}
+      <БлокБазы card={card} user={user} заголовок="База, от которой считается прирост"
+                форма={form} ошибка={err} />
 
-        {спорОБазе && (
-          <div className="alertbox" style={{ marginTop: 'var(--group-gap-m)' }}>
-            <div className="alertbox__h">База оспорена Заказчиком</div>
-            <div className="alertbox__m">
-              {спорОБазе.openedByName}, {дата(спорОБазе.openedAt, true)}
-            </div>
-            <div className="alertbox__b">{спорОБазе.reason}</div>
-            {предложенная && (
-              <table className="eff-tbl" style={{ marginTop: 'var(--group-gap-s)' }}>
-                <thead>
-                  <tr>
-                    <th>Показатель</th>
-                    <th className="num">Действующая</th>
-                    <th className="num">Предложена Заказчиком</th>
-                    <th className="num">Разница</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <СтрокаСпора k="Дебит жидкости, м³/сут" было={card.baseline?.baseQzh ?? null} стало={предложенная.baseQzh} />
-                  <СтрокаСпора k="Дебит нефти, т/сут" было={card.baseline?.baseQn ?? null} стало={предложенная.baseQn} />
-                  <СтрокаСпора k="Энергопотребление, кВт·ч/сут" было={card.baseline?.baseEe ?? null} стало={предложенная.baseEe} знаков={0} />
-                </tbody>
-              </table>
-            )}
-            {/* Расчёт по предложенной базе здесь не показывается намеренно: пока
-                спор открыт, действующей остаётся принятая база, и два итога
-                рядом читались бы как «выбери, какой нравится». */}
-            <div className="alertbox__m">
-              Пока спор не разобран, эффект считается по действующей базе, а итог помечен предварительным.
-              Окно при этом не останавливается.
-            </div>
-          </div>
-        )}
-
-        {спорОДате && (
-          <div className="alertbox" style={{ marginTop: 'var(--group-gap-m)' }}>
+      {/* Спор о дате разбирается на вкладке «Реализация», здесь он показывается
+          справкой: от даты зависит, с какого дня считается окно. */}
+      {спорОДате && (
+        <section>
+          <div className="alertbox">
             <div className="alertbox__h">Дата реализации оспорена</div>
             <div className="alertbox__m">
               {спорОДате.openedByName}, {дата(спорОДате.openedAt, true)} · предложена {дата(спорОДате.proposedDate)}
@@ -147,8 +103,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
               заново замеры не запрашиваются.
             </div>
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
       <section>
         <div className="eff__h">Прогресс окна</div>
@@ -227,13 +183,15 @@ const БЕЗ_ОКНА: Record<string, string> = {
   cancelled: 'Рекомендация отменена Исполнителем — мероприятия не будет, считать нечего.',
 };
 
-function ОкнаНет({ status, baseline }: { status: string; baseline: CardBaseline | null }) {
-  const мёртвая = status === 'rejected' || status === 'cancelled';
+function ОкнаНет({ card, user, форма, ошибка }: {
+  card: Card; user: SessionUser | null; форма?: string; ошибка?: string;
+}) {
+  const мёртвая = card.status === 'rejected' || card.status === 'cancelled';
   return (
     <div className="eff">
       <div className="eff-gap">
         <div className="eff-gap__h">Расчёта пока нет</div>
-        <div>{БЕЗ_ОКНА[status] ?? 'Окно эффекта по этой рекомендации не открыто.'}</div>
+        <div>{БЕЗ_ОКНА[card.status] ?? 'Окно эффекта по этой рекомендации не открыто.'}</div>
         {!мёртвая && (
           <div>
             Окно на {WINDOW_DAYS} суток открывается в тот момент, когда Исполнитель фиксирует
@@ -242,15 +200,12 @@ function ОкнаНет({ status, baseline }: { status: string; baseline: CardBa
         )}
       </div>
 
-      {baseline && (
-        <section>
-          <div className="eff__h">База уже внесена</div>
-          <div className="eff-base">
-            <ЯчейкаБазы k="Дебит жидкости" v={baseline.baseQzh} ед="м³/сут" />
-            <ЯчейкаБазы k="Дебит нефти" v={baseline.baseQn} ед="т/сут" />
-            <ЯчейкаБазы k="Энергопотребление" v={baseline.baseEe} ед="кВт·ч/сут" знаков={0} />
-          </div>
-        </section>
+      {/* База показывается и до открытия окна — тем же блоком, что и после:
+          она уже внесена, эффект будет считаться от неё, и спорить о ней
+          разумнее до начала счёта, а не посреди него. */}
+      {card.baseline && (
+        <БлокБазы card={card} user={user} заголовок="База уже внесена"
+                  форма={форма} ошибка={ошибка} />
       )}
     </div>
   );
@@ -271,39 +226,6 @@ function ПочемуНеПосчитано({ problems, частично }: { pr
         </div>
       )}
     </div>
-  );
-}
-
-/* ------------------------------ база ------------------------------ */
-
-const ИСТОЧНИК_БАЗЫ: Record<string, string> = {
-  manual: 'Внесена вручную',
-  measured: 'Посчитана по замерам',
-  disputed: 'Предложена в споре',
-};
-
-function ЯчейкаБазы({ k, v, ед, знаков = 1 }: {
-  k: string; v: number | null; ед: string; знаков?: number;
-}) {
-  return (
-    <div className="eff-base__i">
-      <span className="eff-base__k">{k}</span>
-      <span className="eff-base__v">{число(v, знаков)}<small>{ед}</small></span>
-    </div>
-  );
-}
-
-function СтрокаСпора({ k, было, стало, знаков = 1 }: {
-  k: string; было: number | null; стало: number | null; знаков?: number;
-}) {
-  const разница = было !== null && стало !== null ? стало - было : null;
-  return (
-    <tr>
-      <td>{k}</td>
-      <td className="num">{число(было, знаков)}</td>
-      <td className="num">{число(стало, знаков)}</td>
-      <td className="num">{прирост(разница, знаков)}</td>
-    </tr>
   );
 }
 

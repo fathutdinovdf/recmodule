@@ -106,6 +106,10 @@ export interface Card {
   implementation: CardImplementation | null;
   /** Действующая база — последняя принятая версия. */
   baseline: CardBaseline | null;
+  /* Все версии базы, новые сверху: замещённые и отклонённые нужны, чтобы
+     показать разобранный спор — что было до него и что стало после. Список
+     короткий (обычно одна-две записи), и он уже прочитан ради действующей. */
+  baselines: CardBaseline[];
   disputes: CardDispute[];
 }
 
@@ -225,6 +229,7 @@ export const getCard = cache(async (id: number): Promise<Card | null> => {
     /* Действующей считается последняя принятая версия. Предложенные в споре
        версии лежат в том же списке, но расчёт по ним не идёт, пока спор открыт. */
     baseline: базы.find((b) => b.status === 'accepted') ?? null,
+    baselines: базы,
     disputes: disputes.map((d) => ({
       id: Number(d.id),
       subject: d.subject as 'fact_date' | 'baseline',
