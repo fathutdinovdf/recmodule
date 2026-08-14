@@ -1,0 +1,132 @@
+/* Мост между shadcn/ui и токенами ВМАП.
+ *
+ * shadcn держит тему в двух десятках семантических переменных (--background,
+ * --primary, --border …), которые его компоненты используют вместо конкретных
+ * цветов. Здесь эти переменные не задаются значениями, а переадресуются на
+ * токены ВМАП из tokens.css. Палитра остаётся ровно одна: перекрасить модуль
+ * по-прежнему можно только правкой tokens.css.
+ *
+ * Тёмной темы здесь нет намеренно и это не упущение. Токены ВМАП сами
+ * переключаются по data-theme="dark" на :root, а переменные shadcn на них лишь
+ * ссылаются — значит, переключаются вместе с ними. Свой блок .dark завёл бы
+ * второе место, где написано, какого цвета тёмная тема.
+ *
+ * Геометрия оставлена от shadcn: радиус, высоты контролов, отступы. Это и есть
+ * предмет опыта — посмотреть, как модуль выглядит в их пластике при наших
+ * цветах. Радиус ВМАП вдвое мельче (--corner-radius-component: 4px), и если
+ * вид примут, крутить надо будет здесь.
+ *
+ * Порядок подключения важен. Tailwind раскладывается по @layer, а registry.css
+ * и остальные файлы макета не размечены слоями вовсе — по каскаду CSS вне слоёв
+ * сильнее любого слоя. Поэтому его сброс стилей (preflight) не портит оболочку
+ * приложения, свёрстанную по макету: она перебивает его сама, без исключений
+ * и настроек.
+ */
+
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Тёмная тема в shadcn включается классом .dark, в ВМАП — атрибутом на <html>.
+   Переопределяем вариант, чтобы утилиты dark:* работали от нашего атрибута. */
+@custom-variant dark (&:is([data-theme="dark"] *));
+
+:root {
+  /* Подложки: страница, карточка, всплывающее окно */
+  --background: var(--layout-default);
+  --foreground: var(--text-primary);
+  --card: var(--bg-card);
+  --card-foreground: var(--text-primary);
+  --popover: var(--bg-popover);
+  --popover-foreground: var(--text-primary);
+
+  /* Акцент действия — синий ВМАП */
+  --primary: var(--component-accent);
+  --primary-foreground: var(--text-on-accent);
+
+  --secondary: var(--bg-secondary);
+  --secondary-foreground: var(--text-primary);
+
+  --muted: var(--bg-secondary);
+  --muted-foreground: var(--text-tertiary);
+
+  /* В shadcn --accent — это подсветка активного пункта списка и наведения,
+     а не «фирменный цвет». В ВМАП ей соответствуют состояния, а не акцент. */
+  --accent: var(--state-hover);
+  --accent-foreground: var(--text-primary);
+
+  /* Красный ВМАП существует в двух силах: заливка (--status-error, светлая) и
+     текст (--status-error-text, насыщенный). Кнопка «Отклонить» у shadcn —
+     сплошная заливка с белым текстом, поэтому берётся насыщенный. */
+  --destructive: var(--status-error-text);
+  --destructive-foreground: var(--text-on-accent);
+
+  --border: var(--border-component-default);
+  --input: var(--border-component-default);
+  --ring: var(--component-accent);
+
+  /* Графики: палитра инфографики ВМАП */
+  --chart-1: var(--infografic-accent);
+  --chart-2: var(--infografic-accent-pair-1);
+  --chart-3: var(--infografic-orange);
+  --chart-4: var(--infografic-green-blue);
+  --chart-5: var(--infografic-blue-light);
+
+  /* Боковая навигация shadcn: в модуле её рисует макет, но переменные должны
+     быть определены — иначе компоненты из реестра приедут с пустым цветом. */
+  --sidebar: var(--bg-default);
+  --sidebar-foreground: var(--text-primary);
+  --sidebar-primary: var(--component-accent);
+  --sidebar-primary-foreground: var(--text-on-accent);
+  --sidebar-accent: var(--state-hover);
+  --sidebar-accent-foreground: var(--text-primary);
+  --sidebar-border: var(--border-divider-light);
+  --sidebar-ring: var(--component-accent);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Шрифт берём тот же, что во всём ВМАП: Roboto. Свой стек shadcn притащил бы
+     вторую типографику на один экран. */
+  --font-sans: var(--font-family-text);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --radius: 0.625rem;
+}

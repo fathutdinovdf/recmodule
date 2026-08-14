@@ -1,9 +1,13 @@
-/* Вкладка «Расчёт эффекта».
+/* Вкладка «Расчёт эффекта» — опыт с shadcn/ui.
  *
  * Порядок блоков сверху вниз повторяет порядок вопросов, которые задают, глядя
  * на цифру эффекта: сколько получилось → от чего считали → сколько окна прошло
  * → как шёл факт против базы → из чего сложились деньги → покажи по суткам →
  * чему тут верить.
+ *
+ * От версии на макете отличается только оформлением: разметка собрана на Card,
+ * Table, Alert и Badge из shadcn, свои классы (.eff-*) не используются. Логика,
+ * тексты и порядок блоков те же — сравнивать надо вид, а не содержание.
  *
  * Если посчитать нельзя, вкладка объясняет, чего не хватает. Пустой экран здесь
  * недопустим: примерно у трети фонда ставок нет, и «пусто» человек прочитает
@@ -16,7 +20,15 @@ import { getEffect, WINDOW_DAYS, type EffectView } from '@/services/effect-store
 import { forecastTotal } from '@/domain/effect';
 import { getWell } from '@/db/vmap';
 import type { EffectDay } from '@/services/effect-window';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 import { дата, рубли, сутки, число, прирост } from '@/lib/format';
+import { ТОН } from '../tone';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,23 +57,23 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const закрыто = card.implementation?.closedAt ?? null;
 
   return (
-    <div className="eff">
-      <section>
-        {считалисьДеньги ? (
-          <div className="eff-total">
+    <div className="flex flex-col gap-6">
+      {считалисьДеньги ? (
+        <Card className="py-4">
+          <CardContent className="flex flex-wrap items-start justify-between gap-4 px-4">
             <div>
-              <div className="eff-total__k">Накопленный эффект</div>
-              <div className={`eff-total__v ${eff.total.total < 0 ? 'is-loss' : ''}`}>
-                {рубли(eff.total.total)}<span className="eff-total__u">руб</span>
+              <div className="text-muted-foreground text-xs">Накопленный эффект</div>
+              <div className={cn('text-4xl font-semibold tabular-nums',
+                eff.total.total < 0 && 'text-[var(--status-error-text)]')}>
+                {рубли(eff.total.total)}
+                <span className="text-muted-foreground ml-1.5 text-base font-normal">руб</span>
               </div>
             </div>
-            <div className="eff-total__side">
-              <span>
-                <span className={`tag tag--${eff.isFinal ? 'ok' : 'warning'}`}>
-                  {eff.isFinal ? 'окончательный' : 'предварительный'}
-                </span>
-              </span>
-              <span className="eff__note">
+            <div className="flex max-w-[46ch] flex-col items-end gap-1.5 text-right">
+              <Badge variant="secondary" className={eff.isFinal ? ТОН.ok : ТОН.warning}>
+                {eff.isFinal ? 'окончательный' : 'предварительный'}
+              </Badge>
+              <span className="text-muted-foreground text-xs">
                 {eff.isFinal
                   ? `Окно закрыто ${дата(закрыто ?? eff.windowTo)}, расчёт зафиксирован ${дата(eff.calculatedAt, true)}.`
                   : спорОБазе || спорОДате
@@ -69,131 +81,138 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
                     : `Итог предварительный: окно эффекта идёт, посчитано ${сутки(eff.elapsedDays)} из ${WINDOW_DAYS}.`}
               </span>
             </div>
-          </div>
-        ) : (
-          <ПочемуНеПосчитано problems={eff.problems} />
-        )}
-      </section>
-
-      {считалисьДеньги && eff.problems.length > 0 && (
-        <section><ПочемуНеПосчитано problems={eff.problems} частично /></section>
+          </CardContent>
+        </Card>
+      ) : (
+        <ПочемуНеПосчитано problems={eff.problems} />
       )}
 
-      <section>
-        <div className="eff__h">База, от которой считается прирост</div>
+      {считалисьДеньги && eff.problems.length > 0 && (
+        <ПочемуНеПосчитано problems={eff.problems} частично />
+      )}
+
+      <Раздел title="База, от которой считается прирост">
         {card.baseline ? (
           <>
-            <div className="eff-base">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <ЯчейкаБазы k="Дебит жидкости" v={card.baseline.baseQzh} ед="м³/сут" />
               <ЯчейкаБазы k="Дебит нефти" v={card.baseline.baseQn} ед="т/сут" />
               <ЯчейкаБазы k="Энергопотребление" v={card.baseline.baseEe} ед="кВт·ч/сут" знаков={0} />
             </div>
-            <div className="eff__note" style={{ marginTop: 'var(--item-gap-vertical-s)' }}>
+            <Сноска>
               {ИСТОЧНИК_БАЗЫ[card.baseline.source]}
               {card.baseline.periodFrom && ` за период ${дата(card.baseline.periodFrom)} — ${дата(card.baseline.periodTo)}`}
               {`; внесена ${card.baseline.authorName}, ${дата(card.baseline.createdAt, true)}.`}
               {card.baseline.note && ` ${card.baseline.note}`}
-            </div>
+            </Сноска>
           </>
         ) : (
-          <div className="block__b">
+          <div className="text-muted-foreground text-sm">
             База не задана. Прирост считать не от чего — вводится Исполнителем при регистрации.
           </div>
         )}
 
         {спорОБазе && (
-          <div className="alertbox" style={{ marginTop: 'var(--group-gap-m)' }}>
-            <div className="alertbox__h">База оспорена Заказчиком</div>
-            <div className="alertbox__m">
-              {спорОБазе.openedByName}, {дата(спорОБазе.openedAt, true)}
-            </div>
-            <div className="alertbox__b">{спорОБазе.reason}</div>
-            {предложенная && (
-              <table className="eff-tbl" style={{ marginTop: 'var(--group-gap-s)' }}>
-                <thead>
-                  <tr>
-                    <th>Показатель</th>
-                    <th className="num">Действующая</th>
-                    <th className="num">Предложена Заказчиком</th>
-                    <th className="num">Разница</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <СтрокаСпора k="Дебит жидкости, м³/сут" было={card.baseline?.baseQzh ?? null} стало={предложенная.baseQzh} />
-                  <СтрокаСпора k="Дебит нефти, т/сут" было={card.baseline?.baseQn ?? null} стало={предложенная.baseQn} />
-                  <СтрокаСпора k="Энергопотребление, кВт·ч/сут" было={card.baseline?.baseEe ?? null} стало={предложенная.baseEe} знаков={0} />
-                </tbody>
-              </table>
-            )}
-            {/* Расчёт по предложенной базе здесь не показывается намеренно: пока
-                спор открыт, действующей остаётся принятая база, и два итога
-                рядом читались бы как «выбери, какой нравится». */}
-            <div className="alertbox__m">
-              Пока спор не разобран, эффект считается по действующей базе, а итог помечен предварительным.
-              Окно при этом не останавливается.
-            </div>
-          </div>
+          <Alert variant="destructive" className="mt-4">
+            <AlertTitle>База оспорена Заказчиком</AlertTitle>
+            <AlertDescription className="text-foreground/80 block">
+              <div className="text-muted-foreground text-xs">
+                {спорОБазе.openedByName}, {дата(спорОБазе.openedAt, true)}
+              </div>
+              <div className="mt-1">{спорОБазе.reason}</div>
+
+              {предложенная && (
+                <Table className="mt-3">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Показатель</TableHead>
+                      <TableHead className="text-right">Действующая</TableHead>
+                      <TableHead className="text-right">Предложена Заказчиком</TableHead>
+                      <TableHead className="text-right">Разница</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <СтрокаСпора k="Дебит жидкости, м³/сут" было={card.baseline?.baseQzh ?? null} стало={предложенная.baseQzh} />
+                    <СтрокаСпора k="Дебит нефти, т/сут" было={card.baseline?.baseQn ?? null} стало={предложенная.baseQn} />
+                    <СтрокаСпора k="Энергопотребление, кВт·ч/сут" было={card.baseline?.baseEe ?? null} стало={предложенная.baseEe} знаков={0} />
+                  </TableBody>
+                </Table>
+              )}
+              {/* Расчёт по предложенной базе здесь не показывается намеренно: пока
+                  спор открыт, действующей остаётся принятая база, и два итога
+                  рядом читались бы как «выбери, какой нравится». */}
+              <div className="text-muted-foreground mt-3 text-xs">
+                Пока спор не разобран, эффект считается по действующей базе, а итог помечен
+                предварительным. Окно при этом не останавливается.
+              </div>
+            </AlertDescription>
+          </Alert>
         )}
 
         {спорОДате && (
-          <div className="alertbox" style={{ marginTop: 'var(--group-gap-m)' }}>
-            <div className="alertbox__h">Дата реализации оспорена</div>
-            <div className="alertbox__m">
-              {спорОДате.openedByName}, {дата(спорОДате.openedAt, true)} · предложена {дата(спорОДате.proposedDate)}
-            </div>
-            <div className="alertbox__b">{спорОДате.reason}</div>
-            <div className="alertbox__m">
-              Если дату примут, окно сдвинется и расчёт пересоберётся по сохранённым суткам —
-              заново замеры не запрашиваются.
-            </div>
-          </div>
+          <Alert variant="destructive" className="mt-4">
+            <AlertTitle>Дата реализации оспорена</AlertTitle>
+            <AlertDescription className="text-foreground/80 block">
+              <div className="text-muted-foreground text-xs">
+                {спорОДате.openedByName}, {дата(спорОДате.openedAt, true)} · предложена {дата(спорОДате.proposedDate)}
+              </div>
+              <div className="mt-1">{спорОДате.reason}</div>
+              <div className="text-muted-foreground mt-3 text-xs">
+                Если дату примут, окно сдвинется и расчёт пересоберётся по сохранённым суткам —
+                заново замеры не запрашиваются.
+              </div>
+            </AlertDescription>
+          </Alert>
         )}
-      </section>
+      </Раздел>
 
-      <section>
-        <div className="eff__h">Прогресс окна</div>
+      <Раздел title="Прогресс окна">
         <ПрогрессОкна eff={eff} прогноз={прогноз} закрыто={закрыто} />
-      </section>
+      </Раздел>
 
-      <section>
-        <div className="eff__h">Факт против базы</div>
-        <div className="eff-charts">
+      <Раздел title="Факт против базы">
+        <div className="grid gap-4 xl:grid-cols-2">
           <График days={eff.days} поле="factQzh" база={card.baseline?.baseQzh ?? null}
                   заголовок="Дебит жидкости, м³/сут" />
           <График days={eff.days} поле="factQn" база={card.baseline?.baseQn ?? null}
                   заголовок="Дебит нефти, т/сут" />
         </div>
-        <div className="eff-legend" style={{ marginTop: 'var(--item-gap-vertical-s)' }}>
-          <span><i className="is-fact" />факт по суткам</span>
-          <span><i className="is-base" />база</span>
+        <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-4 text-xs">
+          <span className="flex items-center gap-1.5">
+            <i className="h-0.5 w-4 rounded-full bg-[var(--chart-1)]" />факт по суткам
+          </span>
+          <span className="flex items-center gap-1.5">
+            <i className="border-muted-foreground h-0 w-4 border-t border-dashed" />база
+          </span>
           <span>разрыв линии — суток без замеров и без чего протянуть</span>
         </div>
-      </section>
+      </Раздел>
 
       {считалисьДеньги && eff.economy && (
-        <section>
-          <div className="eff__h">Из чего сложились деньги</div>
+        <Раздел title="Из чего сложились деньги">
           <Статьи eff={eff} />
-        </section>
+        </Раздел>
       )}
 
-      <section>
-        <details className="eff-details">
-          <summary>Посуточный расчёт — {сутки(eff.daysTotal)}</summary>
-          <div>
-            <div className="eff-scroll">
+      <Card className="py-0">
+        <details className="group">
+          <summary className="hover:bg-accent/50 flex cursor-pointer items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium">
+            <span className="text-muted-foreground transition-transform group-open:rotate-90">▸</span>
+            Посуточный расчёт — {сутки(eff.daysTotal)}
+          </summary>
+          <div className="px-4 pb-4">
+            <div className="max-h-[420px] overflow-auto rounded-lg border">
               <ПосуточнаяТаблица days={eff.days} />
             </div>
-            <div className="eff__note" style={{ marginTop: 'var(--item-gap-vertical-s)' }}>
+            <Сноска>
               Из этой таблицы собирается Форма 5 — расчёт технологического и экономического эффекта.
-            </div>
+            </Сноска>
           </div>
         </details>
-      </section>
+      </Card>
 
-      <section>
-        <div className="eff__h">Качество данных</div>
-        <div className="eff-quality">
+      <Раздел title="Качество данных">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <ЯчейкаКачества v={`${eff.daysWithData} из ${eff.daysTotal}`} k="суток с посчитанным дебитом" />
           <ЯчейкаКачества v={String(eff.daysCarried)} k="суток без своих замеров, значение протянуто" />
           <ЯчейкаКачества v={String(eff.daysTotal - eff.daysWithData)} k="суток без данных вовсе" />
@@ -201,17 +220,34 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
             v={`${число(среднееПокрытие(eff.days) * 100, 0)} %`}
             k="средняя опора суток на собственные замеры" />
         </div>
-        <div className="eff__note" style={{ marginTop: 'var(--item-gap-vertical-s)' }}>
+        <Сноска>
           Суточное значение — интеграл по времени, а не среднее из замеров: замеры в 08:00 и в 22:00
           описывают куски суток разной длины. Между замерами последнее значение протягивается,
           разрывы бывают до полусотни суток.
           {' '}Остановленную скважину от скважины без замеров модуль пока не отличает —
           для этого нужен параметр «Состояние по ТМ», он в расчёт не заведён.
           {eff.fromCache && ` Показан сохранённый расчёт от ${дата(eff.calculatedAt, true)}: окно закрыто, и цифра больше не пересчитывается.`}
-        </div>
-      </section>
+        </Сноска>
+      </Раздел>
     </div>
   );
+}
+
+/* ------------------------------ общее ------------------------------ */
+
+function Раздел({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <Card className="gap-3 py-4">
+      <CardHeader className="px-4">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="px-4">{children}</CardContent>
+    </Card>
+  );
+}
+
+function Сноска({ children }: { children: React.ReactNode }) {
+  return <p className="text-muted-foreground mt-2 max-w-[95ch] text-xs leading-relaxed">{children}</p>;
 }
 
 /* ------------------------------ окна ещё нет ------------------------------ */
@@ -230,27 +266,28 @@ const БЕЗ_ОКНА: Record<string, string> = {
 function ОкнаНет({ status, baseline }: { status: string; baseline: CardBaseline | null }) {
   const мёртвая = status === 'rejected' || status === 'cancelled';
   return (
-    <div className="eff">
-      <div className="eff-gap">
-        <div className="eff-gap__h">Расчёта пока нет</div>
-        <div>{БЕЗ_ОКНА[status] ?? 'Окно эффекта по этой рекомендации не открыто.'}</div>
-        {!мёртвая && (
-          <div>
-            Окно на {WINDOW_DAYS} суток открывается в тот момент, когда Исполнитель фиксирует
-            факт реализации по телеметрии. С этого дня и начинается расчёт.
-          </div>
-        )}
-      </div>
+    <div className="flex flex-col gap-6">
+      <Alert>
+        <AlertTitle>Расчёта пока нет</AlertTitle>
+        <AlertDescription className="block">
+          <div>{БЕЗ_ОКНА[status] ?? 'Окно эффекта по этой рекомендации не открыто.'}</div>
+          {!мёртвая && (
+            <div className="mt-2">
+              Окно на {WINDOW_DAYS} суток открывается в тот момент, когда Исполнитель фиксирует
+              факт реализации по телеметрии. С этого дня и начинается расчёт.
+            </div>
+          )}
+        </AlertDescription>
+      </Alert>
 
       {baseline && (
-        <section>
-          <div className="eff__h">База уже внесена</div>
-          <div className="eff-base">
+        <Раздел title="База уже внесена">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <ЯчейкаБазы k="Дебит жидкости" v={baseline.baseQzh} ед="м³/сут" />
             <ЯчейкаБазы k="Дебит нефти" v={baseline.baseQn} ед="т/сут" />
             <ЯчейкаБазы k="Энергопотребление" v={baseline.baseEe} ед="кВт·ч/сут" знаков={0} />
           </div>
-        </section>
+        </Раздел>
       )}
     </div>
   );
@@ -258,19 +295,21 @@ function ОкнаНет({ status, baseline }: { status: string; baseline: CardBa
 
 function ПочемуНеПосчитано({ problems, частично }: { problems: string[]; частично?: boolean }) {
   return (
-    <div className="eff-gap">
-      <div className="eff-gap__h">
+    <Alert>
+      <AlertTitle>
         {частично ? 'Расчёт неполный' : 'Эффект в деньгах посчитать не удалось'}
-      </div>
-      <ul>{problems.map((p) => <li key={p}>{p}</li>)}</ul>
-      {!частично && (
-        <div>
-          Деньги считаются, только когда известны оба прироста — и по жидкости, и по нефти:
-          часть статей висит на жидкости, часть на нефти, и «половина расчёта» дала бы
-          заниженный эффект, выданный за полный.
-        </div>
-      )}
-    </div>
+      </AlertTitle>
+      <AlertDescription className="block">
+        <ul className="list-disc pl-4">{problems.map((p) => <li key={p}>{p}</li>)}</ul>
+        {!частично && (
+          <div className="mt-2">
+            Деньги считаются, только когда известны оба прироста — и по жидкости, и по нефти:
+            часть статей висит на жидкости, часть на нефти, и «половина расчёта» дала бы
+            заниженный эффект, выданный за полный.
+          </div>
+        )}
+      </AlertDescription>
+    </Alert>
   );
 }
 
@@ -286,9 +325,12 @@ function ЯчейкаБазы({ k, v, ед, знаков = 1 }: {
   k: string; v: number | null; ед: string; знаков?: number;
 }) {
   return (
-    <div className="eff-base__i">
-      <span className="eff-base__k">{k}</span>
-      <span className="eff-base__v">{число(v, знаков)}<small>{ед}</small></span>
+    <div className="bg-muted/50 flex flex-col gap-1 rounded-lg p-3">
+      <span className="text-muted-foreground text-xs">{k}</span>
+      <span className="text-xl font-medium tabular-nums">
+        {число(v, знаков)}
+        <span className="text-muted-foreground ml-1 text-xs font-normal">{ед}</span>
+      </span>
     </div>
   );
 }
@@ -298,12 +340,12 @@ function СтрокаСпора({ k, было, стало, знаков = 1 }: {
 }) {
   const разница = было !== null && стало !== null ? стало - было : null;
   return (
-    <tr>
-      <td>{k}</td>
-      <td className="num">{число(было, знаков)}</td>
-      <td className="num">{число(стало, знаков)}</td>
-      <td className="num">{прирост(разница, знаков)}</td>
-    </tr>
+    <TableRow>
+      <TableCell>{k}</TableCell>
+      <TableCell className="text-right tabular-nums">{число(было, знаков)}</TableCell>
+      <TableCell className="text-right tabular-nums">{число(стало, знаков)}</TableCell>
+      <TableCell className="text-right tabular-nums">{прирост(разница, знаков)}</TableCell>
+    </TableRow>
   );
 }
 
@@ -326,21 +368,21 @@ function ПрогрессОкна({ eff, прогноз, закрыто }: {
     /* Прогноза нет — шкала показывает только ход времени. Рисовать вместо
        прогноза ноль нельзя: любой факт выглядел бы бесконечным перевыполнением. */
     return (
-      <div className="win">
-        <div className="win__bar">
-          <div className="win__fill is-days" style={{ width: процент(прошло) }} />
+      <div>
+        <div className="bg-muted relative h-3 overflow-hidden rounded-full">
+          <div className="bg-muted-foreground/40 h-full rounded-full" style={{ width: процент(прошло) }} />
         </div>
-        <div className="win__scale">
+        <div className="text-muted-foreground mt-1.5 flex justify-between text-xs tabular-nums">
           <span>{дата(eff.windowFrom)}</span>
-          <span><b>{сутки(eff.elapsedDays)}</b> из {eff.windowDays}</span>
+          <span><b className="text-foreground font-medium">{сутки(eff.elapsedDays)}</b> из {eff.windowDays}</span>
           <span>{дата(eff.windowTo)}</span>
         </div>
-        <div className="eff__note">
+        <Сноска>
           Прогнозный эффект не с чем сравнить: {прогноз === null
             ? 'у рекомендации не заполнены ожидаемые приросты либо не заведены ставки по скважине'
             : 'ожидаемый эффект по введённым приростам получается нулевым или отрицательным'}.
           Шкала показывает только, сколько окна прошло.
-        </div>
+        </Сноска>
       </div>
     );
   }
@@ -360,27 +402,31 @@ function ПрогрессОкна({ eff, прогноз, закрыто }: {
       : { left: '50%', transform: 'translateX(-50%)' };
 
   return (
-    <div className="win">
-      <div className="win__bar">
-        <div className={`win__fill ${факт < 0 ? 'is-loss' : выполнение > 1 ? 'is-over' : ''}`}
+    <div className={cn(закрыто ? '' : 'pt-6')}>
+      <div className="bg-muted relative h-3 rounded-full">
+        <div className={cn('h-full rounded-full',
+          факт < 0 ? 'bg-[var(--status-error-text)]'
+            : выполнение > 1 ? 'bg-[var(--status-success-text)]' : 'bg-primary')}
              style={{ width: процент(факт < 0 ? 0.01 : выполнение) }} />
         {!закрыто && (
-          <div className="win__mark" style={{ left: `${позицияЗасечки}%` }}
+          <div className="bg-foreground absolute -top-1 h-5 w-px"
+               style={{ left: `${позицияЗасечки}%` }}
                title="Где накопленный факт должен быть сейчас, если прогноз сбывается ровно">
-            <span className="win__marklab" style={подпись}>
+            <span className="text-muted-foreground absolute -top-5 text-xs whitespace-nowrap"
+                  style={подпись}>
               к этому дню ожидается {рубли(ожидается)} руб
             </span>
           </div>
         )}
       </div>
 
-      <div className="win__scale">
+      <div className="text-muted-foreground mt-1.5 flex justify-between text-xs tabular-nums">
         <span>{дата(eff.windowFrom)}</span>
-        <span><b>{сутки(eff.elapsedDays)}</b> из {eff.windowDays}</span>
+        <span><b className="text-foreground font-medium">{сутки(eff.elapsedDays)}</b> из {eff.windowDays}</span>
         <span>прогноз {рубли(прогноз)} руб</span>
       </div>
 
-      <div className="eff__note">
+      <Сноска>
         Накоплено {рубли(факт)} руб — {число(выполнение * 100, 0)} % прогноза.
         {закрыто
           ? ` Окно закрыто ${дата(закрыто)}${eff.elapsedDays < eff.windowDays ? ' досрочно' : ''}: ${
@@ -388,7 +434,7 @@ function ПрогрессОкна({ eff, прогноз, закрыто }: {
           : отставание >= 0
             ? ` Это на ${рубли(отставание)} руб больше, чем ожидалось к этому дню.`
             : ` Это на ${рубли(-отставание)} руб меньше, чем ожидалось к этому дню.`}
-      </div>
+      </Сноска>
     </div>
   );
 }
@@ -409,9 +455,9 @@ function График({ days, поле, база, заголовок }: {
 
   if (!значения.length) {
     return (
-      <div className="eff-chart">
-        <div className="eff-chart__h">{заголовок}</div>
-        <div className="block__b">Нет данных за окно.</div>
+      <div className="rounded-lg border p-3">
+        <div className="text-muted-foreground mb-1 text-xs">{заголовок}</div>
+        <div className="text-muted-foreground text-sm">Нет данных за окно.</div>
       </div>
     );
   }
@@ -434,37 +480,37 @@ function График({ days, поле, база, заголовок }: {
   if (текущий.length > 1) отрезки.push(текущий);
 
   return (
-    <div className="eff-chart">
-      <div className="eff-chart__h">{заголовок}</div>
-      <svg viewBox={`0 0 ${Ш} ${В}`} role="img" aria-label={заголовок}>
+    <div className="rounded-lg border p-3">
+      <div className="text-muted-foreground mb-1 text-xs">{заголовок}</div>
+      <svg viewBox={`0 0 ${Ш} ${В}`} role="img" aria-label={заголовок} className="w-full">
         {[макс, (макс + мин) / 2, мин].map((v, i) => (
           <g key={i}>
             <line x1={поля.лево} x2={Ш - поля.право} y1={y(v)} y2={y(v)}
-                  stroke="var(--border-divider-light)" strokeWidth="1" />
+                  stroke="var(--border)" strokeWidth="1" />
             <text x={поля.лево - 6} y={y(v) + 4} textAnchor="end"
-                  fill="var(--text-quaternary)" fontSize="11">{число(v, 1)}</text>
+                  fill="var(--muted-foreground)" fontSize="11">{число(v, 1)}</text>
           </g>
         ))}
 
         {база !== null && (
           <>
             <line x1={поля.лево} x2={Ш - поля.право} y1={y(база)} y2={y(база)}
-                  stroke="var(--text-tertiary)" strokeWidth="1.4" strokeDasharray="5 4" />
+                  stroke="var(--muted-foreground)" strokeWidth="1.4" strokeDasharray="5 4" />
             <text x={Ш - поля.право} y={y(база) - 5} textAnchor="end"
-                  fill="var(--text-tertiary)" fontSize="11">база {число(база, 1)}</text>
+                  fill="var(--muted-foreground)" fontSize="11">база {число(база, 1)}</text>
           </>
         )}
 
         {отрезки.map((points, i) => (
           <polyline key={i} points={points.join(' ')} fill="none"
-                    stroke="var(--infografic-accent)" strokeWidth="1.8"
+                    stroke="var(--chart-1)" strokeWidth="1.8"
                     strokeLinejoin="round" strokeLinecap="round" />
         ))}
 
-        <text x={поля.лево} y={В - 5} fill="var(--text-quaternary)" fontSize="11">
+        <text x={поля.лево} y={В - 5} fill="var(--muted-foreground)" fontSize="11">
           {дата(days[0]?.date)}
         </text>
-        <text x={Ш - поля.право} y={В - 5} textAnchor="end" fill="var(--text-quaternary)" fontSize="11">
+        <text x={Ш - поля.право} y={В - 5} textAnchor="end" fill="var(--muted-foreground)" fontSize="11">
           {дата(days[days.length - 1]?.date)}
         </text>
       </svg>
@@ -496,34 +542,42 @@ function Статьи({ eff }: { eff: EffectView }) {
 
   return (
     <>
-      <table className="eff-tbl">
-        <thead>
-          <tr>
-            <th>Статья</th>
-            <th>Ставка</th>
-            <th className="num">руб/т</th>
-            <th className="num">Прирост за окно</th>
-            <th className="num">Сумма, руб</th>
-          </tr>
-        </thead>
-        <tbody>
-          {строки.map(([имя, пояснение, ставка, едОбъёма, объём, сумма]) => (
-            <tr key={имя}>
-              <td>{имя}</td>
-              <td><small>{пояснение}</small></td>
-              <td className="num">{число(ставка, 2)}</td>
-              <td className="num">{прирост(объём, 1)} <small>{едОбъёма}</small></td>
-              <td className={`num ${сумма < 0 ? 'eff-minus' : 'eff-plus'}`}>{рубли(сумма)}</td>
-            </tr>
-          ))}
-          <tr className="is-total">
-            <td colSpan={4}>Эффект за окно</td>
-            <td className="num">{рубли(eff.total.total)}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div className="overflow-hidden rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Статья</TableHead>
+              <TableHead>Ставка</TableHead>
+              <TableHead className="text-right">руб/т</TableHead>
+              <TableHead className="text-right">Прирост за окно</TableHead>
+              <TableHead className="text-right">Сумма, руб</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {строки.map(([имя, пояснение, ставка, едОбъёма, объём, сумма]) => (
+              <TableRow key={имя}>
+                <TableCell>{имя}</TableCell>
+                <TableCell className="text-muted-foreground text-xs">{пояснение}</TableCell>
+                <TableCell className="text-right tabular-nums">{число(ставка, 2)}</TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {прирост(объём, 1)}
+                  <span className="text-muted-foreground ml-1 text-xs">{едОбъёма}</span>
+                </TableCell>
+                <TableCell className={cn('text-right tabular-nums',
+                  сумма < 0 ? 'text-[var(--status-error-text)]' : 'text-[var(--status-success-text)]')}>
+                  {рубли(сумма)}
+                </TableCell>
+              </TableRow>
+            ))}
+            <TableRow className="bg-muted/50 font-medium">
+              <TableCell colSpan={4}>Эффект за окно</TableCell>
+              <TableCell className="text-right tabular-nums">{рубли(eff.total.total)}</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </div>
 
-      <div className="eff__note" style={{ marginTop: 'var(--item-gap-vertical-s)' }}>
+      <Сноска>
         Ставки взяты по паре «месторождение + номер скважины»: месторождение в модели Заказчика —
         «{econ.sourceName}», налоговый пласт — «{econ.taxPlast}»
         {econ.plast && `, пласт по ВМАП — «${econ.plast}»`}.
@@ -534,7 +588,7 @@ function Статьи({ eff }: { eff: EffectView }) {
           : ''}.
         {' '}Расчёт ведётся по фактическим суткам, поэтому коэффициента эксплуатации в формуле нет:
         сутки простоя приходят нулевым приростом сами, и поправка задвоилась бы.
-      </div>
+      </Сноска>
     </>
   );
 }
@@ -543,41 +597,43 @@ function Статьи({ eff }: { eff: EffectView }) {
 
 function ПосуточнаяТаблица({ days }: { days: EffectDay[] }) {
   return (
-    <table className="eff-tbl">
-      <thead>
-        <tr>
-          <th>Сутки</th>
-          <th className="num">Qж факт, м³</th>
-          <th className="num">Δ Qж, м³</th>
-          <th className="num">Δ Qж, т</th>
-          <th className="num">Qн факт</th>
-          <th className="num">Δ Qн</th>
-          <th className="num">Замеров</th>
-          <th className="num">Опора</th>
-          <th className="num">Эффект, руб</th>
-        </tr>
-      </thead>
-      <tbody>
-        {days.map((d) => {
-          const класс = d.factQzh === null ? 'is-empty' : d.points === 0 ? 'is-carried' : '';
-          return (
-            <tr key={d.date.toISOString()} className={класс}>
-              <td>{дата(d.date)}</td>
-              <td className="num">{число(d.factQzh, 1)}</td>
-              <td className="num">{прирост(d.deltaQzh, 1)}</td>
-              <td className="num">{прирост(d.deltaQzhT, 1)}</td>
-              <td className="num">{число(d.factQn, 2)}</td>
-              <td className="num">{прирост(d.deltaQn, 2)}</td>
-              <td className="num">{d.factQzh === null ? '—' : d.points}</td>
-              <td className="num">{d.factQzh === null ? '—' : `${число(d.coverage * 100, 0)} %`}</td>
-              <td className={`num ${d.money && d.money.total < 0 ? 'eff-minus' : ''}`}>
-                {d.money ? рубли(d.money.total) : '—'}
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+    <Table>
+      <TableHeader className="bg-card sticky top-0">
+        <TableRow>
+          <TableHead>Сутки</TableHead>
+          <TableHead className="text-right">Qж факт, м³</TableHead>
+          <TableHead className="text-right">Δ Qж, м³</TableHead>
+          <TableHead className="text-right">Δ Qж, т</TableHead>
+          <TableHead className="text-right">Qн факт</TableHead>
+          <TableHead className="text-right">Δ Qн</TableHead>
+          <TableHead className="text-right">Замеров</TableHead>
+          <TableHead className="text-right">Опора</TableHead>
+          <TableHead className="text-right">Эффект, руб</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody className="tabular-nums">
+        {days.map((d) => (
+          <TableRow key={d.date.toISOString()}
+                    className={cn(d.factQzh === null && 'text-muted-foreground/60',
+                      d.factQzh !== null && d.points === 0 && 'text-muted-foreground')}>
+            <TableCell>{дата(d.date)}</TableCell>
+            <TableCell className="text-right">{число(d.factQzh, 1)}</TableCell>
+            <TableCell className="text-right">{прирост(d.deltaQzh, 1)}</TableCell>
+            <TableCell className="text-right">{прирост(d.deltaQzhT, 1)}</TableCell>
+            <TableCell className="text-right">{число(d.factQn, 2)}</TableCell>
+            <TableCell className="text-right">{прирост(d.deltaQn, 2)}</TableCell>
+            <TableCell className="text-right">{d.factQzh === null ? '—' : d.points}</TableCell>
+            <TableCell className="text-right">
+              {d.factQzh === null ? '—' : `${число(d.coverage * 100, 0)} %`}
+            </TableCell>
+            <TableCell className={cn('text-right',
+              d.money && d.money.total < 0 && 'text-[var(--status-error-text)]')}>
+              {d.money ? рубли(d.money.total) : '—'}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }
 
@@ -585,9 +641,9 @@ function ПосуточнаяТаблица({ days }: { days: EffectDay[] }) {
 
 function ЯчейкаКачества({ v, k }: { v: string; k: string }) {
   return (
-    <div className="eff-quality__i">
-      <span className="eff-quality__v">{v}</span>
-      <span className="eff-quality__k">{k}</span>
+    <div className="bg-muted/50 flex flex-col gap-1 rounded-lg p-3">
+      <span className="text-xl font-medium tabular-nums">{v}</span>
+      <span className="text-muted-foreground text-xs leading-tight">{k}</span>
     </div>
   );
 }

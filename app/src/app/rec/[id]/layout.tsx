@@ -1,18 +1,23 @@
-/* Оболочка карточки рекомендации: шапка, полоса прогноза, вкладки и правая
- * колонка. Разметка и классы — из макета (card.html + card.js), CSS взят
- * оттуда файлом и не правился.
+/* Оболочка карточки рекомендации — опыт с shadcn/ui.
  *
- * Почему оболочка живёт в layout, а вкладки — в страницах под ней. Вкладка
- * стоит сегментом адреса: карточку пересылают друг другу, и адрес вкладки
- * ценен сам по себе. При этом шапка и правая колонка грузятся один раз на всю
- * карточку, а тяжёлый расчёт эффекта изолирован в своей странице и не тормозит
- * открытие остальных вкладок.
+ * Это ветка shadcn-card. Здесь карточка собрана целиком на компонентах shadcn
+ * и утилитах Tailwind: card.css и card-extra.css не подключаются вовсе. Цвета
+ * при этом остались ВМАП — они приходят через мост в shadcn.css, а там, где
+ * семантики shadcn не хватает (статусные тона, инфографика), токен ВМАП
+ * подставляется в утилиту напрямую: bg-[var(--status-success-light-bg)].
+ *
+ * Оболочка приложения (шапка, левая навигация) намеренно оставлена от макета:
+ * смысл опыта — увидеть, как модуль в пластике shadcn смотрится внутри ВМАП, а
+ * не подменить ВМАП целиком.
  */
 
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { ArrowLeft, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { AppShell } from '@/components/AppShell';
-import { Icon } from '@/components/Icons';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { getCard, getNeighbours, getWellHistory } from '@/db/card';
 import { getWellEconomy } from '@/db/economy';
 import { getWell, getMeasurementsWithLookback, PARAM } from '@/db/vmap';
@@ -21,9 +26,9 @@ import { forecastTotal } from '@/domain/effect';
 import { control, fmtDur } from '@/domain/workhours';
 import { WINDOW_DAYS } from '@/services/effect-store';
 import { дата, число, прирост, рубли } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import { Tabs } from './tabs';
-import '../../card.css';
-import '../../card-extra.css';
+import { ТОН } from './tone';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,10 +36,10 @@ const СПОСОБ_ЭКСПЛУАТАЦИИ: Record<number, string> = {
   0: 'ЭЦН', 1: 'ШГН', 2: 'Фонтан', 3: 'ЭВН', 4: 'Газлифт',
 };
 
-const РЕШЕНИЕ: Record<string, { label: string; kind: string }> = {
-  accept: { label: 'Принята', kind: 'ok' },
-  reject: { label: 'Отклонена', kind: 'late' },
-  clarify: { label: 'Требует уточнения', kind: 'warning' },
+const РЕШЕНИЕ: Record<string, { label: string; тон: string }> = {
+  accept: { label: 'Принята', тон: 'ok' },
+  reject: { label: 'Отклонена', тон: 'late' },
+  clarify: { label: 'Требует уточнения', тон: 'warning' },
 };
 
 export default async function CardLayout({
@@ -73,102 +78,97 @@ export default async function CardLayout({
 
   return (
     <AppShell>
-      <main className="content content--card">
-        <div className="cardhead">
-          <div className="cardhead__top">
-            <Link className="cnbtn" href="/" title="К реестру"><Icon id="back" size={20} /></Link>
-            <span className="cardhead__num">{card.number ?? 'Черновик'}</span>
-            <span className="headstatus">
-              <i className={`status__d status__d--${card.tone} ${card.filled ? '' : 'is-hollow'}`} />
-              {card.statusName}
-            </span>
+      <main className="content gap-4">
+        <Card className="gap-4 py-4">
+          <CardHeader className="gap-0 px-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Link href="/" title="К реестру"
+                    className="hover:bg-accent text-muted-foreground hover:text-foreground grid size-8 place-items-center rounded-md">
+                <ArrowLeft className="size-4" />
+              </Link>
+              <CardTitle className="text-2xl font-semibold tracking-tight tabular-nums">
+                {card.number ?? 'Черновик'}
+              </CardTitle>
+              <Badge variant="secondary" className={cn('gap-1.5', ТОН[card.tone] ?? ТОН.default)}>
+                <i className={cn('size-2 rounded-full', card.filled
+                  ? 'bg-current' : 'border-current border bg-transparent')} />
+                {card.statusName}
+              </Badge>
 
-            {card.showsSla && card.priority && (
-              <>
-                <span className={`prio prio--${card.priority} prio--pill`} title={card.priorityName ?? ''}>
-                  <Icon id="clock" />{card.slaHours} ч
-                </span>
-                <КонтрольОтвета kind={c.kind} hours={c.hours} sentAt={card.sentAt} />
-              </>
-            )}
+              {card.showsSla && card.priority && (
+                <>
+                  <Badge variant="outline" className="gap-1" title={card.priorityName ?? ''}>
+                    <Clock className="size-3" />{card.slaHours} ч
+                  </Badge>
+                  <КонтрольОтвета kind={c.kind} hours={c.hours} sentAt={card.sentAt} />
+                </>
+              )}
 
-            {card.completeness === 'partial' && (
-              <span className="tag tag--warning">реализовано частично</span>
-            )}
-            {спорОДате && <span className="tag tag--late">дата реализации оспорена</span>}
-            {спорОБазе && <span className="tag tag--late">база оспорена</span>}
+              {card.completeness === 'partial' && (
+                <Badge variant="secondary" className={ТОН.warning}>реализовано частично</Badge>
+              )}
+              {спорОДате && <Badge variant="secondary" className={ТОН.late}>дата реализации оспорена</Badge>}
+              {спорОБазе && <Badge variant="secondary" className={ТОН.late}>база оспорена</Badge>}
 
-            <div className="cardhead__trailing">
-              <div className="pager">
-                {соседи.prevId
-                  ? <Link className="cnbtn" href={`/rec/${соседи.prevId}`} title="Предыдущая в реестре"><Icon id="prev" /></Link>
-                  : <span className="cnbtn is-off"><Icon id="prev" /></span>}
-                <span className="pager__pos" title="Позиция в реестре">
+              <div className="ml-auto flex items-center gap-1">
+                <Листалка href={соседи.prevId} title="Предыдущая в реестре"><ChevronLeft className="size-4" /></Листалка>
+                <span className="text-muted-foreground px-1 text-xs tabular-nums" title="Позиция в реестре">
                   {соседи.pos} из {соседи.total}
                 </span>
-                {соседи.nextId
-                  ? <Link className="cnbtn" href={`/rec/${соседи.nextId}`} title="Следующая в реестре"><Icon id="next" /></Link>
-                  : <span className="cnbtn is-off"><Icon id="next" /></span>}
+                <Листалка href={соседи.nextId} title="Следующая в реестре"><ChevronRight className="size-4" /></Листалка>
               </div>
             </div>
-          </div>
 
-          <div className="cardhead__where">
-            {card.fieldName} · куст {card.kust ?? '—'} · скважина <b>{card.wellNumber}</b>
-          </div>
-          <div className="cardhead__hr" />
-          <div className="metas">
-            <div className="meta">
-              <span className="meta__k">Направление</span>
-              <span className="meta__v">{card.direction}</span>
+            <div className="text-muted-foreground mt-1.5 text-sm">
+              {card.fieldName} · куст {card.kust ?? '—'} · скважина{' '}
+              <b className="text-foreground font-medium">{card.wellNumber}</b>
             </div>
-            <div className="meta">
-              <span className="meta__k">Ответственный Исполнителя</span>
-              <span className="meta__v">{card.executorName ?? card.authorName}</span>
-            </div>
-            <div className="meta">
-              <span className="meta__k">Ответственный Заказчика</span>
-              <span className="meta__v">{card.customerName ?? '—'}</span>
-            </div>
-            <div className="meta">
-              <span className="meta__k">Решение Заказчика</span>
-              <span className="meta__v">
-                {решение
-                  ? <span className={`tag tag--${решение.kind}`}>{решение.label}</span>
-                  : <span className="mark">—</span>}
-              </span>
-            </div>
-          </div>
-        </div>
+          </CardHeader>
+
+          <Separator />
+
+          <CardContent className="grid grid-cols-2 gap-4 px-4 lg:grid-cols-4">
+            <Мета k="Направление" v={card.direction} />
+            <Мета k="Ответственный Исполнителя" v={card.executorName ?? card.authorName} />
+            <Мета k="Ответственный Заказчика" v={card.customerName ?? '—'} />
+            <Мета k="Решение Заказчика" v={решение
+              ? <Badge variant="secondary" className={ТОН[решение.тон]}>{решение.label}</Badge>
+              : <span className="text-muted-foreground">—</span>} />
+          </CardContent>
+        </Card>
 
         <Прогноз card={card} прогноз={прогноз} />
 
-        <div className="cardbody">
-          <section className="panel panel--main">
-            <Tabs recId={card.id} counts={{ log: card.commentsCount }} />
-            <div className="tabpane">{children}</div>
-          </section>
-
-          <aside className="context">
-            <КарточкаСкважины данные={скважина} wellNumber={card.wellNumber} field={card.fieldName} />
-            <div className="card">
-              <div className="card__h">
-                Ранее по этой скважине
-                {история.total > история.items.length && <a href="#">все {история.total}</a>}
-              </div>
-              {история.items.length ? (
-                <div className="prev">
-                  {история.items.map((p) => (
-                    <Link key={p.id} className="prev__i" href={`/rec/${p.id}`}>
-                      <div className="prev__t">
-                        <b>{p.number}</b> · {дата(p.registeredAt)} · {p.statusName}
-                      </div>
-                      <div className="prev__p">{p.problem}</div>
-                    </Link>
-                  ))}
-                </div>
-              ) : <div className="block__b">Других рекомендаций нет.</div>}
+        <div className="flex min-h-0 flex-1 gap-4">
+          <Card className="min-w-0 flex-1 gap-0 overflow-hidden py-0">
+            <div className="border-b px-4 py-2.5">
+              <Tabs recId={card.id} counts={{ log: card.commentsCount }} />
             </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
+          </Card>
+
+          <aside className="flex w-[280px] flex-none flex-col gap-4 overflow-y-auto">
+            <КарточкаСкважины данные={скважина} wellNumber={card.wellNumber} field={card.fieldName} />
+            <Card className="gap-3 py-4">
+              <CardHeader className="px-4">
+                <CardTitle className="text-sm font-medium">Ранее по этой скважине</CardTitle>
+              </CardHeader>
+              <CardContent className="px-4">
+                {история.items.length ? (
+                  <div className="flex flex-col">
+                    {история.items.map((p) => (
+                      <Link key={p.id} href={`/rec/${p.id}`}
+                            className="hover:bg-accent -mx-2 rounded-md px-2 py-1.5">
+                        <div className="text-xs tabular-nums">
+                          <b className="font-medium">{p.number}</b> · {дата(p.registeredAt)} · {p.statusName}
+                        </div>
+                        <div className="text-muted-foreground line-clamp-2 text-xs">{p.problem}</div>
+                      </Link>
+                    ))}
+                  </div>
+                ) : <div className="text-muted-foreground text-sm">Других рекомендаций нет.</div>}
+              </CardContent>
+            </Card>
           </aside>
         </div>
       </main>
@@ -176,22 +176,40 @@ export default async function CardLayout({
   );
 }
 
+function Мета({ k, v }: { k: string; v: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-muted-foreground text-xs">{k}</span>
+      <span className="text-sm">{v}</span>
+    </div>
+  );
+}
+
+function Листалка({ href, title, children }: {
+  href: number | null; title: string; children: React.ReactNode;
+}) {
+  const классы = 'grid size-8 place-items-center rounded-md border';
+  return href
+    ? <Link href={`/rec/${href}`} title={title} className={cn(классы, 'hover:bg-accent')}>{children}</Link>
+    : <span className={cn(классы, 'text-muted-foreground/40')}>{children}</span>;
+}
+
 function КонтрольОтвета({
   kind, hours, sentAt,
 }: {
   kind: string; hours: number; sentAt: Date | null;
 }) {
-  if (kind === 'none') return <span className="tag tag--default">нет срока</span>;
+  if (kind === 'none') return <Badge variant="secondary" className={ТОН.default}>нет срока</Badge>;
   if (kind === 'pending') {
-    return <span className="tag tag--pending">передача {дата(sentAt, true)}</span>;
+    return <Badge variant="secondary" className={ТОН.pending}>передача {дата(sentAt, true)}</Badge>;
   }
   const подпись: Record<string, string> = {
     ok: 'в срок', late: 'с опозданием', overdue: 'просрочено', waiting: 'осталось',
   };
   return (
-    <span className={`tag tag--${kind}`}>
+    <Badge variant="secondary" className={ТОН[kind] ?? ТОН.default}>
       {подпись[kind]}{kind === 'ok' ? '' : ` ${fmtDur(hours)}`}
-    </span>
+    </Badge>
   );
 }
 
@@ -213,38 +231,44 @@ function Прогноз({
   const заполнен = ОЖИДАЕМОЕ.some((f) => card[f.поле] !== null);
   if (!заполнен) {
     return (
-      <div className="forecast">
-        <div className="forecast__empty">
+      <Card className="py-3">
+        <CardContent className="text-muted-foreground px-4 text-sm">
           Ожидаемый результат ещё не заполнен — его вносят на четвёртом шаге мастера регистрации.
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="forecast">
-      <div className="fc fc--cap"><div className="fc__cap">Ожидаемый<br />результат</div></div>
-      {ОЖИДАЕМОЕ.map((f) => {
-        const v = card[f.поле];
-        const тон = v === null || v === 0 ? ''
-          : (f.лучше === 'вверх' ? v > 0 : v < 0) ? 'is-good' : 'is-bad';
-        return (
-          <div className="fc" key={f.k}>
-            <div className="fc__k">{f.k}</div>
-            <div className={`fc__v ${тон}`}>
-              {прирост(v, f.знаков)}<span className="fc__u">{f.ед}</span>
+    <Card className="py-3">
+      <CardContent className="flex flex-wrap items-center gap-x-8 gap-y-3 px-4">
+        <div className="text-muted-foreground text-xs leading-tight">Ожидаемый<br />результат</div>
+        {ОЖИДАЕМОЕ.map((f) => {
+          const v = card[f.поле];
+          const тон = v === null || v === 0 ? ''
+            : (f.лучше === 'вверх' ? v > 0 : v < 0)
+              ? 'text-[var(--status-success-text)]' : 'text-[var(--status-error-text)]';
+          return (
+            <div key={f.k} className="flex flex-col gap-0.5">
+              <div className="text-muted-foreground text-xs">{f.k}</div>
+              <div className={cn('text-lg font-medium tabular-nums', тон)}>
+                {прирост(v, f.знаков)}
+                <span className="text-muted-foreground ml-1 text-xs font-normal">{f.ед}</span>
+              </div>
             </div>
+          );
+        })}
+        <div className="ml-auto flex flex-col gap-0.5 text-right">
+          <div className="text-muted-foreground text-xs">Прогнозный эффект</div>
+          <div className="text-lg font-medium tabular-nums">
+            {рубли(прогноз)}<span className="text-muted-foreground ml-1 text-xs font-normal">руб</span>
           </div>
-        );
-      })}
-      <div className="fc fc--money">
-        <div className="fc__k">Прогнозный эффект</div>
-        <div className="fc__v">{рубли(прогноз)}<span className="fc__u">руб</span></div>
-        <span className="fc__n">
-          {прогноз === null ? 'ставки по скважине не заведены' : `за ${WINDOW_DAYS} суток окна`}
-        </span>
-      </div>
-    </div>
+          <div className="text-muted-foreground text-xs">
+            {прогноз === null ? 'ставки по скважине не заведены' : `за ${WINDOW_DAYS} суток окна`}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -284,35 +308,48 @@ function КарточкаСкважины({
   const мин = значения.length ? Math.min(...значения) : 0;
   const макс = значения.length ? Math.max(...значения) : 0;
 
+  const строки: [string, React.ReactNode][] = [
+    ['Месторождение', field],
+    ['Способ эксплуатации', well?.operationMode === null || well?.operationMode === undefined
+      ? '—' : (СПОСОБ_ЭКСПЛУАТАЦИИ[well.operationMode] ?? `код ${well.operationMode}`)],
+    ['Пласт', well?.plast ?? '—'],
+    ['Плотность нефти', well?.oilDensity ? `${число(well.oilDensity, 0)} кг/м³` : '—'],
+    ['Плотность воды', well?.waterDensity ? `${число(well.waterDensity, 0)} кг/м³` : '—'],
+    ['Дебит жидкости, посл.', значения.length ? `${число(значения[значения.length - 1])} м³/сут` : '—'],
+  ];
+
   return (
     <>
-      <div className="card">
-        <div className="card__h">Скважина {wellNumber}</div>
-        {ошибка ? <div className="block__b">{ошибка}</div> : (
-          <dl className="params">
-            <dt>Месторождение</dt><dd>{field}</dd>
-            <dt>Способ эксплуатации</dt>
-            <dd>{well?.operationMode === null || well?.operationMode === undefined
-              ? '—' : (СПОСОБ_ЭКСПЛУАТАЦИИ[well.operationMode] ?? `код ${well.operationMode}`)}</dd>
-            <dt>Пласт</dt><dd>{well?.plast ?? '—'}</dd>
-            <dt>Плотность нефти</dt>
-            <dd>{well?.oilDensity ? `${число(well.oilDensity, 0)} кг/м³` : '—'}</dd>
-            <dt>Плотность воды</dt>
-            <dd>{well?.waterDensity ? `${число(well.waterDensity, 0)} кг/м³` : '—'}</dd>
-            <dt>Дебит жидкости, посл.</dt>
-            <dd>{значения.length ? `${число(значения[значения.length - 1])} м³/сут` : '—'}</dd>
-          </dl>
-        )}
-      </div>
+      <Card className="gap-3 py-4">
+        <CardHeader className="px-4">
+          <CardTitle className="text-sm font-medium">Скважина {wellNumber}</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4">
+          {ошибка ? <div className="text-muted-foreground text-sm">{ошибка}</div> : (
+            <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1.5 text-xs">
+              {строки.map(([k, v]) => (
+                <div key={k} className="col-span-2 grid grid-cols-subgrid items-baseline">
+                  <dt className="text-muted-foreground">{k}</dt>
+                  <dd className="text-right tabular-nums">{v}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </CardContent>
+      </Card>
 
       {значения.length > 1 && (
-        <div className="card">
-          <div className="card__h">Дебит жидкости, 30 суток</div>
-          <Спарклайн ряд={ряд} мин={мин} макс={макс} />
-          <div className="spark__cap">
-            <span>{число(мин, 0)}</span><span>{число(макс, 0)} м³/сут</span>
-          </div>
-        </div>
+        <Card className="gap-3 py-4">
+          <CardHeader className="px-4">
+            <CardTitle className="text-sm font-medium">Дебит жидкости, 30 суток</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4">
+            <Спарклайн ряд={ряд} мин={мин} макс={макс} />
+            <div className="text-muted-foreground mt-1 flex justify-between text-xs tabular-nums">
+              <span>{число(мин, 0)}</span><span>{число(макс, 0)} м³/сут</span>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </>
   );
@@ -338,10 +375,10 @@ function Спарклайн({
   if (текущий.length) отрезки.push(текущий);
 
   return (
-    <svg className="spark" viewBox="0 0 320 64" preserveAspectRatio="none">
+    <svg className="h-16 w-full" viewBox="0 0 320 64" preserveAspectRatio="none">
       {отрезки.map((points, i) => (
         <polyline key={i} points={points.join(' ')} fill="none"
-                  stroke="var(--infografic-accent)" strokeWidth="1.6"
+                  stroke="var(--chart-1)" strokeWidth="1.6"
                   strokeLinejoin="round" strokeLinecap="round" />
       ))}
     </svg>
