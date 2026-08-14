@@ -1,0 +1,33 @@
+# База модуля управления рекомендациями.
+#
+# Версия 15.5 выбрана не случайно: ровно столько на дев-стенде ВМАП, куда модуль
+# однажды поедет. На локальной 18-й легко написать SQL, которого в 15-й ещё нет,
+# и узнать об этом уже при развёртывании в контуре Заказчика.
+#
+# Порт 5433, а не стандартный: на 5432 у разработчика может стоять свой
+# PostgreSQL, и конфликт портов — не та проблема, которую стоит отлаживать.
+
+services:
+  db:
+    image: postgres:15.5
+    container_name: recmodule-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: recmodule
+      POSTGRES_USER: recmodule
+      POSTGRES_PASSWORD: recmodule
+      # Русские сообщения об ошибках и сортировка не нужны, а вот кодировка
+      # нужна: в справочниках кириллица, и latin1 сломает её молча.
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "5433:5432"
+    volumes:
+      - recmodule-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U recmodule -d recmodule"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  recmodule-data:

@@ -59,7 +59,7 @@
             <div class="seg" role="tablist" aria-label="Раздел экономической модели">
               <button class="seg__b" role="tab" data-tab="global">Общие параметры</button>
               <button class="seg__b is-on" role="tab" data-tab="rates">Ставки по месторождениям</button>
-              <button class="seg__b" role="tab" data-tab="ndpi">НДПИ по пластам</button>
+              <button class="seg__b" role="tab" data-tab="ndpi">Ставки НДПИ</button>
             </div>
             <div class="econaccess" id="econAccess"></div>
           </div>
@@ -77,6 +77,10 @@
 
 <script src="sidenav.js"></script>
 <script src="вмап.js"></script>
+<!-- экономика.js идёт после вмап.js: он берёт оттуда normWell для индекса
+     скважин, а собственной копии не держит — иначе два разных правила
+     нормализации номера разошлись бы при первой же правке. -->
+<script src="экономика.js"></script>
 <script src="data.js"></script>
 <script src="economy.js"></script>
 </body>

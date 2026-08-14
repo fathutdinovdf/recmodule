@@ -28,38 +28,39 @@ function plural(n, forms) {
   return forms[2];
 }
 
+/* Помесячной разбивки цены в рабочем шаблоне нет — одно число на весь
+   горизонт, поэтому и поле одно. Сценарий «факт против МСУ» остался в более
+   ранней модели Заказчика, которой он больше не пользуется. */
 const GLOBAL_FIELDS = [
-  { key: 'oilPriceFact', label: 'Цена нефти — факт', unit: 'руб/т нефти', min: 0, positive: true },
-  { key: 'oilPriceMsu', label: 'Цена нефти — МСУ', unit: 'руб/т нефти', min: 0, positive: true },
-  { key: 'uptime', label: 'Коэффициент эксплуатации', unit: 'доля от 0 до 1', min: 0, max: 1, positive: true },
+  { key: 'oilPrice', label: 'Цена нефти — МСУ', unit: 'руб/т нефти', min: 0, positive: true },
 ];
 
 /* Короткие подписи нужны таблице, полные — aria-label и всплывающей подсказке.
    Ширину задают колонки, а не сжатие текста: основания умножения различаются,
-   и перепутать «тонну жидкости» с «тонной нефти» дороже горизонтального скролла. */
+   и перепутать «тонну жидкости» с «тонной нефти» дороже горизонтального скролла.
+
+   Три статьи вместо прежних девяти: рабочий шаблон Заказчика не разделяет
+   электроэнергию на подъём, ППД и транспорт и не считает обслуживание ГНО в
+   эффекте мероприятия. Держать в модуле статьи, которых нет у Заказчика,
+   значит заранее разойтись с ним в цифрах при сверке. */
 const RATE_FIELDS = [
-  { key: 'lift', label: 'Подъём', full: 'Электроэнергия на подъём жидкости, руб/т жидкости', nullable: true },
-  { key: 'ppd', label: 'ППД', full: 'Электроэнергия на ППД, руб/т жидкости', nullable: true },
-  { key: 'transport', label: 'Транспорт', full: 'Электроэнергия на транспорт, руб/т жидкости', nullable: true },
-  { key: 'prep', label: 'Подготовка', full: 'Электроэнергия на подготовку, руб/т нефти', nullable: true },
-  { key: 'chem', label: 'Реагенты', full: 'Деэмульгаторы, руб/т нефти', nullable: true },
-  { key: 'espEcn', label: 'Обслуживание ЭЦН', full: 'Обслуживание ЭЦН, тыс. руб/год на скважину', nullable: true },
-  { key: 'espShgn', label: 'Обслуживание ШГН', full: 'Обслуживание ШГН, тыс. руб/год на скважину', nullable: true },
-  { key: 'espEvn', label: 'Обслуживание ЭВН', full: 'Обслуживание ЭВН, тыс. руб/год на скважину', nullable: true },
-  /* В исходной модели есть отрицательные темпы. Запрещать их общей проверкой
-     нельзя: это блокировало сохранение любой другой ячейки той же строки. */
-  { key: 'decline', label: 'Темп падения', full: 'Годовой темп падения дебита нефти, %', nullable: true, signed: true },
+  { key: 'eeLiquid', label: 'ЭЭ жидкость', full: 'Электроэнергия на жидкость, руб/т жидкости', nullable: true },
+  { key: 'eeOil', label: 'ЭЭ нефть', full: 'Электроэнергия на нефть, руб/т нефти', nullable: true },
+  { key: 'chem', label: 'Деэмульгаторы', full: 'Деэмульгаторы, руб/т нефти', nullable: true },
 ];
 
+/* Ставка одна и сводная: в шаблоне блок озаглавлен «НДПИ+НДД», разделения по
+   налоговому режиму в нём нет. Поэтому поля режима здесь тоже нет — показывать
+   рядом со сводной ставкой признак «НДПИ или НДД» значит утверждать про неё
+   то, чего источник не утверждает (отменяет решение 95). */
 const NDPI_FIELDS = [
-  { key: 'ndpiFact', label: 'Ставка факт', full: 'Ставка НДПИ по фактическим ценам, руб/т нефти' },
-  { key: 'ndpiMsu', label: 'Ставка МСУ', full: 'Ставка НДПИ по МСУ, руб/т нефти' },
+  { key: 'rate', label: 'Ставка', full: 'Ставка НДПИ+НДД, руб/т нефти' },
 ];
 
 const committed = {
   global: { ...ECON_GLOBAL },
-  rates: ECON_RATES.map((r) => ({ ...r })),
-  ndpi: NDPI_RATES.map((r) => ({ ...r })),
+  rates: ECON_FIELD_RATES.map((r) => ({ ...r })),
+  ndpi: ECON_NDPI_RATES.map((r) => ({ ...r })),
 };
 
 let activeTab = 'rates';
@@ -89,7 +90,6 @@ function objectName(scope, row) {
 function fieldSpec(scope, field) {
   if (scope === 'global') return GLOBAL_FIELDS.find((f) => f.key === field);
   if (scope === 'rates') return RATE_FIELDS.find((f) => f.key === field);
-  if (field === 'regime') return { key: 'regime', label: 'Налоговый режим' };
   return NDPI_FIELDS.find((f) => f.key === field);
 }
 
@@ -104,12 +104,6 @@ function shownValue(value) {
 }
 
 function parseValue(scope, field, raw) {
-  if (field === 'regime') {
-    return ['НДПИ', 'НДД'].includes(raw)
-      ? { value: raw, error: '' }
-      : { value: null, error: 'Выберите НДПИ или НДД.' };
-  }
-
   const spec = fieldSpec(scope, field);
   const text = String(raw).trim().replace(',', '.');
   if (text === '') {
@@ -160,43 +154,32 @@ function renderGlobal() {
 
 function renderRates() {
   return `<div class="econtablewrap"><table class="tbl econtable">
-    <thead><tr><th scope="col">Месторождение</th>${RATE_FIELDS.map((f) =>
-      `<th scope="col" title="${esc(f.full)}">${f.label}</th>`).join('')}<th scope="col">Коэф. падения</th></tr></thead>
+    <thead><tr><th scope="col">Месторождение</th><th scope="col">В модели Заказчика</th>${RATE_FIELDS.map((f) =>
+      `<th scope="col" title="${esc(f.full)}">${f.label}</th>`).join('')}</tr></thead>
     <tbody>${committed.rates.map((item, row) => `<tr>
       <td class="cell-object"><div class="clip1" title="${esc(item.field)}">${esc(item.field)}</div></td>
+      <td class="cell-plast"><div class="clip1" title="${esc(item.source || '')}">${
+        item.source ? esc(item.source) : '<span class="cell-empty">нет в модели</span>'}</div></td>
       ${RATE_FIELDS.map((f) => inputHtml('rates', row, f.key, `${f.full}: ${item.field}`)).join('')}
-      <td class="cell-num" data-decline-preview="${row}">${shownValue(previewDeclineK(row))}</td>
     </tr>`).join('')}</tbody></table></div>`;
-}
-
-function previewDeclineK(row) {
-  const key = editKey('rates', row, 'decline');
-  const parsed = dirty.has(key) ? parseValue('rates', 'decline', dirty.get(key).raw) : { value: committed.rates[row].decline, error: '' };
-  if (parsed.error || parsed.value === null) return null;
-  return +Math.min(1, Math.max(0.87, (100 - parsed.value / 2) / 100)).toFixed(4);
 }
 
 function renderNdpi() {
   return `<div class="econtablewrap"><table class="tbl econtable">
-    <thead><tr><th scope="col">Месторождение</th><th scope="col">Пласт</th><th scope="col">Налоговый режим</th>
+    <thead><tr><th scope="col">Месторождение</th><th scope="col">Пласт</th>
       ${NDPI_FIELDS.map((f) => `<th scope="col" title="${esc(f.full)}">${f.label}</th>`).join('')}</tr></thead>
-    <tbody>${committed.ndpi.map((item, row) => {
-      const regimeKey = editKey('ndpi', row, 'regime');
-      return `<tr><td class="cell-object"><div class="clip1" title="${esc(item.field)}">${esc(item.field)}</div></td>
+    <tbody>${committed.ndpi.map((item, row) =>
+      `<tr><td class="cell-object"><div class="clip1" title="${esc(item.field)}">${esc(item.field)}</div></td>
         <td class="cell-plast"><div class="clip1" title="${esc(item.plast)}">${esc(item.plast)}</div></td>
-        <td class="econcell cell-regime ${dirty.has(regimeKey) ? 'is-dirty' : ''}" data-cell-key="${regimeKey}">
-          <select class="econinput" data-scope="ndpi" data-row="${row}" data-field="regime" aria-label="Налоговый режим: ${esc(item.field)}, ${esc(item.plast)}" ${CAN_EDIT ? '' : 'disabled'}>
-            ${['НДПИ', 'НДД'].map((v) => `<option ${valueFor('ndpi', row, 'regime') === v ? 'selected' : ''}>${v}</option>`).join('')}
-          </select></td>
-        ${NDPI_FIELDS.map((f) => inputHtml('ndpi', row, f.key, `${f.full}: ${item.field}, ${item.plast}`)).join('')}</tr>`;
-    }).join('')}</tbody></table></div>`;
+        ${NDPI_FIELDS.map((f) => inputHtml('ndpi', row, f.key, `${f.full}: ${item.field}, ${item.plast}`)).join('')}</tr>`
+    ).join('')}</tbody></table></div>`;
 }
 
 function renderContent() {
   const title = {
     global: 'Параметры, действующие для всех месторождений.',
     rates: 'Ставки затрат по узлам ВМАП. Пустая ячейка останавливает расчёт; ноль означает отсутствие затрат.',
-    ndpi: 'Ставки по паре «месторождение + пласт». Скважина без привязанного пласта в расчёт не попадает.',
+    ndpi: 'Ставки по паре «месторождение + пласт»: внутри одного месторождения они расходятся до двух с лишним раз. Скважина, которой нет в модели Заказчика, в расчёт не попадает.',
   };
   $('#econTitle').textContent = title[activeTab];
   $('#econContent').innerHTML = activeTab === 'global' ? renderGlobal() : activeTab === 'rates' ? renderRates() : renderNdpi();
@@ -310,10 +293,6 @@ function updateDraft(input) {
     cell.classList.toggle('has-error', errors.has(key));
     cell.title = errors.get(key) || (dirty.has(key) ? 'Изменено, ещё не сохранено' : '');
   }
-  if (scope === 'rates' && field === 'decline') {
-    const preview = document.querySelector(`[data-decline-preview="${row}"]`);
-    if (preview) preview.textContent = shownValue(previewDeclineK(Number(row)));
-  }
   renderDirtyBar();
 }
 
@@ -343,12 +322,8 @@ function applyChange(change) {
   }
   const row = Number(change.row);
   committed[change.scope][row][change.field] = change.newValue;
-  const source = change.scope === 'rates' ? ECON_RATES : NDPI_RATES;
+  const source = change.scope === 'rates' ? ECON_FIELD_RATES : ECON_NDPI_RATES;
   source[row][change.field] = change.newValue;
-  if (change.scope === 'rates' && change.field === 'decline') {
-    const k = change.newValue === null ? null : +Math.min(1, Math.max(0.87, (100 - change.newValue / 2) / 100)).toFixed(4);
-    committed.rates[row].declineK = k; source[row].declineK = k;
-  }
 }
 
 function commit() {
@@ -380,10 +355,6 @@ document.addEventListener('input', (e) => {
     return;
   }
   if (e.target.matches('.econinput')) updateDraft(e.target);
-});
-
-document.addEventListener('change', (e) => {
-  if (e.target.matches('select.econinput')) updateDraft(e.target);
 });
 
 document.addEventListener('keydown', (e) => {

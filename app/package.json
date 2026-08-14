@@ -1,0 +1,30 @@
+{
+  "name": "recommendations-module",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/refresh-demo.mjs && next dev -p 3100",
+    "dev:only": "next dev -p 3100",
+    "build": "next build",
+    "start": "next start -p 3100",
+    "db:up": "docker compose up -d",
+    "db:migrate": "node scripts/migrate.mjs",
+    "db:load-economy": "node scripts/load-economy.mjs",
+    "db:seed": "node scripts/seed-demo.mjs",
+    "db:refresh": "node scripts/refresh-demo.mjs"
+  },
+  "dependencies": {
+    "next": "15.1.6",
+    "pg": "8.13.1",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.7",
+    "@types/pg": "8.11.10",
+    "@types/react": "19.0.7",
+    "@types/react-dom": "19.0.3",
+    "typescript": "5.7.3"
+  }
+}
