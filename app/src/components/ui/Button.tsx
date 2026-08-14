@@ -18,9 +18,7 @@ const buttonVariants = cva(
         warning: 'bg-warning text-warning-foreground hover:brightness-95',
         outline: 'border border-border bg-background text-foreground shadow-xs hover:bg-accent hover:text-accent-foreground',
         secondary: 'bg-secondary text-secondary-foreground hover:brightness-95',
-        /* У ghost рамки нет по определению: с ней «Отмена» рядом с опасной
-           кнопкой перетягивает внимание на себя. */
-        ghost: 'border-transparent text-foreground hover:bg-accent hover:text-accent-foreground',
+        ghost: 'text-foreground hover:bg-accent hover:text-accent-foreground',
       },
       size: {
         default: 'h-9 px-4 py-2',

@@ -182,12 +182,11 @@ export function ФормаДействия({ card, вид, ошибка }: {
 }
 
 /* Отмена — штатное закрытие окна средствами Radix, а не ссылка: так одинаково
-   работают и кнопка, и Esc, и клик мимо окна. Вариант ghost: рядом с плотной
-   красной кнопкой обведённая «Отмена» перетягивала внимание на себя. */
+   работают и кнопка, и Esc, и клик мимо окна. */
 function Отмена() {
   return (
     <DialogClose asChild>
-      <Button type="button" variant="ghost">Отмена</Button>
+      <Button type="button" variant="outline">Отмена</Button>
     </DialogClose>
   );
 }

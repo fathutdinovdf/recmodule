@@ -213,7 +213,7 @@ async function ФормаЗакрытия({ card, ошибка }: { card: Card; 
         <DialogFooter className="mt-4">
           <SubmitButton variant="destructive" pendingText="Закрываю…">Закрыть окно</SubmitButton>
           <DialogClose asChild>
-            <Button type="button" variant="ghost">Отмена</Button>
+            <Button type="button" variant="outline">Отмена</Button>
           </DialogClose>
         </DialogFooter>
       </form>
