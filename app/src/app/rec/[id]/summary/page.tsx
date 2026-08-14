@@ -1,10 +1,9 @@
 /* Вкладка «Сводка»: содержание рекомендации и решение Заказчика.
  *
- * Порядок блоков зафиксирован решением 50 и не переставляется: проблема →
- * технологическое обоснование → рекомендуемое мероприятие → горизонт
- * подтверждения → блок решения. Кнопки решения стоят внизу намеренно — чтобы
- * до них добраться, надо прокрутить обоснование; кнопок решения в шапке нет по
- * той же причине.
+ * Решение 98 пересобрало верх вкладки: проблема и обоснование идут спокойным
+ * текстовым потоком, рекомендация выделена Item, горизонт подтверждения здесь
+ * не дублируется. Блок решения остаётся внизу намеренно — до действия человек
+ * должен прочитать обоснование; кнопок решения в шапке нет по той же причине.
  *
  * Ожидаемый результат сюда не дублируется: он вынесен полосой прогноза под
  * шапку, где виден всегда и не уезжает за прокрутку.
@@ -26,6 +25,8 @@ import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Textarea';
 import { PlannedDatePicker } from '@/components/ui/PlannedDatePicker';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
+import { Separator } from '@/components/ui/separator';
 import { решить, отметитьОткрытие } from '../actions';
 
 export const dynamic = 'force-dynamic';
@@ -51,29 +52,31 @@ export default async function Page({ params, searchParams }: {
 
   return (
     <>
-      <div className="block">
-        <div className="block__h">Проблема / отклонение</div>
-        <div className="block__b">{card.problem}</div>
-      </div>
+      <div className="mb-[var(--section-gap-default)] flex flex-col gap-4">
+        <section className="flex flex-col gap-1.5">
+          <h2 className="m-0 text-sm font-medium text-muted-foreground">Проблема / отклонение</h2>
+          <p className="m-0 whitespace-pre-wrap text-sm leading-relaxed text-foreground">{card.problem}</p>
+        </section>
 
-      <div className="block">
-        <div className="block__h">Технологическое обоснование</div>
-        <div className="block__b">
-          {card.rationale ?? 'Обоснование не заполнено.'}
-        </div>
-      </div>
+        <Separator />
 
-      <div className="block">
-        <div className="block__h">Рекомендуемое мероприятие</div>
-        <div className="block__b">{card.action}</div>
-      </div>
+        <section className="flex flex-col gap-1.5">
+          <h2 className="m-0 text-sm font-medium text-muted-foreground">Технологическое обоснование</h2>
+          <p className="m-0 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+            {card.rationale ?? 'Обоснование не заполнено.'}
+          </p>
+        </section>
 
-      <div className="block">
-        <div className="block__h">Горизонт подтверждения</div>
-        <div className="block__b">
-          90 суток с даты фактической реализации. Значение зафиксировано договором
-          и не редактируется.
-        </div>
+        <Separator />
+
+        <Item variant="muted" className="border-border">
+          <ItemContent>
+            <ItemTitle className="text-muted-foreground">Рекомендуемое мероприятие</ItemTitle>
+            <ItemDescription className="whitespace-pre-wrap text-foreground">
+              {card.action}
+            </ItemDescription>
+          </ItemContent>
+        </Item>
       </div>
 
       <БлокРешения card={card} user={user} открытая={открытая} ошибка={err} причины={причины} />

@@ -18,6 +18,7 @@
   --primary-foreground: var(--text-on-accent);
   --secondary: var(--bg-secondary);
   --secondary-foreground: var(--text-secondary);
+  --muted: var(--bg-secondary);
   --popover: var(--bg-popover);
   --popover-foreground: var(--text-primary);
   --muted-foreground: var(--text-tertiary);
@@ -41,6 +42,7 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-muted-foreground: var(--muted-foreground);

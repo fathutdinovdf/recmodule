@@ -170,7 +170,8 @@ refresh: сдвиг дат демо переносит период базы н�
 
 Начат поэлементный переход на shadcn поверх Tailwind 4 без изменения цветов
 ВМАП. Уже используются Button, Calendar/Popover, Field, Dropdown Menu, Tooltip,
-Combobox и Textarea; Combobox сохраняет обычный контракт HTML-формы и первым
+Combobox, Textarea, Item и Separator; Combobox сохраняет обычный контракт
+HTML-формы и первым
 применён к выбору причины отклонения рекомендации;
 семантические цвета shadcn связаны с токенами ВМАП в `src/app/shadcn.css`,
 Tailwind preflight выключен, чтобы не переопределять существующую вёрстку.
