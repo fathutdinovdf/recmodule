@@ -20,13 +20,14 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getCard, type Card, type CardDispute } from '@/db/card';
 import { currentUser, type SessionUser } from '@/lib/session';
-import { WINDOW_DAYS } from '@/services/effect-store';
-import { дата, сутки } from '@/lib/format';
+import { WINDOW_DAYS, getEffect } from '@/services/effect-store';
+import { дата, рубли, сутки } from '@/lib/format';
 import { Button } from '@/components/ui/Button';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Textarea } from '@/components/ui/Textarea';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { ActionDialog } from '@/components/ui/ActionDialog';
+import { SubmitButton } from '@/components/ui/SubmitButton';
 import { DialogClose, DialogFooter } from '@/components/ui/dialog';
 import { ФормаФиксации } from './fix-form';
 import { зафиксировать, оспоритьДату, принятьДату, отклонитьВозражение } from './actions';
@@ -178,14 +179,27 @@ function ФактНеЗафиксирован({ card, исполнитель, ф
 
 /* ------------------------------ досрочное закрытие ------------------------------ */
 
-function ФормаЗакрытия({ card, ошибка }: { card: Card; ошибка?: string }) {
+async function ФормаЗакрытия({ card, ошибка }: { card: Card; ошибка?: string }) {
+  const impl = card.implementation!;
+
+  /* Накопленный итог показывается в самом окне: закрывая окно досрочно,
+     человек отказывается от остальных суток, и решение принимают, глядя на
+     то, сколько уже насчитано и сколько суток отбрасывается. Расчёт ходит на
+     стенд ВМАП и может не ответить — тогда окно остаётся с датами. */
+  const eff = await getEffect(card).catch(() => null);
+
   return (
     <ActionDialog
+      tone="danger"
       title="Закрыть окно досрочно"
-      description={`Сутки после закрытия в расчёт эффекта не войдут, накопленный итог станет
-        окончательным и перестанет пересчитываться. Обратного действия нет: заново окно
-        открывается только новой фиксацией реализации, которой по завершённой рекомендации
-        не будет.`}
+      description="Сутки после закрытия в расчёт не войдут, итог станет окончательным. Открыть окно заново будет нельзя."
+      facts={(
+        <>
+          Окно открыто {дата(impl.windowOpenAt)}, прошло {eff ? eff.elapsedDays : '—'} из {WINDOW_DAYS} суток.
+          {eff && eff.days.some((d) => d.money !== null)
+            && <> Итог на сейчас: {рубли(eff.total.total)} руб.</>}
+        </>
+      )}
     >
       <form action={закрытьОкноДосрочно.bind(null, card.id)}>
         <Field data-invalid={Boolean(ошибка)}>
@@ -193,13 +207,13 @@ function ФормаЗакрытия({ card, ошибка }: { card: Card; оши
             Причина <span className="text-muted-foreground">обязательно</span>
           </FieldLabel>
           <Textarea id="close-reason" name="text" rows={3} aria-invalid={Boolean(ошибка)}
-                    placeholder="Например: скважина остановлена в ремонт, дальнейшие сутки к мероприятию отношения не имеют." />
+                    placeholder="Скважина остановлена в ремонт" />
           {ошибка && <FieldError>{ошибка}</FieldError>}
         </Field>
         <DialogFooter className="mt-4">
-          <Button type="submit" variant="destructive">Закрыть окно</Button>
+          <SubmitButton variant="destructive" pendingText="Закрываю…">Закрыть окно</SubmitButton>
           <DialogClose asChild>
-            <Button type="button" variant="outline">Отмена</Button>
+            <Button type="button" variant="ghost">Отмена</Button>
           </DialogClose>
         </DialogFooter>
       </form>

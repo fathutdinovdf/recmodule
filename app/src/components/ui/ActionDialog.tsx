@@ -12,28 +12,45 @@
  */
 
 import { useRouter, usePathname } from 'next/navigation';
+import { TriangleAlertIcon } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from './dialog';
 
-export function ActionDialog({ title, description, children }: {
+export function ActionDialog({ title, description, facts, tone = 'default', children }: {
   title: string;
   description?: React.ReactNode;
+  /* Факты, на которые смотрят, принимая решение: сколько суток теряется,
+     какой статус снимается. Подтверждение без единой цифры человек кликает
+     не глядя — а действия здесь необратимые. */
+  facts?: React.ReactNode;
+  /** `danger` — необратимое действие: значок и красный заголовок. */
+  tone?: 'default' | 'danger';
   children: React.ReactNode;
 }) {
   const router = useRouter();
   const pathname = usePathname();
 
   return (
-    <Dialog
-      open
-      onOpenChange={(открыто) => { if (!открыто) router.push(pathname); }}
-    >
+    <Dialog open onOpenChange={(открыто) => { if (!открыто) router.push(pathname); }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            {tone === 'danger' && (
+              <TriangleAlertIcon className="size-4 shrink-0 text-[var(--status-error-text)]"
+                                 aria-hidden="true" />
+            )}
+            {title}
+          </DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
+
+        {facts && (
+          <div className="rounded-md bg-[var(--bg-secondary)] px-3 py-2 text-sm text-foreground">
+            {facts}
+          </div>
+        )}
+
         {children}
       </DialogContent>
     </Dialog>

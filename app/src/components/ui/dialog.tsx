@@ -37,7 +37,7 @@ React.ComponentProps<typeof DialogPrimitive.Content> & { showCloseButton?: boole
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          'fixed top-1/2 left-1/2 z-50 grid w-full max-w-[560px] -translate-x-1/2 -translate-y-1/2',
+          'fixed top-1/2 left-1/2 z-50 grid w-full max-w-[480px] -translate-x-1/2 -translate-y-1/2',
           'gap-4 rounded-xl border border-border bg-background p-6 shadow-lg duration-150',
           'data-[state=open]:animate-in data-[state=closed]:animate-out',
           'data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0',

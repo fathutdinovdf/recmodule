@@ -26,12 +26,23 @@
   --accent-foreground: var(--text-primary);
   --border: var(--border-component-default);
   --ring: var(--component-accent);
-  --destructive: var(--status-error-light-bg);
-  --destructive-foreground: var(--status-error-text);
+  /* Опасное действие — плотная заливка, а не светлая подложка. Со светлой
+     подложкой кнопка «Удалить» оказывалась визуально слабее соседней «Отмены»
+     с её чёткой рамкой, и глаз в окне подтверждения цеплялся не за то. */
+  --destructive: var(--status-error-text);
+  --destructive-foreground: var(--text-on-accent);
   --success: var(--status-success-light-bg);
   --success-foreground: var(--status-success-text);
   --warning: var(--status-warning-light-bg);
   --warning-foreground: var(--status-warning-text);
+}
+
+/* В тёмной теме тот же приём наоборот: красный текстовый токен там светлый
+   (#ff8585), белые буквы на нём не читаются. Заливка берётся яркая, буквы —
+   цвета подложки страницы. */
+[data-theme="dark"] {
+  --destructive: var(--status-error);
+  --destructive-foreground: var(--bg-default);
 }
 
 @theme inline {
