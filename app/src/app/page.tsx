@@ -11,6 +11,7 @@ import { listRecommendations, statusCounts } from '@/db/recommendations';
 import type { RecommendationRow } from '@/db/recommendations';
 import { control, fmtDur, toWindow } from '@/domain/workhours';
 import { Icon } from '@/components/Icons';
+import { Hint } from '@/components/ui/Hint';
 
 export const dynamic = 'force-dynamic';
 
@@ -187,8 +188,12 @@ export default async function Page({
           </span>
           <div className="pagehead__actions">
             <a className="btn btn--accent" href="#"><Icon id="plus" />Создать рекомендацию</a>
-            <button className="iconbtn iconbtn--lg" title="Настройка колонок"><Icon id="cols" size={20} /></button>
-            <button className="iconbtn iconbtn--lg" title="Экспорт"><Icon id="export" size={20} /></button>
+            <Hint text="Настройка колонок">
+              <button className="iconbtn iconbtn--lg" type="button" aria-label="Настройка колонок"><Icon id="cols" size={20} /></button>
+            </Hint>
+            <Hint text="Экспорт">
+              <button className="iconbtn iconbtn--lg" type="button" aria-label="Экспорт"><Icon id="export" size={20} /></button>
+            </Hint>
           </div>
         </div>
 
@@ -220,23 +225,31 @@ export default async function Page({
                   {КОЛОНКИ.map((c) => (
                     <th key={c.key} data-col={c.key}>
                       <span className="th">
-                        <span className="th__t" title={`${c.label} — сортировать`}>
-                          <span className="th__label">{c.label}</span>
-                        </span>
-                        {(c.search || c.text) && (
-                          <span className="th__i" title={c.search ? 'Поиск по номеру' : 'Поиск по тексту'}>
-                            <svg className="ic-th"><use href="#i-search" /></svg>
+                        <Hint text={`${c.label} — сортировать`}>
+                          <span className="th__t">
+                            <span className="th__label">{c.label}</span>
                           </span>
+                        </Hint>
+                        {(c.search || c.text) && (
+                          <Hint text={c.search ? 'Поиск по номеру' : 'Поиск по тексту'}>
+                            <span className="th__i">
+                              <svg className="ic-th"><use href="#i-search" /></svg>
+                            </span>
+                          </Hint>
                         )}
                         {c.filter && (
-                          <span className="th__i" title="Фильтр">
-                            <svg className="ic-th"><use href="#i-funnel" /></svg>
-                          </span>
+                          <Hint text="Фильтр">
+                            <span className="th__i">
+                              <svg className="ic-th"><use href="#i-funnel" /></svg>
+                            </span>
+                          </Hint>
                         )}
                         {c.period && (
-                          <span className="th__i" title="Период">
-                            <svg className="ic-th"><use href="#i-funnel" /></svg>
-                          </span>
+                          <Hint text="Выбрать период">
+                            <span className="th__i">
+                              <svg className="ic-th"><use href="#i-funnel" /></svg>
+                            </span>
+                          </Hint>
                         )}
                       </span>
                       <span className="resizer" />

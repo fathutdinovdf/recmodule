@@ -1,0 +1,101 @@
+/* Интерактивные примитивы: выпадающие списки, меню, всплывающие подсказки.
+ *
+ * Поведение берётся у Radix (на нём же стоит shadcn/ui): фокус, клавиатура,
+ * портал поверх прокрутки, закрытие по Escape и по щелчку вне — то, что
+ * самописный список из макета делает наполовину, а доступным не делает вовсе.
+ *
+ * Вид берётся у макета. Оформление здесь — это перенесённые `.combo*` из
+ * `макет/wizard.css`: те же токены, те же радиусы, та же анимация раскрытия.
+ * Класс `.inp` не дублируется, он приходит из card.css.
+ *
+ * Единственное отличие от макета — состояния. В макете их ставил свой скрипт
+ * классами (`.is-open`, `.is-active`), Radix ставит их атрибутами
+ * (`data-state`, `data-highlighted`), и селекторы переписаны под них. Смысл
+ * состояний тот же, включая главное правило: подсветка с клавиатуры и
+ * наведение мышью — одно и то же состояние, два выделения на экране читаются
+ * как два курсора.
+ */
+
+.combo { position: relative; display: block; }
+
+/* Поле-переключатель: тот же `.inp`, но с местом под стрелку справа. */
+.combo__inp {
+  display: flex; align-items: center; gap: var(--item-gap-horizontal-m);
+  width: 100%; padding-right: 34px;
+  cursor: pointer; text-align: left;
+}
+.combo__inp[data-placeholder] { color: var(--text-placeholder); }
+.combo__inp:disabled { cursor: default; opacity: .6; }
+
+.combo__caret {
+  position: absolute; right: 11px; top: 50%; margin-top: -8px;
+  color: var(--icon-light); pointer-events: none;
+  transition: transform .18s cubic-bezier(.2, .8, .3, 1), color .18s;
+}
+.combo__inp[data-state="open"] + .combo__caret,
+.combo__inp[data-state="open"] .combo__caret {
+  transform: rotate(180deg); color: var(--icon-accent);
+}
+
+/* Меню перекрывает соседние поля, поэтому у него своя тень и свой слой.
+   Раскрытие: 140 мс — короче ощущается рывком, длиннее начинает мешать
+   тому, кто уже знает, что выбирает. */
+.combo__menu {
+  z-index: 40;
+  min-width: var(--radix-select-trigger-width, 0);
+  max-height: 288px; overflow: hidden;
+  background: var(--bg-card);
+  border: 1px solid var(--border-divider-light);
+  border-radius: 12px;
+  box-shadow: var(--elevation-2);
+  padding: 6px;
+  transform-origin: var(--radix-select-content-transform-origin, top center);
+}
+.combo__menu[data-state="open"] { animation: comboIn .14s cubic-bezier(.2, .8, .3, 1); }
+
+@keyframes comboIn {
+  from { opacity: 0; transform: translateY(-6px) scale(.985); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+.combo__list { max-height: 276px; overflow-y: auto; overscroll-behavior: contain; }
+
+.combo__opt {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--item-gap-horizontal-m);
+  padding: 9px 12px;
+  border-radius: 8px;
+  font: var(--font-weight-text) var(--font-size-text-medium) / 1.35 var(--font-family-text);
+  color: var(--text-secondary);
+  cursor: pointer;
+  outline: none;
+}
+/* Подсветка с клавиатуры и наведение мышью — одно и то же состояние. */
+.combo__opt[data-highlighted] { background: var(--state-hover); color: var(--text-primary); }
+.combo__opt[data-state="checked"] {
+  color: var(--text-accent); font-weight: var(--font-weight-subtitle);
+}
+.combo__opt[data-disabled] { color: var(--text-quaternary); cursor: default; }
+
+.combo__txt { flex: 1 1 auto; min-width: 0; }
+.combo__note {
+  flex: 0 0 auto;
+  font: var(--font-weight-text) var(--font-size-text-small) / 1 var(--font-family-text);
+  color: var(--text-quaternary);
+}
+.combo__opt[data-highlighted] .combo__note { color: var(--text-tertiary); }
+.combo__tick { flex: 0 0 auto; color: var(--icon-accent); }
+
+/* Кнопки прокрутки длинного списка. Radix показывает их сам, когда список
+   не помещается; в макете список просто прокручивался колесом. */
+.combo__scroll {
+  display: flex; align-items: center; justify-content: center;
+  height: 20px; color: var(--icon-light); cursor: default;
+}
+.combo__scroll--up svg { transform: rotate(180deg); }
+
+/* Кому важно отсутствие движения — тому его и не показываем. */
+@media (prefers-reduced-motion: reduce) {
+  .combo__menu[data-state="open"] { animation: none; }
+  .combo__caret { transition: none; }
+}

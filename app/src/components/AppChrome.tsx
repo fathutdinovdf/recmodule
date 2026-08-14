@@ -20,6 +20,7 @@ import { usePathname } from 'next/navigation';
 import { IconSprite, Icon } from './Icons';
 import { switchUser } from '@/lib/session-actions';
 import type { SessionUser } from '@/lib/session';
+import { Hint } from '@/components/ui/Hint';
 
 interface NavItem {
   href?: string;
@@ -78,13 +79,17 @@ export function AppChrome({
 
       <header className="appbar">
         <div className="appbar__group appbar__group--right">
-          <button className="iconbtn iconbtn--lg" title="Уведомления">
-            <Icon id="bell" size={20} />
-            <span className="dot" />
-          </button>
-          <button className="iconbtn iconbtn--lg" title="Помощь">
-            <Icon id="help" size={20} />
-          </button>
+          <Hint text="Уведомления">
+            <button className="iconbtn iconbtn--lg" type="button" aria-label="Уведомления">
+              <Icon id="bell" size={20} />
+              <span className="dot" />
+            </button>
+          </Hint>
+          <Hint text="Помощь">
+            <button className="iconbtn iconbtn--lg" type="button" aria-label="Помощь">
+              <Icon id="help" size={20} />
+            </button>
+          </Hint>
           <ПереключательПользователя user={user} users={users} />
         </div>
       </header>

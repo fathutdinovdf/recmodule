@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AppShell } from '@/components/AppShell';
 import { Icon } from '@/components/Icons';
+import { Hint } from '@/components/ui/Hint';
 import { getCard, getNeighbours, getWellHistory } from '@/db/card';
 import { getWellEconomy } from '@/db/economy';
 import { getWell, getMeasurementsWithLookback, PARAM } from '@/db/vmap';
@@ -22,6 +23,7 @@ import { control, fmtDur } from '@/domain/workhours';
 import { WINDOW_DAYS } from '@/services/effect-store';
 import { дата, число, прирост, рубли } from '@/lib/format';
 import { Tabs } from './tabs';
+import { CardActionsMenu } from './card-actions-menu';
 import '../../card.css';
 import '../../card-extra.css';
 
@@ -76,7 +78,9 @@ export default async function CardLayout({
       <main className="content content--card">
         <div className="cardhead">
           <div className="cardhead__top">
-            <Link className="cnbtn" href="/" title="К реестру"><Icon id="back" size={20} /></Link>
+            <Hint text="К реестру">
+              <Link className="cnbtn" href="/" aria-label="К реестру"><Icon id="back" size={20} /></Link>
+            </Hint>
             <span className="cardhead__num">{card.number ?? 'Черновик'}</span>
             <span className="headstatus">
               <i className={`status__d status__d--${card.tone} ${card.filled ? '' : 'is-hollow'}`} />
@@ -100,16 +104,21 @@ export default async function CardLayout({
 
             <div className="cardhead__trailing">
               <div className="pager">
-                {соседи.prevId
-                  ? <Link className="cnbtn" href={`/rec/${соседи.prevId}`} title="Предыдущая в реестре"><Icon id="prev" /></Link>
-                  : <span className="cnbtn is-off"><Icon id="prev" /></span>}
+                <Hint text="Предыдущая рекомендация">
+                  {соседи.prevId
+                    ? <Link className="cnbtn" href={`/rec/${соседи.prevId}`} aria-label="Предыдущая рекомендация"><Icon id="prev" /></Link>
+                    : <span className="cnbtn is-off" aria-label="Предыдущей рекомендации нет"><Icon id="prev" /></span>}
+                </Hint>
                 <span className="pager__pos" title="Позиция в реестре">
                   {соседи.pos} из {соседи.total}
                 </span>
-                {соседи.nextId
-                  ? <Link className="cnbtn" href={`/rec/${соседи.nextId}`} title="Следующая в реестре"><Icon id="next" /></Link>
-                  : <span className="cnbtn is-off"><Icon id="next" /></span>}
+                <Hint text="Следующая рекомендация">
+                  {соседи.nextId
+                    ? <Link className="cnbtn" href={`/rec/${соседи.nextId}`} aria-label="Следующая рекомендация"><Icon id="next" /></Link>
+                    : <span className="cnbtn is-off" aria-label="Следующей рекомендации нет"><Icon id="next" /></span>}
+                </Hint>
               </div>
+              <CardActionsMenu status={card.status} />
             </div>
           </div>
 

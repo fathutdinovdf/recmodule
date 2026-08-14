@@ -20,6 +20,8 @@ export function IconSprite() {
       <symbol id="i-clip" viewBox="0 0 16 16"><path d="M10.5 5.5 6.2 9.8a1.7 1.7 0 0 0 2.4 2.4l4.6-4.6a3 3 0 0 0-4.2-4.2L4.2 8.2a4.3 4.3 0 0 0 6 6l3.6-3.6" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></symbol>
       <symbol id="i-prev" viewBox="0 0 16 16"><path d="M10 3.5 5.5 8l4.5 4.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></symbol>
       <symbol id="i-next" viewBox="0 0 16 16"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></symbol>
+      <symbol id="i-caret" viewBox="0 0 16 16"><path d="M4.5 6.5 8 10l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></symbol>
+      <symbol id="i-check" viewBox="0 0 16 16"><path d="m3.6 8.4 3 3 5.8-6.2" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></symbol>
       <symbol id="i-more" viewBox="0 0 16 16"><circle cx="8" cy="3.4" r="1.3" fill="currentColor"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/><circle cx="8" cy="12.6" r="1.3" fill="currentColor"/></symbol>
     </svg>
   );
