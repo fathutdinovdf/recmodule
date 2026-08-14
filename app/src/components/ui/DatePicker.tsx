@@ -42,7 +42,9 @@ export function DatePicker({
   endMonth?: Date;
   invalid?: boolean;
   id?: string;
-  /** Ширина кнопки. По умолчанию во всю ширину поля, как input в макете. */
+  /** Ширина кнопки. По умолчанию 240 px: календарь не должен растягиваться
+   *  на всю строку формы — дата коротка, и широкая кнопка читается как поле
+   *  ввода текста. Важность нужна, чтобы перебить `[&>*]:w-full` у Field. */
   className?: string;
 }) {
   const [selected, setSelected] = React.useState<Date | undefined>(defaultValue);
@@ -58,7 +60,7 @@ export function DatePicker({
             id={id}
             variant="outline"
             aria-invalid={invalid}
-            className={cn('w-full justify-start text-left font-normal', className)}
+            className={cn('!w-[240px] justify-start text-left font-normal', className)}
             aria-label={selected
               ? `${label}: ${format(selected, 'd MMMM yyyy', { locale: ru })}`
               : `Выбрать: ${label.toLowerCase()}`}

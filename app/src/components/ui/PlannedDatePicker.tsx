@@ -14,7 +14,6 @@ export function PlannedDatePicker({ name = 'planned' }: { name?: string }) {
     <DatePicker
       name={name}
       label="Плановая дата работ"
-      className="w-[240px]"
       disabled={{ before: сегодня }}
       startMonth={сегодня}
       endMonth={endOfYear(addYears(сегодня, 5))}

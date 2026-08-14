@@ -16,7 +16,7 @@
 
 import { useTransition } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { IconSprite, Icon } from './Icons';
 import { switchUser } from '@/lib/session-actions';
 import type { SessionUser } from '@/lib/session';
@@ -144,6 +144,7 @@ function ПереключательПользователя({
   user: SessionUser | null; users: SessionUser[];
 }) {
   const [идёт, начать] = useTransition();
+  const router = useRouter();
 
   if (!user) return <div className="user"><span className="avatar">—</span>Пользователь не определён</div>;
 
@@ -159,7 +160,14 @@ function ПереключательПользователя({
         className="userpick"
         value={user.login}
         disabled={идёт}
-        onChange={(e) => { const login = e.target.value; начать(() => { switchUser(login); }); }}
+        /* router.refresh() обязателен: revalidatePath в server action чистит
+           кэш, но текущий отрисованный экран сам по себе не пересобирается —
+           без него select возвращается к прежнему пользователю, и смена роли
+           выглядит как не сработавшая. */
+        onChange={(e) => {
+          const login = e.target.value;
+          начать(async () => { await switchUser(login); router.refresh(); });
+        }}
       >
         {users.map((u) => (
           <option key={u.login} value={u.login}>{u.fullName} · {РОЛЬ(u)}</option>
