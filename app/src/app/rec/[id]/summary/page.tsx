@@ -58,7 +58,7 @@ export default async function Page({ params, searchParams }: {
           <p className="m-0 whitespace-pre-wrap text-sm leading-relaxed text-foreground">{card.problem}</p>
         </section>
 
-        <Separator />
+        <Separator className="bg-border/50" />
 
         <section className="flex flex-col gap-1.5">
           <h2 className="m-0 text-sm font-medium text-muted-foreground">Технологическое обоснование</h2>
@@ -67,9 +67,9 @@ export default async function Page({ params, searchParams }: {
           </p>
         </section>
 
-        <Separator />
+        <Separator className="bg-border/50" />
 
-        <Item variant="muted" className="border-border">
+        <Item variant="muted" size="sm" className="border-border">
           <ItemContent>
             <ItemTitle className="text-muted-foreground">Рекомендуемое мероприятие</ItemTitle>
             <ItemDescription className="whitespace-pre-wrap text-foreground">
