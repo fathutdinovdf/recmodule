@@ -17,11 +17,13 @@ import { Textarea } from '@/components/ui/Textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 
-export function ФормаФиксации({ action, ошибка }: {
+export function ФормаФиксации({ action, ошибка, полнота: выбранная }: {
   action: (form: FormData) => void | Promise<void>;
   ошибка?: string;
+  /** Полнота, выбранная до неудачной отправки: возвращается в адресе. */
+  полнота?: string;
 }) {
-  const [полнота, setПолнота] = React.useState('full');
+  const [полнота, setПолнота] = React.useState(выбранная === 'partial' ? 'partial' : 'full');
   const сегодня = startOfToday();
 
   return (
@@ -29,8 +31,10 @@ export function ФормаФиксации({ action, ошибка }: {
       <div className="form__h">Фиксация реализации</div>
 
       <FieldGroup>
-        <Field orientation="horizontal" className="items-start gap-[var(--block-gap-default)]">
-          <Field className="w-auto">
+        {/* Строка из двух равных полей, как `.form__row` в макете: поля делят
+            ширину поровну и переносятся на узком экране. */}
+        <Field orientation="horizontal" className="flex-wrap items-start gap-[var(--block-gap-default)]">
+          <Field className="flex-1 basis-[220px]">
             <FieldLabel htmlFor="fact-date">Дата фактической реализации</FieldLabel>
             <DatePicker
               id="fact-date"
@@ -43,7 +47,7 @@ export function ФормаФиксации({ action, ошибка }: {
             />
           </Field>
 
-          <Field className="w-auto">
+          <Field className="flex-1 basis-[220px]">
             <FieldLabel>Полнота реализации</FieldLabel>
             <RadioGroup
               name="completeness"

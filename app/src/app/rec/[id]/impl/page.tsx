@@ -46,10 +46,10 @@ const ПОЧЕМУ_ПУСТО: Record<string, string> = {
 
 export default async function Page({ params, searchParams }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ form?: string; err?: string }>;
+  searchParams: Promise<{ form?: string; err?: string; compl?: string }>;
 }) {
   const { id } = await params;
-  const { form, err } = await searchParams;
+  const { form, err, compl } = await searchParams;
   const card = await getCard(Number(id));
   if (!card) notFound();
 
@@ -59,7 +59,7 @@ export default async function Page({ params, searchParams }: {
   if (card.status === 'approved') {
     return (
       <ФактНеЗафиксирован card={card} исполнитель={исполнитель}
-                         форма={form === 'fact'} ошибка={err} />
+                         форма={form === 'fact'} ошибка={err} полнота={compl} />
     );
   }
 
@@ -129,11 +129,12 @@ export default async function Page({ params, searchParams }: {
 
 /* ------------------------------ до фиксации ------------------------------ */
 
-function ФактНеЗафиксирован({ card, исполнитель, форма, ошибка }: {
+function ФактНеЗафиксирован({ card, исполнитель, форма, ошибка, полнота }: {
   card: Card;
   исполнитель: boolean;
   форма: boolean;
   ошибка?: string;
+  полнота?: string;
 }) {
   return (
     <div className="block">
@@ -147,7 +148,7 @@ function ФактНеЗафиксирован({ card, исполнитель, ф
       </div>
 
       {форма && исполнитель
-        ? <ФормаФиксации action={зафиксировать.bind(null, card.id)} ошибка={ошибка} />
+        ? <ФормаФиксации action={зафиксировать.bind(null, card.id)} ошибка={ошибка} полнота={полнота} />
         : исполнитель ? (
           <div className="form__btns" style={{ marginTop: 'var(--group-gap-m)' }}>
             <Button asChild><Link href="?form=fact">Зафиксировать реализацию</Link></Button>

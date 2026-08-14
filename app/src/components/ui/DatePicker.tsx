@@ -15,6 +15,7 @@ import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import type { Matcher } from 'react-day-picker';
+import { cn } from '@/lib/cn';
 import { Button } from './Button';
 import { Calendar } from './Calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './Popover';
@@ -29,6 +30,7 @@ export function DatePicker({
   endMonth,
   invalid,
   id,
+  className,
 }: {
   name: string;
   defaultValue?: Date;
@@ -40,6 +42,8 @@ export function DatePicker({
   endMonth?: Date;
   invalid?: boolean;
   id?: string;
+  /** Ширина кнопки. По умолчанию во всю ширину поля, как input в макете. */
+  className?: string;
 }) {
   const [selected, setSelected] = React.useState<Date | undefined>(defaultValue);
   const [open, setOpen] = React.useState(false);
@@ -54,7 +58,7 @@ export function DatePicker({
             id={id}
             variant="outline"
             aria-invalid={invalid}
-            className="w-[240px] justify-start text-left font-normal"
+            className={cn('w-full justify-start text-left font-normal', className)}
             aria-label={selected
               ? `${label}: ${format(selected, 'd MMMM yyyy', { locale: ru })}`
               : `Выбрать: ${label.toLowerCase()}`}
