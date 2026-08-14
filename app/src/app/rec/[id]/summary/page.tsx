@@ -23,6 +23,7 @@ import { control, fmtDur, workHoursBetween } from '@/domain/workhours';
 import { дата } from '@/lib/format';
 import { Combobox } from '@/components/ui/Combobox';
 import { Button } from '@/components/ui/Button';
+import { Textarea } from '@/components/ui/Textarea';
 import { PlannedDatePicker } from '@/components/ui/PlannedDatePicker';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { решить, отметитьОткрытие } from '../actions';
@@ -253,7 +254,7 @@ function ФормаРешения({ card, вид, ошибка, причины }
             </Field>
             <Field>
               <FieldLabel htmlFor="decision-comment">Комментарий <span className="text-muted-foreground">необязательно</span></FieldLabel>
-              <textarea id="decision-comment" className="inp inp--area" name="text" rows={3}
+              <Textarea id="decision-comment" name="text" rows={3}
                         placeholder="Например: работы включены в план на неделю, ответственный — мастер по добыче." />
             </Field>
           </FieldGroup>
@@ -277,7 +278,7 @@ function ФормаРешения({ card, вид, ошибка, причины }
             </Field>
             <Field data-invalid={Boolean(ошибкаТекста)}>
               <FieldLabel htmlFor="reject-reason">Обоснование <span className="text-muted-foreground">обязательно</span></FieldLabel>
-              <textarea id="reject-reason" className="inp inp--area" name="text" rows={4}
+              <Textarea id="reject-reason" name="text" rows={4}
                         aria-invalid={Boolean(ошибкаТекста)}
                         placeholder="Что сделано или планируется вместо рекомендованного, почему рекомендация не принимается." />
               <FieldError>{ошибкаТекста}</FieldError>
@@ -296,7 +297,7 @@ function ФормаРешения({ card, вид, ошибка, причины }
           <div className="form__h">Запросить уточнение</div>
           <Field data-invalid={Boolean(ошибкаТекста)}>
             <FieldLabel htmlFor="clarify-request">Что требуется уточнить <span className="text-muted-foreground">обязательно</span></FieldLabel>
-            <textarea id="clarify-request" className="inp inp--area" name="text" rows={4}
+            <Textarea id="clarify-request" name="text" rows={4}
                       aria-invalid={Boolean(ошибкаТекста)}
                       placeholder="Какого расчёта, замера или пояснения не хватает для решения." />
             <FieldError>{ошибкаТекста}</FieldError>
