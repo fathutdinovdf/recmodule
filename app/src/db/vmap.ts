@@ -6,7 +6,9 @@
  * дорого стоило.
  */
 
+import { cache } from 'react';
 import { vmapQuery, VMAP_SCHEMA } from './pool';
+import { measurementsSql } from './vmap-sql';
 import type { Measurement } from '@/domain/measurements';
 
 /** Параметры ВМАП, которые нужны модулю. */
@@ -17,10 +19,19 @@ export const PARAM = {
   WATERCUT: 7,
   /** Плотность нефти в стандартных условиях, кг/м³. */
   OIL_DENSITY: 13,
+  /** Плотность воды в стандартных условиях, кг/м³. Нужна, чтобы перевести
+   *  замеренный объём жидкости в тонны: ставка ЭЭ на жидкость заведена на
+   *  массу. На фонде значения 1000–1198, у 3079 скважин из 3190. */
+  WATER_DENSITY: 12,
   /** Пласт(ы), на которые работает скважина. */
   PLAST: 50,
   /** Тип скважины: добывающий фонд — значение 1. */
   WELL_TYPE: 20,
+  /* Режимные параметры — утверждённый технологический режим. Договор,
+     Приложение № 2, называет их основным способом формирования базы; в
+     расчёте пока не используются, база берётся по замерам. */
+  QZH_MODE: 0,
+  WATERCUT_MODE: 6,
 } as const;
 
 export interface VmapWell {
@@ -29,6 +40,7 @@ export interface VmapWell {
   name: string;
   operationMode: number | null;
   oilDensity: number | null;
+  waterDensity: number | null;
   plast: string | null;
 }
 
@@ -58,17 +70,8 @@ export async function getMeasurements(
   from: Date,
   to: Date,
 ): Promise<Measurement[]> {
-  const rows = await vmapQuery<{ at: Date; value: string }>(`
-    SELECT DISTINCT
-           COALESCE(d."FactDate", LEAST(d."CreateDate", d."UpdateDate")) AS at,
-           d."Value" AS value
-    FROM ${VMAP_SCHEMA}."WellData" d
-    WHERE d."WellId" = $1
-      AND d."ParameterId" = $2
-      AND COALESCE(d."FactDate", LEAST(d."CreateDate", d."UpdateDate")) >= $3
-      AND COALESCE(d."FactDate", LEAST(d."CreateDate", d."UpdateDate")) <= $4
-    ORDER BY at
-  `, [wellId, parameterId, from, to]);
+  const rows = await vmapQuery<{ at: Date; value: string }>(
+    measurementsSql(VMAP_SCHEMA), [wellId, parameterId, from, to]);
 
   return rows
     .map((r) => ({ at: new Date(r.at), value: Number(r.value) }))
@@ -108,17 +111,24 @@ export async function getWellParam(
   return rows[0]?.value ?? null;
 }
 
-/** Скважина с параметрами, нужными для расчёта. */
-export async function getWell(wellId: number): Promise<VmapWell | null> {
+/* Скважина с параметрами, нужными для расчёта.
+   В cache(), потому что за неё в одном рендере берутся двое: оболочка карточки
+   (правая колонка и прогноз) и вкладка расчёта (плотности для перевода
+   жидкости в тонны). Стенд чужой, лишний запрос туда не нужен. */
+export const getWell = cache(async (wellId: number): Promise<VmapWell | null> => {
   const rows = await vmapQuery<{
     well_id: number; code: string | null; name: string;
-    operation_mode: number | null; oil_density: string | null; plast: string | null;
+    operation_mode: number | null; oil_density: string | null;
+    water_density: string | null; plast: string | null;
   }>(`
     SELECT w."Id" AS well_id, w."Code" AS code, w."Name" AS name,
            w."OperationMode" AS operation_mode,
            (SELECT d."Value" FROM ${VMAP_SCHEMA}."WellData" d
              WHERE d."WellId" = w."Id" AND d."ParameterId" = ${PARAM.OIL_DENSITY}
                AND d."DeleteDate" IS NULL LIMIT 1) AS oil_density,
+           (SELECT d."Value" FROM ${VMAP_SCHEMA}."WellData" d
+             WHERE d."WellId" = w."Id" AND d."ParameterId" = ${PARAM.WATER_DENSITY}
+               AND d."DeleteDate" IS NULL LIMIT 1) AS water_density,
            (SELECT d."Value" FROM ${VMAP_SCHEMA}."WellData" d
              WHERE d."WellId" = w."Id" AND d."ParameterId" = ${PARAM.PLAST}
                AND d."DeleteDate" IS NULL LIMIT 1) AS plast
@@ -133,9 +143,18 @@ export async function getWell(wellId: number): Promise<VmapWell | null> {
     code: r.code,
     name: r.name,
     operationMode: r.operation_mode,
-    oilDensity: r.oil_density === null ? null : Number(r.oil_density),
+    /* Ноль в плотности — не «лёгкая нефть», а незаполненное поле: такая
+       запись на стенде есть, и она обнулила бы всю нефть по скважине. */
+    oilDensity: плотность(r.oil_density),
+    waterDensity: плотность(r.water_density),
     plast: r.plast,
   };
+});
+
+function плотность(v: string | null): number | null {
+  if (v === null) return null;
+  const x = Number(v);
+  return Number.isFinite(x) && x > 0 ? x : null;
 }
 
 /** Доступность стенда: экран должен отличать «нет данных» от «нет связи». */

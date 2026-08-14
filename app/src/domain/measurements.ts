@@ -151,3 +151,36 @@ export function oilFromLiquid(
   if (!Number.isFinite(qzh) || !Number.isFinite(watercutPct) || !Number.isFinite(densityKgM3)) return null;
   return qzh * (1 - watercutPct / 100) * (densityKgM3 / 1000);
 }
+
+/**
+ * Масса жидкости, т: нефть плюс вода.
+ *
+ * Нужна потому, что модель Заказчика считает жидкость в ТОННАХ, а ВМАП меряет
+ * её в кубометрах. В «Шаблоне АЛЬМА» столбец K называется «Добыча жидкости, т»,
+ * и ставка электроэнергии на жидкость (столбец N) умножается именно на него.
+ *
+ * Объём нефти получается из её массы и плотности, остальной объём — вода:
+ *
+ *     Vн = Mн × 1000 / ρн       Vв = Vж − Vн       Mж = Mн + Vв × ρв / 1000
+ *
+ * Функция линейна по обоим аргументам, и это важно: массу прироста можно
+ * считать прямо из приростов (Δ Vж, Δ Mн), результат совпадёт с разностью масс
+ * факта и базы. Поэтому базе не нужна собственная обводнённость — её и не
+ * хранят.
+ *
+ * Отрицательный объём воды здесь законен: у прироста «нефти больше, жидкости
+ * меньше» вода ушла в минус, и обрезать это нулём значило бы завысить массу.
+ */
+export function liquidMass(
+  volumeM3: number | null,
+  oilMassT: number | null,
+  oilDensityKgM3: number | null,
+  waterDensityKgM3: number | null,
+): number | null {
+  if (volumeM3 === null || oilMassT === null) return null;
+  if (!oilDensityKgM3 || !waterDensityKgM3) return null;
+  if (!Number.isFinite(volumeM3) || !Number.isFinite(oilMassT)) return null;
+  const объёмНефти = (oilMassT * 1000) / oilDensityKgM3;
+  const объёмВоды = volumeM3 - объёмНефти;
+  return oilMassT + (объёмВоды * waterDensityKgM3) / 1000;
+}

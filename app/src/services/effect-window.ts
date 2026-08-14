@@ -5,7 +5,7 @@
  * про базы не знает.
  */
 
-import { dailySeries, oilFromLiquid, type Measurement } from '@/domain/measurements';
+import { dailySeries, liquidMass, oilFromLiquid } from '@/domain/measurements';
 import { dailyEffect, sumBreakdowns, missingRates,
          type WellEconomy, type EffectBreakdown } from '@/domain/effect';
 import { getMeasurementsWithLookback, getWell, PARAM } from '@/db/vmap';
@@ -19,9 +19,13 @@ export interface Baseline {
 
 export interface EffectDay {
   date: Date;
+  /** Дебит жидкости, м³/сут — как его меряет ВМАП. */
   factQzh: number | null;
+  /** Он же в тоннах: ставка ЭЭ на жидкость заведена на массу. */
+  factQzhT: number | null;
   factQn: number | null;
   deltaQzh: number | null;
+  deltaQzhT: number | null;
   deltaQn: number | null;
   points: number;
   coverage: number;
@@ -39,6 +43,7 @@ export interface EffectResult {
   problems: string[];
   economy: WellEconomy | null;
   oilDensity: number | null;
+  waterDensity: number | null;
 }
 
 /**
@@ -72,6 +77,11 @@ export async function calculateEffect(params: {
   const плотность = well?.oilDensity ?? null;
   if (плотность === null) problems.push('Нет плотности нефти по скважине');
 
+  /* Плотность воды нужна ровно для одной статьи — электроэнергии на жидкость,
+     но без неё нельзя посчитать и её, а значит и итог. */
+  const плотностьВоды = well?.waterDensity ?? null;
+  if (плотностьВоды === null) problems.push('Нет плотности воды по скважине');
+
   const [замерыЖидкости, замерыОбводнённости] = await Promise.all([
     getMeasurementsWithLookback(wellId, PARAM.QZH_MEASURED, windowFrom, windowTo),
     getMeasurementsWithLookback(wellId, PARAM.WATERCUT, windowFrom, windowTo),
@@ -98,18 +108,25 @@ export async function calculateEffect(params: {
     const deltaQn = factQn !== null && baseline.baseQn !== null
       ? factQn - baseline.baseQn : null;
 
+    /* Масса прироста считается прямо из приростов, а не как разность масс:
+       liquidMass линейна, результат тот же, и базе не нужна своя
+       обводнённость — её и не хранят. */
+    const deltaQzhT = liquidMass(deltaQzh, deltaQn, плотность, плотностьВоды);
+
     /* Деньги считаем только когда известны ОБА прироста: часть статей висит на
        жидкости, часть на нефти, и посчитать «половину» значит выдать заниженный
        эффект за полный. */
     let money: EffectBreakdown | null = null;
-    if (econ && нехватка.length === 0 && deltaQzh !== null && deltaQn !== null) {
-      money = dailyEffect(econ, deltaQzh, deltaQn);
+    if (econ && нехватка.length === 0 && deltaQzhT !== null && deltaQn !== null) {
+      money = dailyEffect(econ, deltaQzhT, deltaQn);
       деньги.push(money);
     }
 
     days.push({
       date: сутки.date,
-      factQzh, factQn, deltaQzh, deltaQn,
+      factQzh,
+      factQzhT: liquidMass(factQzh, factQn, плотность, плотностьВоды),
+      factQn, deltaQzh, deltaQzhT, deltaQn,
       points: сутки.points,
       coverage: сутки.coverage,
       money,
@@ -128,5 +145,6 @@ export async function calculateEffect(params: {
     problems,
     economy: econ,
     oilDensity: плотность,
+    waterDensity: плотностьВоды,
   };
 }

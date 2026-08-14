@@ -6,6 +6,9 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
+    // Нужен ровно одному импорту — domain/baseline.ts подключается из
+    // служебного скрипта голым node, а тому нужно точное расширение.
+    "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",

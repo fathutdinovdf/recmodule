@@ -1,0 +1,244 @@
+/* Карточка: то, чего в макете нет.
+ *
+ * card.css — копия макета и правке не подлежит, поэтому всё новое лежит здесь
+ * и грузится после него. Имена классов начинаются с eff- и win-, чтобы ничего
+ * макетного не перебить случайным совпадением: однажды так уже поехала таблица
+ * реестра.
+ */
+
+/* Вкладка, у которой ещё нет своей страницы. Тем же приёмом, что и не сделанные
+   пункты левой навигации: видно, что она есть, но нажать нельзя. */
+.tab--off {
+  padding: var(--item-padding-vertical-m) var(--item-padding-horizontal-xs);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  color: var(--text-quaternary);
+  cursor: default;
+}
+
+.tab { text-decoration: none; }
+
+/* ------------------------------ вкладка «Расчёт эффекта» ------------------------------ */
+
+.eff { display: flex; flex-direction: column; gap: var(--section-padding-default); }
+
+.eff__h {
+  font: var(--font-weight-headline) var(--font-size-h6) / var(--line-height-h6) var(--font-family-headline);
+  color: var(--text-heading);
+  margin-bottom: var(--item-gap-vertical-s);
+  display: flex; align-items: center; gap: var(--item-gap-horizontal-m);
+}
+.eff__note {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+
+/* ---------- итог ---------- */
+
+.eff-total {
+  display: flex; align-items: flex-end; gap: var(--group-gap-m);
+  flex-wrap: wrap;
+  padding: var(--group-padding-m) var(--group-padding-l);
+  background: var(--state-selected-light);
+  border-radius: var(--corner-radius-l);
+}
+.eff-total__k {
+  font: var(--font-weight-text) var(--font-size-text-small) / 1.2 var(--font-family-text);
+  color: var(--text-tertiary);
+  margin-bottom: 4px;
+}
+/* Итог набран крупнее всего на вкладке намеренно: это единственное число,
+   которое попадёт в акт, всё остальное объясняет, как оно получилось. */
+.eff-total__v {
+  font: 600 34px/1.1 var(--font-family-headline);
+  color: var(--text-accent);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.eff-total__v.is-loss { color: var(--status-error-text); }
+.eff-total__u {
+  font: var(--font-weight-text) var(--font-size-text-small) / 1 var(--font-family-text);
+  color: var(--text-quaternary);
+  margin-left: 6px;
+}
+.eff-total__side { flex: 1 1 260px; display: flex; flex-direction: column; gap: 4px; }
+
+/* ---------- нехватка данных ---------- */
+
+.eff-gap {
+  display: flex; flex-direction: column; gap: var(--item-gap-vertical-s);
+  padding: var(--group-padding-m) var(--group-padding-l);
+  background: var(--status-warning-light-bg);
+  color: var(--status-warning-text);
+  border-radius: var(--corner-radius-l);
+  font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+}
+.eff-gap ul { margin: 0; padding-left: 20px; }
+.eff-gap__h { font-weight: var(--font-weight-subtitle); }
+
+/* ---------- база ---------- */
+
+.eff-base { display: flex; gap: var(--block-gap-default); flex-wrap: wrap; }
+.eff-base__i {
+  flex: 1 1 150px;
+  background: var(--bg-secondary);
+  border-radius: var(--corner-radius-m);
+  padding: var(--group-padding-s) var(--group-padding-m);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.eff-base__k {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-quaternary);
+}
+.eff-base__v {
+  font: var(--font-weight-headline) var(--font-size-h5) / var(--line-height-h5) var(--font-family-headline);
+  color: var(--text-heading);
+  font-variant-numeric: tabular-nums;
+}
+.eff-base__v small {
+  font: var(--font-weight-text) var(--font-size-text-small) / 1 var(--font-family-text);
+  color: var(--text-quaternary); margin-left: 3px;
+}
+
+/* ---------- прогресс окна ---------- */
+
+/* Шкала всегда на все 90 суток, а заполнение — накопленный факт против
+   прогноза. Прогноз не пересчитывается на прошедшие сутки: пересчитанный, он
+   перестаёт быть тем, с чем сравнивают. Вместо пересчёта — засечка «где факт
+   должен быть сейчас». */
+.win { display: flex; flex-direction: column; gap: var(--item-gap-vertical-s); }
+.win__bar {
+  position: relative;
+  height: 22px;
+  border-radius: 999px;           /* пилюля; такого радиуса в токенах ВМАП нет */
+  background: var(--bg-secondary);
+  overflow: visible;
+}
+.win__fill {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  border-radius: 999px;
+  background: var(--component-accent);
+  min-width: 3px;
+}
+.win__fill.is-over { background: var(--status-success); }
+.win__fill.is-loss { background: var(--status-error); }
+/* Прогресс по суткам, когда прогноза нет: то же место, но заливка нейтральная —
+   она сообщает только «сколько прошло», а не «сколько заработано». */
+.win__fill.is-days { background: var(--infografic-accent); opacity: .55; }
+
+.win__mark {
+  position: absolute; top: -5px; bottom: -5px; width: 2px;
+  background: var(--text-secondary);
+  border-radius: 1px;
+}
+.win__marklab {
+  position: absolute; top: calc(100% + 7px);
+  white-space: nowrap;
+  font: var(--font-weight-text) var(--font-size-text-caption) / 1.2 var(--font-family-text);
+  color: var(--text-tertiary);
+}
+.win__scale {
+  display: flex; justify-content: space-between; gap: var(--item-gap-horizontal-m);
+  margin-top: 22px;              /* место под подпись засечки под шкалой */
+  font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-caption) var(--font-family-text);
+  color: var(--text-quaternary);
+}
+.win__scale b { color: var(--text-secondary); font-weight: var(--font-weight-subtitle); }
+
+/* ---------- график ---------- */
+
+.eff-charts { display: flex; gap: var(--block-gap-default); flex-wrap: wrap; }
+.eff-chart { flex: 1 1 320px; min-width: 0; }
+.eff-chart__h {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+  margin-bottom: var(--item-gap-vertical-s);
+}
+.eff-chart svg { width: 100%; height: auto; display: block; }
+.eff-legend {
+  display: flex; gap: var(--group-gap-m); flex-wrap: wrap;
+  font: var(--font-weight-text) var(--font-size-text-caption) / 1.4 var(--font-family-text);
+  color: var(--text-quaternary);
+}
+.eff-legend i {
+  display: inline-block; width: 14px; height: 0; vertical-align: middle;
+  border-top: 2px solid currentColor; margin-right: 5px;
+}
+.eff-legend .is-fact { color: var(--infografic-accent); }
+.eff-legend .is-base { color: var(--text-tertiary); }
+
+/* ---------- таблицы вкладки ---------- */
+
+/* Своя таблица, а не .tbl из реестра: там table-layout: fixed и явная ширина в
+   пикселях под колонки реестра, здесь колонки должны раздаваться по
+   содержимому. */
+.eff-tbl {
+  width: 100%; border-collapse: separate; border-spacing: 0;
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-primary);
+}
+.eff-tbl th {
+  text-align: left; font-weight: var(--font-weight-text);
+  color: var(--text-tertiary);
+  padding: var(--item-padding-vertical-s) var(--item-padding-horizontal-s);
+  border-bottom: 1px solid var(--border-table);
+  white-space: nowrap;
+}
+.eff-tbl td {
+  padding: var(--item-padding-vertical-s) var(--item-padding-horizontal-s);
+  border-bottom: 1px solid var(--border-divider-light);
+  vertical-align: top;
+}
+.eff-tbl .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.eff-tbl tr.is-total td {
+  border-top: 1px solid var(--border-table); border-bottom: 0;
+  font-weight: var(--font-weight-subtitle);
+  color: var(--text-heading);
+}
+.eff-tbl td small { color: var(--text-quaternary); }
+
+/* Сутки, собранные из протянутого значения: замеров в них не было, и верить им
+   надо меньше, чем измеренным. */
+.eff-tbl tr.is-carried td { color: var(--text-tertiary); }
+.eff-tbl tr.is-empty td { color: var(--text-quaternary); font-style: italic; }
+.eff-plus { color: var(--status-success-text); }
+.eff-minus { color: var(--status-error-text); }
+
+.eff-scroll { max-height: 420px; overflow: auto; }
+
+/* Посуточная таблица свёрнута: из неё собирается Форма 5, но в обычном разговоре
+   о рекомендации девяносто строк не нужны. */
+.eff-details > summary {
+  cursor: pointer; list-style: none;
+  display: inline-flex; align-items: center; gap: var(--item-gap-horizontal-s);
+  font: var(--font-weight-subtitle) var(--font-size-text-medium) / 1.3 var(--font-family-text);
+  color: var(--text-accent);
+}
+.eff-details > summary::-webkit-details-marker { display: none; }
+.eff-details > summary::before {
+  content: ''; width: 0; height: 0;
+  border: 4px solid transparent; border-left-color: currentColor;
+  transition: transform 90ms linear;
+}
+.eff-details[open] > summary::before { transform: rotate(90deg) translateX(-1px); }
+.eff-details > div { margin-top: var(--group-gap-s); }
+
+/* ---------- качество данных ---------- */
+
+.eff-quality { display: flex; gap: var(--block-gap-default); flex-wrap: wrap; }
+.eff-quality__i {
+  flex: 1 1 130px;
+  display: flex; flex-direction: column; gap: 2px;
+  padding: var(--group-padding-s) var(--group-padding-m);
+  border: 1px solid var(--border-divider-light);
+  border-radius: var(--corner-radius-m);
+}
+.eff-quality__v {
+  font: var(--font-weight-headline) var(--font-size-h6) / 1.2 var(--font-family-headline);
+  color: var(--text-heading); font-variant-numeric: tabular-nums;
+}
+.eff-quality__k {
+  font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-caption) var(--font-family-text);
+  color: var(--text-quaternary);
+}
