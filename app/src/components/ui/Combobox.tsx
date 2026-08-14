@@ -1,0 +1,109 @@
+'use client';
+
+/* Поисковый выбор собран по композиции shadcn Command + Popover, но сохраняет
+ * контракт обычного поля формы. Выбранное значение лежит в скрытом input и
+ * поэтому без клиентской прослойки приходит в server action через FormData.
+ * Внешний вид намеренно общий с Select: пользователь не должен замечать, какой
+ * из списков стал поисковым, пока не начнёт печатать запрос.
+ */
+
+import * as React from 'react';
+import { Check } from 'lucide-react';
+import { Button } from './Button';
+import { Icon } from '../Icons';
+import { Popover, PopoverContent, PopoverTrigger } from './Popover';
+import {
+  Command, CommandEmpty, CommandInput, CommandItem, CommandList,
+} from './command';
+import type { SelectOption } from './Select';
+
+export function Combobox({
+  name,
+  options,
+  value: controlledValue,
+  defaultValue,
+  onValueChange,
+  placeholder = 'Выберите значение',
+  searchPlaceholder = 'Поиск…',
+  emptyText = 'Ничего не найдено',
+  required,
+  disabled,
+  invalid,
+  id,
+}: {
+  name: string;
+  options: SelectOption[];
+  value?: string;
+  defaultValue?: string;
+  onValueChange?: (value: string) => void;
+  placeholder?: string;
+  searchPlaceholder?: string;
+  emptyText?: string;
+  required?: boolean;
+  disabled?: boolean;
+  invalid?: boolean;
+  id?: string;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [uncontrolledValue, setUncontrolledValue] = React.useState(defaultValue ?? '');
+  const value = controlledValue ?? uncontrolledValue;
+  const selected = options.find((option) => option.value === value);
+
+  function select(nextValue: string) {
+    if (controlledValue === undefined) setUncontrolledValue(nextValue);
+    onValueChange?.(nextValue);
+    setOpen(false);
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <input type="hidden" name={name} value={value} disabled={disabled} />
+      <PopoverTrigger asChild>
+        <Button
+          id={id}
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          aria-required={required}
+          aria-invalid={invalid}
+          disabled={disabled}
+          data-placeholder={selected ? undefined : ''}
+          className="inp combo__inp h-auto justify-start rounded-[var(--corner-radius-component)] px-[var(--item-padding-horizontal-m)] py-[var(--item-padding-vertical-s)] font-normal shadow-none hover:bg-background"
+        >
+          <span className="combo__txt">{selected?.label ?? placeholder}</span>
+          {selected?.note && <span className="combo__note">{selected.note}</span>}
+          <span className="combo__caret"><Icon id="caret" /></span>
+        </Button>
+      </PopoverTrigger>
+
+      <PopoverContent
+        className="combo__menu w-[var(--radix-popover-trigger-width)]"
+      >
+        <Command>
+          <CommandInput placeholder={searchPlaceholder} />
+          <CommandList>
+            <CommandEmpty>{emptyText}</CommandEmpty>
+            {options.map((option) => (
+              <CommandItem
+                key={option.value}
+                value={option.value}
+                keywords={[option.label, option.note].filter((keyword): keyword is string => Boolean(keyword))}
+                disabled={option.disabled}
+                data-current={option.value === value ? '' : undefined}
+                onSelect={() => select(option.value)}
+              >
+                <span className="combo__txt">{option.label}</span>
+                {option.note && <span className="combo__note">{option.note}</span>}
+                <Check
+                  aria-hidden="true"
+                  className={`combo__tick ${option.value === value ? '' : 'invisible'}`}
+                />
+              </CommandItem>
+            ))}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}

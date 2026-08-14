@@ -21,7 +21,7 @@ import { getRejectReasons } from '@/db/refs';
 import { currentUser, type SessionUser } from '@/lib/session';
 import { control, fmtDur, workHoursBetween } from '@/domain/workhours';
 import { дата } from '@/lib/format';
-import { Select } from '@/components/ui/Select';
+import { Combobox } from '@/components/ui/Combobox';
 import { Button } from '@/components/ui/Button';
 import { PlannedDatePicker } from '@/components/ui/PlannedDatePicker';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -269,9 +269,10 @@ function ФормаРешения({ card, вид, ошибка, причины }
           <div className="form__h">Отклонить рекомендацию</div>
           <FieldGroup>
             <Field data-invalid={Boolean(ошибкаПричины)}>
-              <FieldLabel>Причина</FieldLabel>
-              <Select name="reason" placeholder="Выберите причину"
-                      options={причины.map((r) => ({ value: r.name, label: r.name }))} />
+              <FieldLabel htmlFor="reject-reason-kind">Причина</FieldLabel>
+              <Combobox id="reject-reason-kind" name="reason" required invalid={Boolean(ошибкаПричины)}
+                        placeholder="Выберите причину" searchPlaceholder="Найти причину…"
+                        options={причины.map((r) => ({ value: r.name, label: r.name }))} />
               <FieldError>{ошибкаПричины}</FieldError>
             </Field>
             <Field data-invalid={Boolean(ошибкаТекста)}>
