@@ -22,7 +22,7 @@ export interface TabDef {
 
 export const ВКЛАДКИ: TabDef[] = [
   { key: 'summary', label: 'Сводка', ready: true },
-  { key: 'impl', label: 'Реализация' },
+  { key: 'impl', label: 'Реализация', ready: true },
   { key: 'effect', label: 'Расчёт эффекта', ready: true },
   { key: 'analogs', label: 'Аналоги' },
   { key: 'files', label: 'Файлы' },
