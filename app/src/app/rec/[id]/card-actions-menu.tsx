@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Icon } from '@/components/Icons';
 import { Hint } from '@/components/ui/Hint';
 import {
@@ -48,6 +48,7 @@ export function CardActionsMenu({ status, recId, executor }: {
   /** Все действия меню — действия Исполнителя; Заказчику меню не показывается. */
   executor: boolean;
 }) {
+  const router = useRouter();
   const actions = executor ? ACTIONS[status] ?? [] : [];
   if (!actions.length) return null;
 
@@ -64,13 +65,22 @@ export function CardActionsMenu({ status, recId, executor }: {
         align="end"
         className="min-w-40 rounded-lg border-[var(--border-divider-light)] bg-[var(--bg-popover)] p-1 shadow-md"
       >
+        {/* Пункт — сам пункт меню, а не ссылка внутри него: у ссылок в
+            registry.css своё оформление, и вложенный <a> превращал пункт в
+            обведённую рамкой плашку поверх меню. */}
         {actions.map((action) => (
           <DropdownMenuItem
             key={action.label}
-            asChild
             variant={action.destructive ? 'destructive' : 'default'}
+            /* Красный текст берётся из токена текста, а не из --destructive:
+               там у ВМАП светлая заливка для кнопок, и как цвет надписи она
+               даёт почти прозрачные буквы. Важность нужна, чтобы перебить
+               `data-[variant=destructive]:text-destructive` самого пункта. */
+            className={action.destructive
+              ? '!text-[var(--status-error-text)]' : undefined}
+            onSelect={() => router.push(`/rec/${recId}/${action.href}`)}
           >
-            <Link href={`/rec/${recId}/${action.href}`}>{action.label}</Link>
+            {action.label}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
