@@ -13,7 +13,7 @@ import { Button } from './Button';
 import { Icon } from '../Icons';
 import { Popover, PopoverContent, PopoverTrigger } from './Popover';
 import {
-  Command, CommandEmpty, CommandInput, CommandItem, CommandList,
+  Command, CommandEmpty, CommandItem, CommandList,
 } from './command';
 import type { SelectOption } from './Select';
 
@@ -24,7 +24,6 @@ export function Combobox({
   defaultValue,
   onValueChange,
   placeholder = 'Выберите значение',
-  searchPlaceholder = 'Поиск…',
   emptyText = 'Ничего не найдено',
   required,
   disabled,
@@ -37,7 +36,6 @@ export function Combobox({
   defaultValue?: string;
   onValueChange?: (value: string) => void;
   placeholder?: string;
-  searchPlaceholder?: string;
   emptyText?: string;
   required?: boolean;
   disabled?: boolean;
@@ -80,8 +78,7 @@ export function Combobox({
       <PopoverContent
         className="combo__menu w-[var(--radix-popover-trigger-width)]"
       >
-        <Command>
-          <CommandInput placeholder={searchPlaceholder} />
+        <Command shouldFilter={false}>
           <CommandList>
             <CommandEmpty>{emptyText}</CommandEmpty>
             {options.map((option) => (

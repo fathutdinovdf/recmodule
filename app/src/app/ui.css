@@ -60,24 +60,6 @@
 
 .combo__list { max-height: 276px; overflow-y: auto; overscroll-behavior: contain; }
 
-/* Поиск отделён от вариантов лёгкой границей: без неё первая строка списка
-   выглядит продолжением поля ввода и теряется при прокрутке длинного списка. */
-.combo__search {
-  display: flex; align-items: center; gap: var(--item-gap-horizontal-s);
-  margin-bottom: var(--item-padding-vertical-s); padding: 0 var(--item-padding-horizontal-s);
-  border-bottom: 1px solid var(--border-divider-light);
-}
-.combo__search-icon {
-  width: var(--sizing-icon-icon-only); height: var(--sizing-icon-icon-only);
-  flex: 0 0 auto; color: var(--icon-light);
-}
-.combo__search-inp {
-  width: 100%; min-width: 0; padding: var(--item-padding-vertical-m) 0;
-  border: 0; outline: 0; background: transparent;
-  font: var(--font-weight-text) var(--font-size-text-medium) / 1.35 var(--font-family-text);
-  color: var(--text-primary);
-}
-.combo__search-inp::placeholder { color: var(--text-placeholder); }
 .combo__empty {
   padding: var(--item-padding-horizontal-m);
   font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);

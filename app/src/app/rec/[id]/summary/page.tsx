@@ -271,7 +271,7 @@ function ФормаРешения({ card, вид, ошибка, причины }
             <Field data-invalid={Boolean(ошибкаПричины)}>
               <FieldLabel htmlFor="reject-reason-kind">Причина</FieldLabel>
               <Combobox id="reject-reason-kind" name="reason" required invalid={Boolean(ошибкаПричины)}
-                        placeholder="Выберите причину" searchPlaceholder="Найти причину…"
+                        placeholder="Выберите причину"
                         options={причины.map((r) => ({ value: r.name, label: r.name }))} />
               <FieldError>{ошибкаПричины}</FieldError>
             </Field>

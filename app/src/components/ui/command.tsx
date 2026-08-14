@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import { Command as CommandPrimitive } from 'cmdk';
-import { Search } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
 export function Command({ className, ...props }: React.ComponentProps<typeof CommandPrimitive>) {
@@ -12,19 +11,6 @@ export function Command({ className, ...props }: React.ComponentProps<typeof Com
       className={cn('flex h-full w-full flex-col overflow-hidden bg-popover text-popover-foreground', className)}
       {...props}
     />
-  );
-}
-
-export function CommandInput({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.Input>) {
-  return (
-    <div data-slot="command-input-wrapper" className="combo__search">
-      <Search aria-hidden="true" className="combo__search-icon" />
-      <CommandPrimitive.Input
-        data-slot="command-input"
-        className={cn('combo__search-inp', className)}
-        {...props}
-      />
-    </div>
   );
 }
 
