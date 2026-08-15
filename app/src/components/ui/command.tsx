@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { Command as CommandPrimitive } from 'cmdk';
+import { SearchIcon } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
 export function Command({ className, ...props }: React.ComponentProps<typeof CommandPrimitive>) {
@@ -16,6 +17,23 @@ export function Command({ className, ...props }: React.ComponentProps<typeof Com
 
 export function CommandList({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.List>) {
   return <CommandPrimitive.List data-slot="command-list" className={cn('combo__list', className)} {...props} />;
+}
+
+export function CommandInput({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.Input>) {
+  return (
+    <div className="flex items-center gap-2 border-b border-border px-3" data-slot="command-input-wrapper">
+      <SearchIcon className="size-4 shrink-0 text-muted-foreground" />
+      <CommandPrimitive.Input
+        data-slot="command-input"
+        className={cn(
+          'h-10 w-full border-0 bg-transparent text-sm text-foreground outline-none',
+          'placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50',
+          className,
+        )}
+        {...props}
+      />
+    </div>
+  );
 }
 
 export function CommandEmpty({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.Empty>) {

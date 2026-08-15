@@ -5,7 +5,7 @@ import { transaction } from '@/db/pool';
 import { currentUser } from '@/lib/session';
 import { registrationAnalogs, type RegistrationAnalog } from '@/db/registration';
 import { зарегистрировать } from '@/app/rec/[id]/lifecycle';
-import wells from '../../../../scripts/wells-with-data.json';
+import { getRegistrationWell } from '@/db/vmap';
 
 export interface RegistrationActionState {
   error?: string;
@@ -34,7 +34,7 @@ export async function сохранитьРекомендацию(
 
   const intent = строка(form, 'intent') === 'register' ? 'register' : 'draft';
   const wellId = Number(строка(form, 'wellId'));
-  const well = wells.find((item) => item.well_id === wellId);
+  const well = await getRegistrationWell(wellId);
   if (!well) return { error: 'Выберите скважину из списка ВМАП.' };
 
   const directionId = Number(строка(form, 'directionId'));
@@ -113,8 +113,8 @@ export async function сохранитьРекомендацию(
          expect_qzh, expect_qn, expect_ee, author_id, executor_id)
       VALUES ('draft',$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
       RETURNING id::text
-    `, [directionId, priority, well.well_id, well.name, well.kust,
-      well.field_id, well.field, problem, action, rationale,
+    `, [directionId, priority, well.wellId, well.number, well.kust,
+      well.fieldId, well.fieldName, problem, action, rationale,
       expectQzh, expectQn, expectEe, user.id,
       Number.isInteger(executorId) && executorId > 0 ? executorId : null]);
     const id = Number(result.rows[0].id);

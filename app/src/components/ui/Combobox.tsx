@@ -13,7 +13,7 @@ import { Button } from './Button';
 import { Icon } from '../Icons';
 import { Popover, PopoverContent, PopoverTrigger } from './Popover';
 import {
-  Command, CommandEmpty, CommandItem, CommandList,
+  Command, CommandEmpty, CommandInput, CommandItem, CommandList,
 } from './command';
 import type { SelectOption } from './Select';
 
@@ -30,6 +30,8 @@ export function Combobox({
   invalid,
   id,
   ariaDescribedBy,
+  searchable = false,
+  searchPlaceholder = 'Поиск…',
 }: {
   name: string;
   options: SelectOption[];
@@ -43,6 +45,8 @@ export function Combobox({
   invalid?: boolean;
   id?: string;
   ariaDescribedBy?: string;
+  searchable?: boolean;
+  searchPlaceholder?: string;
 }) {
   const [open, setOpen] = React.useState(false);
   const [uncontrolledValue, setUncontrolledValue] = React.useState(defaultValue ?? '');
@@ -81,7 +85,8 @@ export function Combobox({
       <PopoverContent
         className="combo__menu w-[var(--radix-popover-trigger-width)]"
       >
-        <Command shouldFilter={false}>
+        <Command shouldFilter={searchable}>
+          {searchable && <CommandInput placeholder={searchPlaceholder} autoFocus />}
           <CommandList>
             <CommandEmpty>{emptyText}</CommandEmpty>
             {options.map((option) => (

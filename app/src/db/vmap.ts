@@ -44,6 +44,54 @@ export interface VmapWell {
   plast: string | null;
 }
 
+export interface RegistrationVmapWell {
+  wellId: number;
+  number: string;
+  kust: string;
+  fieldId: number;
+  fieldName: string;
+}
+
+/* Полное дерево объектов ТПП для мастера. В отличие от служебного
+   wells-with-data.json здесь нет фильтра по наличию замеров: рекомендацию
+   можно выдать по любой действующей скважине, а отсутствие договорной базы
+   мастер покажет отдельно и предложит обоснованный ручной ввод. */
+export const listRegistrationWells = cache(async (): Promise<RegistrationVmapWell[]> => {
+  const rows = await vmapQuery<{
+    well_id: string; well_number: string; kust: string;
+    field_id: string; field_name: string;
+  }>(`
+    SELECT w."Id"::text AS well_id, w."Name" AS well_number,
+           k."Name" AS kust, f."Id"::text AS field_id, f."Name" AS field_name
+    FROM ${VMAP_SCHEMA}."Wells" w
+    JOIN ${VMAP_SCHEMA}."OrganizationUnits" k
+      ON k."Id" = w."OrganizationUnitId" AND k."OrganizationUnitType" = 4
+     AND k."DeleteDate" IS NULL
+    JOIN ${VMAP_SCHEMA}."OrganizationUnits" f
+      ON f."Id" = k."ParentId" AND f."OrganizationUnitType" = 3
+     AND f."DeleteDate" IS NULL
+    JOIN ${VMAP_SCHEMA}."OrganizationUnits" c
+      ON c."Id" = f."ParentId" AND c."OrganizationUnitType" = 2
+     AND c."DeleteDate" IS NULL
+    JOIN ${VMAP_SCHEMA}."OrganizationUnits" t
+      ON t."Id" = c."ParentId" AND t."OrganizationUnitType" = 1
+     AND t."DeleteDate" IS NULL
+    WHERE w."DeleteDate" IS NULL
+      AND t."Name" = 'ТПП "Когалымнефтегаз"'
+    ORDER BY f."Name", lower(w."Name"), w."Name"
+  `);
+  return rows.map((row) => ({
+    wellId: Number(row.well_id), number: row.well_number, kust: row.kust,
+    fieldId: Number(row.field_id), fieldName: row.field_name,
+  }));
+});
+
+/** Доверенная серверная проверка объекта, выбранного в клиентском мастере. */
+export async function getRegistrationWell(wellId: number): Promise<RegistrationVmapWell | null> {
+  const wells = await listRegistrationWells();
+  return wells.find((well) => well.wellId === wellId) ?? null;
+}
+
 /**
  * Замеры параметра по скважине за период.
  *

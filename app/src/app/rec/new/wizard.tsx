@@ -420,6 +420,7 @@ function ObjectStep({ fieldOptions, fieldId, chooseField, wellOptions, draft, up
         <FieldLabel htmlFor="registration-field">Месторождение</FieldLabel>
         <Combobox name="fieldPicker" value={fieldId} onValueChange={chooseField}
           id="registration-field"
+          searchable searchPlaceholder="Найти месторождение…"
           options={fieldOptions.map(([id, field]) => ({ value: String(id), label: field.name, note: `${field.count} скв.` }))}
           placeholder="Выберите месторождение" />
       </Field>
@@ -427,9 +428,10 @@ function ObjectStep({ fieldOptions, fieldId, chooseField, wellOptions, draft, up
         <FieldLabel htmlFor="registration-well">Скважина</FieldLabel>
         <Combobox name="wellPicker" value={draft.wellId} onValueChange={(value) => update('wellId', value)}
           id="registration-well" ariaDescribedBy={invalid ? 'registration-well-error' : undefined}
+          searchable searchPlaceholder="Номер скважины…"
           options={wellOptions.map((well) => ({ value: String(well.wellId), label: well.number, note: `куст ${well.kust}` }))}
           placeholder="Найдите скважину" invalid={invalid} emptyText="В выбранном месторождении скважина не найдена" />
-        <FieldDescription>В списке — скважины с замерами, достаточными для расчёта договорной базы.</FieldDescription>
+        <FieldDescription>Полное действующее дерево ТПП «Когалымнефтегаз». Готовность замеров проверяется после выбора.</FieldDescription>
         {invalid && <FieldError id="registration-well-error">Выберите скважину.</FieldError>}
       </Field>
     </div>

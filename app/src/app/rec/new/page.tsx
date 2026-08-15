@@ -1,20 +1,16 @@
-import wellsData from '../../../../scripts/wells-with-data.json';
 import { currentUser } from '@/lib/session';
 import { registrationReferences } from '@/db/registration';
+import { listRegistrationWells } from '@/db/vmap';
 import { RegistrationWizard, type RegistrationWell } from './wizard';
 import './wizard.css';
 
 export const dynamic = 'force-dynamic';
 
 export default async function NewRecommendationPage() {
-  const [references, user] = await Promise.all([registrationReferences(), currentUser()]);
-  const wells: RegistrationWell[] = wellsData.map((well) => ({
-    wellId: well.well_id,
-    number: well.name,
-    kust: well.kust,
-    fieldId: well.field_id,
-    fieldName: well.field,
-  }));
+  const [references, user, vmapWells] = await Promise.all([
+    registrationReferences(), currentUser(), listRegistrationWells(),
+  ]);
+  const wells: RegistrationWell[] = vmapWells;
 
   return (
     <main className="content wz-underlay">
