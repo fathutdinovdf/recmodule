@@ -91,9 +91,8 @@ const LOCAL_DRAFT_KEY = 'rec-registration-draft';
 const дата = (value: string) => new Date(value).toLocaleDateString('ru-RU');
 
 export function RegistrationWizard({
-  wells, directions, priorities, executors, currentExecutorId,
+  directions, priorities, executors, currentExecutorId,
 }: {
-  wells: RegistrationWell[];
   directions: RegistrationDirection[];
   priorities: RegistrationPriority[];
   executors: RegistrationExecutor[];
@@ -114,6 +113,8 @@ export function RegistrationWizard({
   const fileInput = useRef<HTMLInputElement>(null);
   const [baseline, setBaseline] = useState<BaselinePreview | null>(null);
   const [baselineStatus, setBaselineStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [wells, setWells] = useState<RegistrationWell[]>([]);
+  const [wellsStatus, setWellsStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [draft, setDraft] = useState<Draft>({
     wellId: '', directionId: '', priority: '', problem: '', action: '', rationale: '',
     expectQzh: '', expectQn: '', expectEe: '', resultNote: '',
@@ -130,12 +131,36 @@ export function RegistrationWizard({
     }
     return [...fields].sort((a, b) => a[1].name.localeCompare(b[1].name, 'ru'));
   }, [wells]);
-  const selectedFieldId = selectedWell?.fieldId ?? Number(fieldOptions[0]?.[0] ?? 0);
-  const [fieldId, setFieldId] = useState(selectedFieldId ? String(selectedFieldId) : '');
+  const [fieldId, setFieldId] = useState('');
   const wellOptions = wells.filter((well) => String(well.fieldId) === fieldId);
 
   const missing = REQUIRED.filter((item) => !String(draft[item.key] ?? '').trim());
   const invalidKeys = new Set(attempted ? missing.map((item) => item.key) : []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/registration/wells', { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error();
+        return response.json() as Promise<RegistrationWell[]>;
+      })
+      .then((value) => {
+        setWells(value);
+        setWellsStatus('ready');
+        setFieldId((current) => current || (value[0] ? String(value[0].fieldId) : ''));
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        setWellsStatus('error');
+      });
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    if (!draft.wellId || wells.length === 0) return;
+    const restoredWell = wells.find((well) => String(well.wellId) === draft.wellId);
+    if (restoredWell) setFieldId(String(restoredWell.fieldId));
+  }, [draft.wellId, wells]);
 
   useEffect(() => {
     try {
@@ -145,8 +170,6 @@ export function RegistrationWizard({
       if (!parsed.draft) return;
       const restored = { ...draft, ...parsed.draft };
       setDraft(restored);
-      const restoredWell = wells.find((well) => String(well.wellId) === restored.wellId);
-      if (restoredWell) setFieldId(String(restoredWell.fieldId));
       setLocalNotice(`Локальный черновик восстановлен${parsed.savedAt ? ` · ${new Date(parsed.savedAt).toLocaleString('ru-RU')}` : ''}.`);
     } catch {
       localStorage.removeItem(LOCAL_DRAFT_KEY);
@@ -323,7 +346,8 @@ export function RegistrationWizard({
                       {step === 0 && (
                         <ObjectStep fieldOptions={fieldOptions} fieldId={fieldId} chooseField={chooseField}
                           wellOptions={wellOptions} draft={draft} update={update} selectedWell={selectedWell}
-                          baseline={baseline} baselineStatus={baselineStatus} invalid={invalidKeys.has('wellId')} />
+                          baseline={baseline} baselineStatus={baselineStatus} wellsStatus={wellsStatus}
+                          invalid={invalidKeys.has('wellId')} />
                       )}
                       {step === 1 && (
                         <ProblemStep directions={directions} priorities={priorities} draft={draft}
@@ -407,12 +431,12 @@ React.ComponentProps<typeof Button> & { name: string; value: string }) {
 }
 
 function ObjectStep({ fieldOptions, fieldId, chooseField, wellOptions, draft, update,
-  selectedWell, baseline, baselineStatus, invalid }: {
+  selectedWell, baseline, baselineStatus, wellsStatus, invalid }: {
   fieldOptions: Array<[number, { name: string; count: number }]>;
   fieldId: string; chooseField: (value: string) => void; wellOptions: RegistrationWell[];
   draft: Draft; update: <K extends keyof Draft>(key: K, value: Draft[K]) => void;
   selectedWell: RegistrationWell | null; baseline: BaselinePreview | null;
-  baselineStatus: string; invalid: boolean;
+  baselineStatus: string; wellsStatus: 'loading' | 'ready' | 'error'; invalid: boolean;
 }) {
   return <div className="wz-columns">
     <div className="wz-fields">
@@ -422,7 +446,8 @@ function ObjectStep({ fieldOptions, fieldId, chooseField, wellOptions, draft, up
           id="registration-field"
           searchable searchPlaceholder="Найти месторождение…"
           options={fieldOptions.map(([id, field]) => ({ value: String(id), label: field.name, note: `${field.count} скв.` }))}
-          placeholder="Выберите месторождение" />
+          placeholder={wellsStatus === 'loading' ? 'Загружаем фонд ВМАП…' : 'Выберите месторождение'}
+          disabled={wellsStatus !== 'ready'} />
       </Field>
       <Field data-invalid={invalid}>
         <FieldLabel htmlFor="registration-well">Скважина</FieldLabel>
@@ -430,8 +455,12 @@ function ObjectStep({ fieldOptions, fieldId, chooseField, wellOptions, draft, up
           id="registration-well" ariaDescribedBy={invalid ? 'registration-well-error' : undefined}
           searchable searchPlaceholder="Номер скважины…"
           options={wellOptions.map((well) => ({ value: String(well.wellId), label: well.number, note: `куст ${well.kust}` }))}
-          placeholder="Найдите скважину" invalid={invalid} emptyText="В выбранном месторождении скважина не найдена" />
-        <FieldDescription>Добывающие скважины ТПП «Когалымнефтегаз» (тип 1). Готовность замеров проверяется после выбора.</FieldDescription>
+          placeholder={wellsStatus === 'loading' ? 'Загружаем скважины…' : 'Найдите скважину'}
+          disabled={wellsStatus !== 'ready'} invalid={invalid}
+          emptyText="В выбранном месторождении скважина не найдена" />
+        <FieldDescription>{wellsStatus === 'error'
+          ? 'Не удалось загрузить фонд ВМАП. Закройте мастер и попробуйте ещё раз.'
+          : 'Добывающие скважины ТПП «Когалымнефтегаз» (тип 1). Готовность замеров проверяется после выбора.'}</FieldDescription>
         {invalid && <FieldError id="registration-well-error">Выберите скважину.</FieldError>}
       </Field>
     </div>

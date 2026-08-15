@@ -6,6 +6,7 @@
  * дорого стоило.
  */
 
+import { unstable_cache } from 'next/cache';
 import { cache } from 'react';
 import { vmapQuery, VMAP_SCHEMA } from './pool';
 import { measurementsSql } from './vmap-sql';
@@ -56,7 +57,7 @@ export interface RegistrationVmapWell {
    wells-with-data.json здесь нет фильтра по наличию замеров: рекомендацию
    можно выдать по любой действующей скважине, а отсутствие договорной базы
    мастер покажет отдельно и предложит обоснованный ручной ввод. */
-export const listRegistrationWells = cache(async (): Promise<RegistrationVmapWell[]> => {
+const loadRegistrationWells = async (): Promise<RegistrationVmapWell[]> => {
   const rows = await vmapQuery<{
     well_id: string; well_number: string; kust: string;
     field_id: string; field_name: string;
@@ -84,7 +85,7 @@ export const listRegistrationWells = cache(async (): Promise<RegistrationVmapWel
         WHERE well_type."WellId" = w."Id"
           AND well_type."ParameterId" = ${PARAM.WELL_TYPE}
           AND well_type."DeleteDate" IS NULL
-          AND trim(well_type."Value") = '1'
+          AND well_type."Value" = '1'
       )
     ORDER BY f."Name", lower(w."Name"), w."Name"
   `);
@@ -92,12 +93,52 @@ export const listRegistrationWells = cache(async (): Promise<RegistrationVmapWel
     wellId: Number(row.well_id), number: row.well_number, kust: row.kust,
     fieldId: Number(row.field_id), fieldName: row.field_name,
   }));
-});
+};
+
+/* Состав добывающего фонда меняется редко. Кэш убирает подключение к удалённой
+   ВМАП из каждого повторного открытия мастера. */
+export const listRegistrationWells = unstable_cache(
+  loadRegistrationWells,
+  ['registration-production-wells-v1'],
+  { revalidate: 300 },
+);
 
 /** Доверенная серверная проверка объекта, выбранного в клиентском мастере. */
 export async function getRegistrationWell(wellId: number): Promise<RegistrationVmapWell | null> {
-  const wells = await listRegistrationWells();
-  return wells.find((well) => well.wellId === wellId) ?? null;
+  if (!Number.isInteger(wellId) || wellId <= 0) return null;
+  const rows = await vmapQuery<{
+    well_id: string; well_number: string; kust: string;
+    field_id: string; field_name: string;
+  }>(`
+    SELECT w."Id"::text AS well_id, w."Name" AS well_number,
+           k."Name" AS kust, f."Id"::text AS field_id, f."Name" AS field_name
+    FROM ${VMAP_SCHEMA}."Wells" w
+    JOIN ${VMAP_SCHEMA}."WellData" well_type
+      ON well_type."WellId" = w."Id"
+     AND well_type."ParameterId" = ${PARAM.WELL_TYPE}
+     AND well_type."DeleteDate" IS NULL
+     AND well_type."Value" = '1'
+    JOIN ${VMAP_SCHEMA}."OrganizationUnits" k
+      ON k."Id" = w."OrganizationUnitId" AND k."OrganizationUnitType" = 4
+     AND k."DeleteDate" IS NULL
+    JOIN ${VMAP_SCHEMA}."OrganizationUnits" f
+      ON f."Id" = k."ParentId" AND f."OrganizationUnitType" = 3
+     AND f."DeleteDate" IS NULL
+    JOIN ${VMAP_SCHEMA}."OrganizationUnits" c
+      ON c."Id" = f."ParentId" AND c."OrganizationUnitType" = 2
+     AND c."DeleteDate" IS NULL
+    JOIN ${VMAP_SCHEMA}."OrganizationUnits" t
+      ON t."Id" = c."ParentId" AND t."OrganizationUnitType" = 1
+     AND t."DeleteDate" IS NULL
+    WHERE w."Id" = $1 AND w."DeleteDate" IS NULL
+      AND t."Name" = 'ТПП "Когалымнефтегаз"'
+    LIMIT 1
+  `, [wellId]);
+  const row = rows[0];
+  return row ? {
+    wellId: Number(row.well_id), number: row.well_number, kust: row.kust,
+    fieldId: Number(row.field_id), fieldName: row.field_name,
+  } : null;
 }
 
 /**
