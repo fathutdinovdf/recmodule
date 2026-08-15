@@ -7,6 +7,7 @@ import './shadcn.css';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ScrollOverlay } from '@/components/ScrollOverlay';
 import { AppShell } from '@/components/AppShell';
+import { MotionProvider } from '@/components/MotionProvider';
 
 export const metadata: Metadata = {
   title: 'Модуль управления рекомендациями',
@@ -34,9 +35,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             Suspense: остаётся на месте, не перемонтируется при навигации и
             сохраняет прокрутку. Цена — layout читает пользователя и потому
             динамический; страницы и так объявлены `force-dynamic`. */}
-        <TooltipProvider delayDuration={350}>
-          <AppShell>{children}</AppShell>
-        </TooltipProvider>
+        <MotionProvider>
+          <TooltipProvider delayDuration={350}>
+            <AppShell>{children}</AppShell>
+          </TooltipProvider>
+        </MotionProvider>
         {/* Индикатор прокрутки окна. Экраны с собственным прокручиваемым
             контейнером (карточка) поднимают свой — см. `ScrollOverlay`. */}
         <ScrollOverlay target={null} />
