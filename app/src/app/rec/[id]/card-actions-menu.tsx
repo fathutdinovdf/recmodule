@@ -9,11 +9,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { type КлючОкна } from './form-meta';
 
 interface ActionItem {
   label: string;
-  /** Куда ведёт пункт: вкладка и параметр, раскрывающий форму действия. */
-  href: string;
+  /** Вкладка, на которой живёт форма. Ключ формы берётся из `форма`. */
+  tab: 'summary' | 'impl';
+  форма: КлючОкна;
   destructive?: boolean;
 }
 
@@ -24,22 +26,25 @@ interface ActionItem {
  * объяснением последствий обязательно. Заодно действие переживает
  * перезагрузку и работает без JavaScript, как остальные формы карточки.
  */
+const ОТМЕНА: ActionItem = { label: 'Отменить', tab: 'summary', форма: 'cancel', destructive: true };
+const НА_ОСНОВЕ: ActionItem = { label: 'Создать новую на основе', tab: 'summary', форма: 'copy' };
+
 const ACTIONS: Record<string, ActionItem[]> = {
   draft: [
-    { label: 'Зарегистрировать', href: 'summary?form=register' },
-    { label: 'Удалить', href: 'summary?form=delete', destructive: true },
+    { label: 'Зарегистрировать', tab: 'summary', форма: 'register' },
+    { label: 'Удалить', tab: 'summary', форма: 'delete', destructive: true },
   ],
-  registered: [{ label: 'Отменить', href: 'summary?form=cancel', destructive: true }],
-  sent: [{ label: 'Отменить', href: 'summary?form=cancel', destructive: true }],
-  review: [{ label: 'Отменить', href: 'summary?form=cancel', destructive: true }],
+  registered: [ОТМЕНА],
+  sent: [ОТМЕНА],
+  review: [ОТМЕНА],
   clarify: [
-    { label: 'Внести уточнение и передать', href: 'summary?form=resend' },
-    { label: 'Отменить', href: 'summary?form=cancel', destructive: true },
+    { label: 'Внести уточнение и передать', tab: 'summary', форма: 'resend' },
+    ОТМЕНА,
   ],
-  approved: [{ label: 'Зафиксировать реализацию', href: 'impl?form=fact' }],
-  windowOpen: [{ label: 'Закрыть окно досрочно', href: 'impl?form=close', destructive: true }],
-  rejected: [{ label: 'Создать новую на основе', href: 'summary?form=copy' }],
-  cancelled: [{ label: 'Создать новую на основе', href: 'summary?form=copy' }],
+  approved: [{ label: 'Зафиксировать реализацию', tab: 'impl', форма: 'fact' }],
+  windowOpen: [{ label: 'Закрыть окно досрочно', tab: 'impl', форма: 'close', destructive: true }],
+  rejected: [НА_ОСНОВЕ],
+  cancelled: [НА_ОСНОВЕ],
 };
 
 export function CardActionsMenu({ status, recId, executor }: {
@@ -78,7 +83,7 @@ export function CardActionsMenu({ status, recId, executor }: {
                `data-[variant=destructive]:text-destructive` самого пункта. */
             className={action.destructive
               ? '!text-[var(--status-error-text)]' : undefined}
-            onSelect={() => router.push(`/rec/${recId}/${action.href}`)}
+            onSelect={() => router.push(`/rec/${recId}/${action.tab}?form=${action.форма}`)}
           >
             {action.label}
           </DropdownMenuItem>

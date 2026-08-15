@@ -4,14 +4,18 @@
  *
  * Клиентская ровно из-за одного: поле «что не выполнено» показывается только
  * при частичной реализации. Всё остальное — обычная форма обычного POST,
- * валидация целиком на сервере, и без JavaScript форма отправится тоже (поле
- * невыполненного тогда просто не появится, а сервер его и потребует).
+ * валидация целиком на сервере.
+ *
+ * Показывается окном действия, поэтому своего заголовка и рамки у неё нет:
+ * и то, и другое даёт окно. Подвал — DialogFooter, чтобы «Отмена» закрывала
+ * окно средствами Radix, заодно с Esc и кликом мимо.
  */
 
 import * as React from 'react';
-import Link from 'next/link';
 import { startOfToday, subYears } from 'date-fns';
 import { Button } from '@/components/ui/Button';
+import { SubmitButton } from '@/components/ui/SubmitButton';
+import { DialogClose, DialogFooter } from '@/components/ui/dialog';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Textarea } from '@/components/ui/Textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -27,9 +31,9 @@ export function ФормаФиксации({ action, ошибка, полнот�
   const сегодня = startOfToday();
 
   return (
-    <form className="form" action={action}>
-      <div className="form__h">Фиксация реализации</div>
-
+    /* Класс `form` не нужен: форма живёт в окне действия, у которого свои
+       отступы, а `form` добавляет собственную рамку и фон. */
+    <form action={action}>
       <FieldGroup>
         {/* Строка из двух равных полей, как `.form__row` в макете: поля делят
             ширину поровну и переносятся на узком экране. */}
@@ -66,43 +70,39 @@ export function ФормаФиксации({ action, ошибка, полнот�
             </RadioGroup>
           </Field>
         </Field>
-      </FieldGroup>
+        <div className="form__hint">
+          Дата — это сутки, с которых телеметрия показывает новый режим, а не момент нажатия
+          кнопки: изменение можно заметить и через день-другой. От этой даты отсчитываются
+          90 суток окна.
+        </div>
 
-      <div className="form__hint">
-        Дата — это сутки, с которых телеметрия показывает новый режим, а не момент нажатия
-        кнопки: изменение можно заметить и через день-другой. От этой даты отсчитываются
-        90 суток окна.
-      </div>
+        {полнота === 'partial' && (
+          <Field>
+            <FieldLabel htmlFor="compl-note">
+              Что не выполнено <span className="text-muted-foreground">обязательно при частичной реализации</span>
+            </FieldLabel>
+            <Textarea id="compl-note" name="completeness_note" rows={3}
+                      placeholder="Например: частота выведена не до рекомендованной, ревизия устьевой арматуры не проводилась." />
+          </Field>
+        )}
 
-      {полнота === 'partial' && (
-        <Field className="mt-[var(--group-gap-m)]">
-          <FieldLabel htmlFor="compl-note">
-            Что не выполнено <span className="text-muted-foreground">обязательно при частичной реализации</span>
+        <Field>
+          <FieldLabel htmlFor="fact-note">
+            Комментарий <span className="text-muted-foreground">необязательно</span>
           </FieldLabel>
-          <Textarea id="compl-note" name="completeness_note" rows={3}
-                    placeholder="Например: частота выведена не до рекомендованной, ревизия устьевой арматуры не проводилась." />
+          <Textarea id="fact-note" name="note" rows={2}
+                    placeholder="Что изменилось в режиме и почему дата именно такая." />
         </Field>
-      )}
-
-      <Field className="mt-[var(--group-gap-m)]">
-        <FieldLabel htmlFor="fact-note">
-          Комментарий <span className="text-muted-foreground">необязательно</span>
-        </FieldLabel>
-        <Textarea id="fact-note" name="note" rows={2}
-                  placeholder="Что изменилось в режиме и почему дата именно такая." />
-      </Field>
-
-      <div className="form__hint">
-        Фиксация в тот же момент открывает окно подтверждения эффекта и уведомляет Заказчика.
-        Заказчик вправе оспорить дату, пока окно не закрыто.
-      </div>
+      </FieldGroup>
 
       {ошибка && <FieldError className="mt-[var(--group-gap-m)]">{ошибка}</FieldError>}
 
-      <div className="form__btns">
-        <Button type="submit">Зафиксировать реализацию</Button>
-        <Button variant="outline" asChild><Link href="?">Отмена</Link></Button>
-      </div>
+      <DialogFooter className="mt-4">
+        <SubmitButton pendingText="Фиксирую…">Зафиксировать реализацию</SubmitButton>
+        <DialogClose asChild>
+          <Button type="button" variant="outline">Отмена</Button>
+        </DialogClose>
+      </DialogFooter>
     </form>
   );
 }

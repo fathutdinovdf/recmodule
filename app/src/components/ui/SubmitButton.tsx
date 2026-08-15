@@ -11,6 +11,7 @@
  */
 
 import { useFormStatus } from 'react-dom';
+import { LoaderCircle } from 'lucide-react';
 import { Button } from './Button';
 
 export function SubmitButton({ children, pendingText, variant }: {
@@ -23,6 +24,9 @@ export function SubmitButton({ children, pendingText, variant }: {
 
   return (
     <Button type="submit" variant={variant} disabled={pending} aria-busy={pending}>
+      {/* Кружок вращения — единственный признак, что нажатие вообще дошло:
+          disabled-кнопка без него читается как отказ, а не как работа. */}
+      {pending && <LoaderCircle className="size-4 animate-spin" aria-hidden />}
       {pending && pendingText ? pendingText : children}
     </Button>
   );

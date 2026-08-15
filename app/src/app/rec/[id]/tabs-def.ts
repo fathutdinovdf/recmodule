@@ -25,9 +25,9 @@ export const ВКЛАДКИ: TabDef[] = [
   { key: 'impl', label: 'Реализация', ready: true },
   { key: 'effect', label: 'Расчёт эффекта', ready: true },
   { key: 'analogs', label: 'Аналоги' },
-  { key: 'files', label: 'Файлы' },
+  { key: 'files', label: 'Файлы', ready: true },
   { key: 'links', label: 'Связи' },
-  { key: 'log', label: 'История и обсуждение' },
+  { key: 'log', label: 'История и обсуждение', ready: true },
 ];
 
 /** Первая вкладка со своей страницей — на неё уходит адрес без сегмента. */

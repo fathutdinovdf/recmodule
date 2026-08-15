@@ -41,7 +41,13 @@
    Раскрытие: 140 мс — короче ощущается рывком, длиннее начинает мешать
    тому, кто уже знает, что выбирает. */
 .combo__menu {
-  z-index: 40;
+  /* Выше окна действия (50): поле выбора живёт и в форме поверх карточки —
+     причина отклонения выбирается именно там. На 40 список рисовался ПОД
+     окном, и наружу торчал только его хвост. Столько же у календаря
+     (`Calendar.tsx`, z-[60]) и по той же причине. Свой слой утилит Tailwind
+     здесь ни при чём: он в @layer, а это правило вне слоёв и перебивает его
+     независимо от значения. */
+  z-index: 60;
   min-width: var(--radix-select-trigger-width, 0);
   max-height: 288px; overflow: hidden;
   background: var(--bg-card);
@@ -56,6 +62,17 @@
 @keyframes comboIn {
   from { opacity: 0; transform: translateY(-6px) scale(.985); }
   to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+/* Меню, раскрывающееся вверх (подсказка упоминаний в чате). Въезд зеркальный:
+   движение обязано идти из точки, откуда меню появилось, иначе оно читается
+   не как «раскрылось от поля», а как «сползло откуда-то сверху». */
+.combo__menu--up { transform-origin: bottom left; }
+.combo__menu--up[data-state="open"] { animation-name: comboInUp; }
+
+@keyframes comboInUp {
+  from { opacity: 0; transform: translateY(6px) scale(.985); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
 }
 
 .combo__list { max-height: 276px; overflow-y: auto; overscroll-behavior: contain; }

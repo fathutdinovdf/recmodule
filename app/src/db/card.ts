@@ -103,6 +103,7 @@ export interface Card {
   repliedAt: Date | null;
   decision: CardDecision | null;
   commentsCount: number;
+  attachmentsCount: number;
   implementation: CardImplementation | null;
   /** Действующая база — последняя принятая версия. */
   baseline: CardBaseline | null;
@@ -133,7 +134,8 @@ export const getCard = cache(async (id: number): Promise<Card | null> => {
            dec.reason_text, dec.comment, dec.planned_at, dec.sla_spent,
            (SELECT min(e.at) FROM rec.recommendation_events e
              WHERE e.rec_id = r.id AND e.kind = 'opened') AS opened_at,
-           (SELECT count(*) FROM rec.comments c WHERE c.rec_id = r.id AND c.deleted_at IS NULL) AS comments_count
+           (SELECT count(*) FROM rec.comments c WHERE c.rec_id = r.id AND c.deleted_at IS NULL) AS comments_count,
+           (SELECT count(*) FROM rec.attachments a WHERE a.rec_id = r.id) AS attachments_count
     FROM rec.recommendations r
     JOIN rec.statuses s   ON s.code = r.status
     JOIN rec.directions d ON d.id = r.direction_id
@@ -216,6 +218,7 @@ export const getCard = cache(async (id: number): Promise<Card | null> => {
       slaSpent: число(r.sla_spent),
     } : null,
     commentsCount: Number(r.comments_count),
+    attachmentsCount: Number(r.attachments_count),
     implementation: impl[0] ? {
       factDate: impl[0].fact_date as Date,
       fixedAt: impl[0].fixed_at as Date,

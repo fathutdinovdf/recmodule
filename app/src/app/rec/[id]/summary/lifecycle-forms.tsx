@@ -6,8 +6,9 @@
  * вкладки за место — отмена рекомендации к сводке отношения не имеет, она
  * просто оттуда запускается.
  *
- * У каждого окна есть строка фактов: статус, срок, номер. Подтверждение, в
- * котором нет ни одной цифры, кликают не глядя, а отменять потом нечем.
+ * Окно несёт заголовок, поля и кнопки — и ничего больше. Пояснения и строка
+ * фактов (номер, статус, остаток норматива) убраны по решению пользователя:
+ * всё это стоит в самой карточке, из-под окна, и в окне читалось повтором.
  *
  * Открытость живёт в адресе (`?form=...`), а не в состоянии: подтверждение
  * переживает перезагрузку, а ошибка возвращается тем же адресом.
@@ -19,13 +20,12 @@
 
 import type { Card } from '@/db/card';
 import { ActionDialog } from '@/components/ui/ActionDialog';
+import { окно } from '../form-meta';
 import { Button } from '@/components/ui/Button';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { Textarea } from '@/components/ui/Textarea';
 import { DialogClose, DialogFooter } from '@/components/ui/dialog';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field';
-import { control, fmtDur } from '@/domain/workhours';
-import { дата } from '@/lib/format';
 import {
   зарегистрировать, удалить, отменить, передатьПовторно, создатьНаОснове,
 } from '../lifecycle';
@@ -50,15 +50,9 @@ export function ФормаДействия({ card, вид, ошибка }: {
 }) {
   if (!СТАТУСЫ[вид].includes(card.status)) return null;
 
-  const объект = `Скважина ${card.wellNumber}, ${card.fieldName}`;
-
   if (вид === 'register') {
     return (
-      <ActionDialog
-        title="Зарегистрировать рекомендацию"
-        description="Черновик получит номер и уйдёт Заказчику. Норматив ответа пойдёт с передачи и только внутри рабочего окна."
-        facts={<>{объект}. Приоритет {card.priorityName ?? '—'}, норматив ответа {card.slaHours ?? '—'} ч.</>}
-      >
+      <ActionDialog {...окно('register')}>
         <form action={зарегистрировать.bind(null, card.id)}>
           {ошибка && <FieldError className="mb-3">{ошибка}</FieldError>}
           <DialogFooter>
@@ -72,12 +66,7 @@ export function ФормаДействия({ card, вид, ошибка }: {
 
   if (вид === 'delete') {
     return (
-      <ActionDialog
-        tone="danger"
-        title="Удалить черновик"
-        description="Черновик исчезнет из реестра. Вернуть его из интерфейса будет нельзя."
-        facts={<>{объект}. Номера нет, в отчётность черновик не попадал.</>}
-      >
+      <ActionDialog {...окно('delete')}>
         <form action={удалить.bind(null, card.id)}>
           {ошибка && <FieldError className="mb-3">{ошибка}</FieldError>}
           <DialogFooter>
@@ -90,23 +79,8 @@ export function ФормаДействия({ card, вид, ошибка }: {
   }
 
   if (вид === 'cancel') {
-    const c = control({
-      status: card.status, sentAt: card.sentAt, dueAt: card.dueAt, repliedAt: card.repliedAt,
-    });
-
     return (
-      <ActionDialog
-        tone="danger"
-        title="Отменить рекомендацию"
-        description="Решения Заказчика по ней не будет, срок ответа снимется. Номер и история сохранятся."
-        facts={(
-          <>
-            {card.number ?? 'Без номера'} · {card.statusName} · {объект}.
-            {c.kind === 'waiting' && <> До конца норматива {fmtDur(c.hours)}.</>}
-            {c.kind === 'overdue' && <> Ответ просрочен на {fmtDur(c.hours)}.</>}
-          </>
-        )}
-      >
+      <ActionDialog {...окно('cancel')}>
         <form action={отменить.bind(null, card.id)}>
           <Field data-invalid={Boolean(ошибка)}>
             <FieldLabel htmlFor="cancel-reason">
@@ -127,18 +101,7 @@ export function ФормаДействия({ card, вид, ошибка }: {
 
   if (вид === 'resend') {
     return (
-      <ActionDialog
-        title="Внести уточнение и передать"
-        description="Уточнение попадёт в обсуждение, рекомендация вернётся Заказчику под тем же номером."
-        facts={(
-          <>
-            {card.number} · {объект}.
-            {card.slaHoursLeft !== null
-              ? <> Норматив продолжится с остатка: {fmtDur(card.slaHoursLeft)} из {card.slaHours ?? '—'} ч.</>
-              : <> Норматив ответа {card.slaHours ?? '—'} ч.</>}
-          </>
-        )}
-      >
+      <ActionDialog {...окно('resend')}>
         <form action={передатьПовторно.bind(null, card.id)}>
           <Field data-invalid={Boolean(ошибка)}>
             <FieldLabel htmlFor="resend-text">
@@ -160,16 +123,7 @@ export function ФормаДействия({ card, вид, ошибка }: {
   }
 
   return (
-    <ActionDialog
-      title="Создать новую на основе этой"
-      description="Появится черновик с тем же объектом и содержанием — без номера, решений и базы: он пойдёт свой круг."
-      facts={(
-        <>
-          {объект}. Исходная {card.number} {card.status === 'rejected' ? 'останется отклонённой' : 'останется отменённой'}
-          {card.repliedAt ? ` с ${дата(card.repliedAt)}` : ''}.
-        </>
-      )}
-    >
+    <ActionDialog {...окно('copy')}>
       <form action={создатьНаОснове.bind(null, card.id)}>
         {ошибка && <FieldError className="mb-3">{ошибка}</FieldError>}
         <DialogFooter>

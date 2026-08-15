@@ -25,10 +25,11 @@ import { дата, число, прирост } from '@/lib/format';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
-import { Field, FieldError, FieldLabel } from '@/components/ui/field';
+import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { ActionDialog } from '@/components/ui/ActionDialog';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { DialogClose, DialogFooter } from '@/components/ui/dialog';
+import { окно } from '../form-meta';
 import { оспоритьБазу, принятьБазу, отклонитьВозражениеПоБазе } from './actions';
 
 /* Статусы, на которых базу можно оспорить. Дублируется с actions.ts намеренно:
@@ -163,7 +164,7 @@ export async function БлокБазы({ card, user, заголовок, фор�
         <ОкноВозражения card={card} ошибка={ошибка} />
       )}
       {форма === 'baseAccept' && исполнитель && открытый && предложенная && (
-        <ОкноПринятия card={card} спор={открытый} предложенная={предложенная} ошибка={ошибка} />
+        <ОкноПринятия card={card} спор={открытый} ошибка={ошибка} />
       )}
       {форма === 'baseDecline' && исполнитель && открытый && (
         <ОкноОтклонения card={card} спор={открытый} ошибка={ошибка} />
@@ -279,22 +280,13 @@ function ОкноВозражения({ card, ошибка }: { card: Card; ош
   const ошибкаЧисел = Boolean(ошибка) && !ошибкаТекста;
 
   return (
-    <ActionDialog
-      title="Возражение по базовым значениям"
-      description="Своя версия базы с обоснованием. Действующая база не меняется, пока Исполнитель не примет возражение."
-      facts={(
-        <>
-          Действующая база: Qж {число(b.baseQzh)} м³/сут, Qн {число(b.baseQn, 2)} т/сут,
-          ЭЭ {число(b.baseEe, 0)} кВт·ч/сут. {ИСТОЧНИК_БАЗЫ[b.source]}
-          {b.periodFrom && ` за ${дата(b.periodFrom)} — ${дата(b.periodTo)}`}.
-        </>
-      )}
-    >
+    <ActionDialog {...окно('baseDispute')}>
       <form action={оспоритьБазу.bind(null, card.id)}>
         {/* Поля в строку: три числа одной природы, и разнесённые по вертикали
             они читались бы как три разных вопроса. Подписи короткие — с полными
             («Дебит жидкости, м³/сут») они переносятся в три строки, и поля
             встают на разной высоте. Что есть что, сказано в фактах над формой. */}
+      <FieldGroup>
         <div className="flex flex-wrap items-end gap-[var(--block-gap-default)]">
           <Field className="flex-1 basis-[96px]" data-invalid={ошибкаЧисел}>
             <FieldLabel htmlFor="base-qzh">Qж, м³/сут</FieldLabel>
@@ -312,9 +304,9 @@ function ОкноВозражения({ card, ошибка }: { card: Card; ош
                    defaultValue={дляВвода(b.baseEe)} aria-invalid={ошибкаЧисел} />
           </Field>
         </div>
-        {ошибкаЧисел && <FieldError className="mt-2">{ошибка}</FieldError>}
+        {ошибкаЧисел && <FieldError>{ошибка}</FieldError>}
 
-        <Field className="mt-[var(--group-gap-m)]" data-invalid={ошибкаТекста}>
+        <Field data-invalid={ошибкаТекста}>
           <FieldLabel htmlFor="base-dispute-reason">
             Обоснование <span className="text-muted-foreground">обязательно</span>
           </FieldLabel>
@@ -322,6 +314,7 @@ function ОкноВозражения({ card, ошибка }: { card: Card; ош
                     placeholder="Откуда взяты предлагаемые значения: режим месяца, замеры каких суток, что не так в действующей базе." />
           {ошибкаТекста && <FieldError>{ошибка}</FieldError>}
         </Field>
+      </FieldGroup>
 
         <СправкаПоЗамерам card={card} />
 
@@ -342,23 +335,11 @@ function ОкноВозражения({ card, ошибка }: { card: Card; ош
   );
 }
 
-function ОкноПринятия({ card, спор, предложенная, ошибка }: {
-  card: Card; спор: CardDispute; предложенная: CardBaseline; ошибка?: string;
+function ОкноПринятия({ card, спор, ошибка }: {
+  card: Card; спор: CardDispute; ошибка?: string;
 }) {
   return (
-    <ActionDialog
-      tone="danger"
-      title="Принять базу Заказчика"
-      description="Предложенные значения станут действующими, прежняя версия останется в карточке как замещённая. Посуточный расчёт будет удалён и пересобран от новой базы."
-      facts={(
-        <>
-          Станет: Qж {число(предложенная.baseQzh)} м³/сут, Qн {число(предложенная.baseQn, 2)} т/сут,
-          ЭЭ {число(предложенная.baseEe, 0)} кВт·ч/сут.
-          {' '}Было: Qж {число(card.baseline?.baseQzh ?? null)}, Qн {число(card.baseline?.baseQn ?? null, 2)},
-          ЭЭ {число(card.baseline?.baseEe ?? null, 0)}.
-        </>
-      )}
-    >
+    <ActionDialog {...окно('baseAccept')}>
       <form action={принятьБазу.bind(null, card.id, спор.id)}>
         <СправкаПоЗамерам card={card} />
         <div className="form__hint" style={{ marginTop: 'var(--item-gap-vertical-s)' }}>
@@ -382,10 +363,7 @@ function ОкноОтклонения({ card, спор, ошибка }: {
   card: Card; спор: CardDispute; ошибка?: string;
 }) {
   return (
-    <ActionDialog
-      title="Отклонить возражение по базе"
-      description="Действующая база остаётся прежней. Предложенная Заказчиком версия сохраняется в карточке отклонённой."
-    >
+    <ActionDialog {...окно('baseDecline')}>
       <form action={отклонитьВозражениеПоБазе.bind(null, card.id, спор.id)}>
         <Field data-invalid={Boolean(ошибка)}>
           <FieldLabel htmlFor="base-decline-reason">

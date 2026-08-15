@@ -14,18 +14,16 @@
 import { useRouter, usePathname } from 'next/navigation';
 import { TriangleAlertIcon } from 'lucide-react';
 import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from './dialog';
 
-export function ActionDialog({ title, description, facts, tone = 'default', children }: {
+export function ActionDialog({ title, tone = 'default', className, children }: {
   title: string;
-  description?: React.ReactNode;
-  /* Факты, на которые смотрят, принимая решение: сколько суток теряется,
-     какой статус снимается. Подтверждение без единой цифры человек кликает
-     не глядя — а действия здесь необратимые. */
-  facts?: React.ReactNode;
   /** `danger` — необратимое действие: значок и красный заголовок. */
   tone?: 'default' | 'danger';
+  /** Ширина окна. По умолчанию 480 — подтверждению этого хватает; форма с
+      парой полей в строку просит 560, иначе поля переносятся по одному. */
+  className?: string;
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -33,7 +31,9 @@ export function ActionDialog({ title, description, facts, tone = 'default', chil
 
   return (
     <Dialog open onOpenChange={(открыто) => { if (!открыто) router.push(pathname); }}>
-      <DialogContent>
+      {/* aria-describedby снимаем явно: описания у окна больше нет, а Radix
+          без этого пишет в консоль предупреждение о недостающем описании. */}
+      <DialogContent className={className} aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {tone === 'danger' && (
@@ -42,14 +42,7 @@ export function ActionDialog({ title, description, facts, tone = 'default', chil
             )}
             {title}
           </DialogTitle>
-          {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
-
-        {facts && (
-          <div className="rounded-md bg-[var(--bg-secondary)] px-3 py-2 text-sm text-foreground">
-            {facts}
-          </div>
-        )}
 
         {children}
       </DialogContent>

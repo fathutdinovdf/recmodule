@@ -6,7 +6,6 @@
  */
 
 import Link from 'next/link';
-import { AppShell } from '@/components/AppShell';
 import { listRecommendations, statusCounts } from '@/db/recommendations';
 import type { RecommendationRow } from '@/db/recommendations';
 import { control, fmtDur, toWindow } from '@/domain/workhours';
@@ -179,134 +178,132 @@ export default async function Page({
   };
 
   return (
-    <AppShell>
-      <main className="content">
-        <div className="pagehead">
-          <h1>Реестр рекомендаций</h1>
-          <span className="pagehead__zone">
-            {фильтрВключён ? `показано ${total} из ${всего}` : `всего ${всего}`}
-          </span>
-          <div className="pagehead__actions">
-            <a className="btn btn--accent" href="#"><Icon id="plus" />Создать рекомендацию</a>
-            <Hint text="Настройка колонок">
-              <button className="iconbtn iconbtn--lg" type="button" aria-label="Настройка колонок"><Icon id="cols" size={20} /></button>
-            </Hint>
-            <Hint text="Экспорт">
-              <button className="iconbtn iconbtn--lg" type="button" aria-label="Экспорт"><Icon id="export" size={20} /></button>
-            </Hint>
-          </div>
+    <main className="content">
+      <div className="pagehead">
+        <h1>Реестр рекомендаций</h1>
+        <span className="pagehead__zone">
+          {фильтрВключён ? `показано ${total} из ${всего}` : `всего ${всего}`}
+        </span>
+        <div className="pagehead__actions">
+          <a className="btn btn--accent" href="#"><Icon id="plus" />Создать рекомендацию</a>
+          <Hint text="Настройка колонок">
+            <button className="iconbtn iconbtn--lg" type="button" aria-label="Настройка колонок"><Icon id="cols" size={20} /></button>
+          </Hint>
+          <Hint text="Экспорт">
+            <button className="iconbtn iconbtn--lg" type="button" aria-label="Экспорт"><Icon id="export" size={20} /></button>
+          </Hint>
         </div>
+      </div>
 
-        <section className="tiles">
-          {ПЛИТКИ.map((t) => {
-            const n = t.statuses.reduce((a, s) => a + (счётчики[s] ?? 0), 0);
-            const включена = плитка === t.key;
-            return (
-              <Link key={t.key} className={`tile ${включена ? 'is-on' : ''}`}
-                    href={ссылка({ tile: включена ? undefined : t.key, page: undefined })}>
-                <span className="tile__n">{n}</span>
-                <span className="tile__l">{t.label}</span>
-              </Link>
-            );
-          })}
-        </section>
+      <section className="tiles">
+        {ПЛИТКИ.map((t) => {
+          const n = t.statuses.reduce((a, s) => a + (счётчики[s] ?? 0), 0);
+          const включена = плитка === t.key;
+          return (
+            <Link key={t.key} className={`tile ${включена ? 'is-on' : ''}`}
+                  href={ссылка({ tile: включена ? undefined : t.key, page: undefined })}>
+              <span className="tile__n">{n}</span>
+              <span className="tile__l">{t.label}</span>
+            </Link>
+          );
+        })}
+      </section>
 
-        <section className="panel">
-          <div className="tablewrap">
-            {/* Ширина таблицы — сумма колонок, как в макете: при table-layout
-                fixed без неё браузер растягивает колонки по содержимому и
-                заданные ширины перестают действовать. */}
-            <table className="tbl" style={{ width: КОЛОНКИ.reduce((s, c) => s + c.w, 0) }}>
-              <colgroup>
-                {КОЛОНКИ.map((c) => <col key={c.key} style={{ width: c.w }} />)}
-              </colgroup>
-              <thead>
-                <tr>
-                  {КОЛОНКИ.map((c) => (
-                    <th key={c.key} data-col={c.key}>
-                      <span className="th">
-                        <Hint text={`${c.label} — сортировать`}>
-                          <span className="th__t">
-                            <span className="th__label">{c.label}</span>
+      <section className="panel">
+        <div className="tablewrap">
+          {/* Ширина таблицы — сумма колонок, как в макете: при table-layout
+              fixed без неё браузер растягивает колонки по содержимому и
+              заданные ширины перестают действовать. */}
+          <table className="tbl" style={{ width: КОЛОНКИ.reduce((s, c) => s + c.w, 0) }}>
+            <colgroup>
+              {КОЛОНКИ.map((c) => <col key={c.key} style={{ width: c.w }} />)}
+            </colgroup>
+            <thead>
+              <tr>
+                {КОЛОНКИ.map((c) => (
+                  <th key={c.key} data-col={c.key}>
+                    <span className="th">
+                      <Hint text={`${c.label} — сортировать`}>
+                        <span className="th__t">
+                          <span className="th__label">{c.label}</span>
+                        </span>
+                      </Hint>
+                      {(c.search || c.text) && (
+                        <Hint text={c.search ? 'Поиск по номеру' : 'Поиск по тексту'}>
+                          <span className="th__i">
+                            <svg className="ic-th"><use href="#i-search" /></svg>
                           </span>
                         </Hint>
-                        {(c.search || c.text) && (
-                          <Hint text={c.search ? 'Поиск по номеру' : 'Поиск по тексту'}>
-                            <span className="th__i">
-                              <svg className="ic-th"><use href="#i-search" /></svg>
-                            </span>
-                          </Hint>
-                        )}
-                        {c.filter && (
-                          <Hint text="Фильтр">
-                            <span className="th__i">
-                              <svg className="ic-th"><use href="#i-funnel" /></svg>
-                            </span>
-                          </Hint>
-                        )}
-                        {c.period && (
-                          <Hint text="Выбрать период">
-                            <span className="th__i">
-                              <svg className="ic-th"><use href="#i-funnel" /></svg>
-                            </span>
-                          </Hint>
-                        )}
-                      </span>
-                      <span className="resizer" />
-                    </th>
-                  ))}
+                      )}
+                      {c.filter && (
+                        <Hint text="Фильтр">
+                          <span className="th__i">
+                            <svg className="ic-th"><use href="#i-funnel" /></svg>
+                          </span>
+                        </Hint>
+                      )}
+                      {c.period && (
+                        <Hint text="Выбрать период">
+                          <span className="th__i">
+                            <svg className="ic-th"><use href="#i-funnel" /></svg>
+                          </span>
+                        </Hint>
+                      )}
+                    </span>
+                    <span className="resizer" />
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={КОЛОНКИ.length} style={{
+                    padding: 'var(--section-padding-extra-wide)',
+                    textAlign: 'center', color: 'var(--text-tertiary)',
+                  }}>
+                    По заданным условиям рекомендаций нет.
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {rows.length === 0 && (
-                  <tr>
-                    <td colSpan={КОЛОНКИ.length} style={{
-                      padding: 'var(--section-padding-extra-wide)',
-                      textAlign: 'center', color: 'var(--text-tertiary)',
-                    }}>
-                      По заданным условиям рекомендаций нет.
-                    </td>
-                  </tr>
-                )}
-                {rows.map((r) => {
-                  const c = r.showsSla
-                    ? control({ status: r.status, sentAt: r.sentAt, dueAt: r.dueAt, repliedAt: r.repliedAt })
-                    : { kind: 'none' as const, hours: 0 };
-                  return (
-                    <tr key={r.id} className={c.kind === 'overdue' ? 'row-overdue' : ''}>
-                      {КОЛОНКИ.map((col) => (
-                        <td key={col.key} className={col.key === 'number' ? 'cell-num' : ''}>
-                          <Ячейка r={r} col={col} />
-                        </td>
-                      ))}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="pager">
-            <div className="pager__info">
-              {total === 0 ? 'Ничего не найдено'
-                : `${(страница - 1) * наСтранице + 1}–${Math.min(страница * наСтранице, total)} из ${total}`}
-            </div>
-            {фильтрВключён && <a className="btn btn--ghost btn--small" href="/">Сбросить фильтры</a>}
-            <div className="pager__pages">
-              {страниц > 1 && (
-                <>
-                  <Link className="pgbtn" href={ссылка({ page: String(Math.max(1, страница - 1)) })}>‹</Link>
-                  {Array.from({ length: страниц }, (_, i) => i + 1).map((n) => (
-                    <Link key={n} className={`pgbtn ${n === страница ? 'is-on' : ''}`}
-                          href={ссылка({ page: String(n) })}>{n}</Link>
-                  ))}
-                  <Link className="pgbtn" href={ссылка({ page: String(Math.min(страниц, страница + 1)) })}>›</Link>
-                </>
               )}
-            </div>
+              {rows.map((r) => {
+                const c = r.showsSla
+                  ? control({ status: r.status, sentAt: r.sentAt, dueAt: r.dueAt, repliedAt: r.repliedAt })
+                  : { kind: 'none' as const, hours: 0 };
+                return (
+                  <tr key={r.id} className={c.kind === 'overdue' ? 'row-overdue' : ''}>
+                    {КОЛОНКИ.map((col) => (
+                      <td key={col.key} className={col.key === 'number' ? 'cell-num' : ''}>
+                        <Ячейка r={r} col={col} />
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="pager">
+          <div className="pager__info">
+            {total === 0 ? 'Ничего не найдено'
+              : `${(страница - 1) * наСтранице + 1}–${Math.min(страница * наСтранице, total)} из ${total}`}
           </div>
-        </section>
-      </main>
-    </AppShell>
+          {фильтрВключён && <a className="btn btn--ghost btn--small" href="/">Сбросить фильтры</a>}
+          <div className="pager__pages">
+            {страниц > 1 && (
+              <>
+                <Link className="pgbtn" href={ссылка({ page: String(Math.max(1, страница - 1)) })}>‹</Link>
+                {Array.from({ length: страниц }, (_, i) => i + 1).map((n) => (
+                  <Link key={n} className={`pgbtn ${n === страница ? 'is-on' : ''}`}
+                        href={ссылка({ page: String(n) })}>{n}</Link>
+                ))}
+                <Link className="pgbtn" href={ссылка({ page: String(Math.min(страниц, страница + 1)) })}>›</Link>
+              </>
+            )}
+          </div>
+        </div>
+      </section>
+    </main>
   );
 }

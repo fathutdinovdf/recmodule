@@ -25,6 +25,11 @@ const buttonVariants = cva(
         sm: 'h-8 rounded-md px-3',
         lg: 'h-10 rounded-md px-6',
         icon: 'size-9',
+        /* Мелкие кнопки-иконки нужны внутри плотных компонентов — крестик на
+           карточке вложения рядом с именем файла. Обычная в 36 пикселов там
+           перевешивает саму карточку. */
+        'icon-sm': 'size-8 rounded-md',
+        'icon-xs': 'size-6 rounded-md [&_svg:not([class*=size-])]:size-3.5',
       },
     },
     defaultVariants: { variant: 'default', size: 'default' },

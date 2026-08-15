@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node scripts/refresh-demo.mjs && next dev -p 3100",
-    "dev:only": "next dev -p 3100",
+    "dev": "node scripts/refresh-demo.mjs && node scripts/dev.mjs",
+    "dev:only": "node scripts/dev.mjs",
     "build": "next build",
     "start": "next start -p 3100",
     "db:up": "docker compose up -d",
@@ -21,6 +21,7 @@
     "cmdk": "^1.1.1",
     "date-fns": "^4.4.0",
     "lucide-react": "^1.31.0",
+    "motion": "^13.1.0",
     "next": "15.1.6",
     "pg": "8.13.1",
     "radix-ui": "^1.6.7",

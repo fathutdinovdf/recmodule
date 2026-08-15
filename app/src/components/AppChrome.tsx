@@ -21,6 +21,7 @@ import { IconSprite, Icon } from './Icons';
 import { switchUser } from '@/lib/session-actions';
 import type { SessionUser } from '@/lib/session';
 import { Hint } from '@/components/ui/Hint';
+import { ПереключательТемы } from './ThemeToggle';
 
 interface NavItem {
   href?: string;
@@ -79,6 +80,7 @@ export function AppChrome({
 
       <header className="appbar">
         <div className="appbar__group appbar__group--right">
+          <ПереключательТемы />
           <Hint text="Уведомления">
             <button className="iconbtn iconbtn--lg" type="button" aria-label="Уведомления">
               <Icon id="bell" size={20} />

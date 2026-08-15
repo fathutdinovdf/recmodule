@@ -22,15 +22,18 @@ const globalForPools = globalThis as unknown as {
   __recVmapPool?: Pool;
 };
 
+/* Настройки своей базы отдельно от пула: их берёт ещё и слушатель
+   LISTEN/NOTIFY, которому нужен собственный клиент вне пула (см. notify.ts). */
+export const modulePoolConfig = {
+  host: process.env.PGHOST ?? 'localhost',
+  port: Number(process.env.PGPORT ?? 5433),
+  database: process.env.PGDATABASE ?? 'recmodule',
+  user: process.env.PGUSER ?? 'recmodule',
+  password: process.env.PGPASSWORD ?? 'recmodule',
+};
+
 function createModulePool(): Pool {
-  return new Pool({
-    host: process.env.PGHOST ?? 'localhost',
-    port: Number(process.env.PGPORT ?? 5433),
-    database: process.env.PGDATABASE ?? 'recmodule',
-    user: process.env.PGUSER ?? 'recmodule',
-    password: process.env.PGPASSWORD ?? 'recmodule',
-    max: 10,
-  });
+  return new Pool({ ...modulePoolConfig, max: 10 });
 }
 
 function createVmapPool(): Pool {

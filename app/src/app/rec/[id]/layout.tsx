@@ -11,7 +11,6 @@
 
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { AppShell } from '@/components/AppShell';
 import { Icon } from '@/components/Icons';
 import { Hint } from '@/components/ui/Hint';
 import { getCard, getNeighbours, getWellHistory } from '@/db/card';
@@ -76,115 +75,116 @@ export default async function CardLayout({
   const решение = card.decision ? РЕШЕНИЕ[card.decision.kind] : null;
 
   return (
-    <AppShell>
-      <main className="content content--card">
-        <div className="cardhead">
-          <div className="cardhead__top">
-            <Hint text="К реестру">
-              <Link className="cnbtn" href="/" aria-label="К реестру"><Icon id="back" size={20} /></Link>
-            </Hint>
-            <span className="cardhead__num">{card.number ?? 'Черновик'}</span>
-            <span className="headstatus">
-              <i className={`status__d status__d--${card.tone} ${card.filled ? '' : 'is-hollow'}`} />
-              {card.statusName}
-            </span>
+    <main className="content content--card">
+      <div className="cardhead">
+        <div className="cardhead__top">
+          <Hint text="К реестру">
+            <Link className="cnbtn" href="/" aria-label="К реестру"><Icon id="back" size={20} /></Link>
+          </Hint>
+          <span className="cardhead__num">{card.number ?? 'Черновик'}</span>
+          <span className="headstatus">
+            <i className={`status__d status__d--${card.tone} ${card.filled ? '' : 'is-hollow'}`} />
+            {card.statusName}
+          </span>
 
-            {card.showsSla && card.priority && (
-              <>
-                <span className={`prio prio--${card.priority} prio--pill`} title={card.priorityName ?? ''}>
-                  <Icon id="clock" />{card.slaHours} ч
-                </span>
-                <КонтрольОтвета kind={c.kind} hours={c.hours} sentAt={card.sentAt} />
-              </>
-            )}
-
-            {card.completeness === 'partial' && (
-              <span className="tag tag--warning">реализовано частично</span>
-            )}
-            {спорОДате && <span className="tag tag--late">дата реализации оспорена</span>}
-            {спорОБазе && <span className="tag tag--late">база оспорена</span>}
-
-            <div className="cardhead__trailing">
-              <div className="pager">
-                <Hint text="Предыдущая рекомендация">
-                  {соседи.prevId
-                    ? <Link className="cnbtn" href={`/rec/${соседи.prevId}`} aria-label="Предыдущая рекомендация"><Icon id="prev" /></Link>
-                    : <span className="cnbtn is-off" aria-label="Предыдущей рекомендации нет"><Icon id="prev" /></span>}
-                </Hint>
-                <span className="pager__pos" title="Позиция в реестре">
-                  {соседи.pos} из {соседи.total}
-                </span>
-                <Hint text="Следующая рекомендация">
-                  {соседи.nextId
-                    ? <Link className="cnbtn" href={`/rec/${соседи.nextId}`} aria-label="Следующая рекомендация"><Icon id="next" /></Link>
-                    : <span className="cnbtn is-off" aria-label="Следующей рекомендации нет"><Icon id="next" /></span>}
-                </Hint>
-              </div>
-              <CardActionsMenu status={card.status} recId={card.id}
-                               executor={пользователь?.side === 'executor'} />
-            </div>
-          </div>
-
-          <div className="cardhead__where">
-            {card.fieldName} · куст {card.kust ?? '—'} · скважина <b>{card.wellNumber}</b>
-          </div>
-          <div className="cardhead__hr" />
-          <div className="metas">
-            <div className="meta">
-              <span className="meta__k">Направление</span>
-              <span className="meta__v">{card.direction}</span>
-            </div>
-            <div className="meta">
-              <span className="meta__k">Ответственный Исполнителя</span>
-              <span className="meta__v">{card.executorName ?? card.authorName}</span>
-            </div>
-            <div className="meta">
-              <span className="meta__k">Ответственный Заказчика</span>
-              <span className="meta__v">{card.customerName ?? '—'}</span>
-            </div>
-            <div className="meta">
-              <span className="meta__k">Решение Заказчика</span>
-              <span className="meta__v">
-                {решение
-                  ? <span className={`tag tag--${решение.kind}`}>{решение.label}</span>
-                  : <span className="mark">—</span>}
+          {card.showsSla && card.priority && (
+            <>
+              <span className={`prio prio--${card.priority} prio--pill`} title={card.priorityName ?? ''}>
+                <Icon id="clock" />{card.slaHours} ч
               </span>
+              <КонтрольОтвета kind={c.kind} hours={c.hours} sentAt={card.sentAt} />
+            </>
+          )}
+
+          {card.completeness === 'partial' && (
+            <span className="tag tag--warning">реализовано частично</span>
+          )}
+          {спорОДате && <span className="tag tag--late">дата реализации оспорена</span>}
+          {спорОБазе && <span className="tag tag--late">база оспорена</span>}
+
+          <div className="cardhead__trailing">
+            <div className="pager">
+              <Hint text="Предыдущая рекомендация">
+                {соседи.prevId
+                  ? <Link className="cnbtn" href={`/rec/${соседи.prevId}`} aria-label="Предыдущая рекомендация"><Icon id="prev" /></Link>
+                  : <span className="cnbtn is-off" aria-label="Предыдущей рекомендации нет"><Icon id="prev" /></span>}
+              </Hint>
+              <span className="pager__pos" title="Позиция в реестре">
+                {соседи.pos} из {соседи.total}
+              </span>
+              <Hint text="Следующая рекомендация">
+                {соседи.nextId
+                  ? <Link className="cnbtn" href={`/rec/${соседи.nextId}`} aria-label="Следующая рекомендация"><Icon id="next" /></Link>
+                  : <span className="cnbtn is-off" aria-label="Следующей рекомендации нет"><Icon id="next" /></span>}
+              </Hint>
             </div>
+            <CardActionsMenu status={card.status} recId={card.id}
+                             executor={пользователь?.side === 'executor'} />
           </div>
         </div>
 
-        <Прогноз card={card} прогноз={прогноз} />
-
-        <div className="cardbody">
-          <section className="panel panel--main">
-            <Tabs recId={card.id} counts={{ log: card.commentsCount }} />
-            <div className="tabpane">{children}</div>
-          </section>
-
-          <aside className="context">
-            <КарточкаСкважины данные={скважина} wellNumber={card.wellNumber} field={card.fieldName} />
-            <div className="card">
-              <div className="card__h">
-                Ранее по этой скважине
-                {история.total > история.items.length && <a href="#">все {история.total}</a>}
-              </div>
-              {история.items.length ? (
-                <div className="prev">
-                  {история.items.map((p) => (
-                    <Link key={p.id} className="prev__i" href={`/rec/${p.id}`}>
-                      <div className="prev__t">
-                        <b>{p.number}</b> · {дата(p.registeredAt)} · {p.statusName}
-                      </div>
-                      <div className="prev__p">{p.problem}</div>
-                    </Link>
-                  ))}
-                </div>
-              ) : <div className="block__b">Других рекомендаций нет.</div>}
-            </div>
-          </aside>
+        <div className="cardhead__where">
+          {card.fieldName} · куст {card.kust ?? '—'} · скважина <b>{card.wellNumber}</b>
         </div>
-      </main>
-    </AppShell>
+        <div className="cardhead__hr" />
+        <div className="metas">
+          <div className="meta">
+            <span className="meta__k">Направление</span>
+            <span className="meta__v">{card.direction}</span>
+          </div>
+          <div className="meta">
+            <span className="meta__k">Ответственный Исполнителя</span>
+            <span className="meta__v">{card.executorName ?? card.authorName}</span>
+          </div>
+          <div className="meta">
+            <span className="meta__k">Ответственный Заказчика</span>
+            <span className="meta__v">{card.customerName ?? '—'}</span>
+          </div>
+          <div className="meta">
+            <span className="meta__k">Решение Заказчика</span>
+            <span className="meta__v">
+              {решение
+                ? <span className={`tag tag--${решение.kind}`}>{решение.label}</span>
+                : <span className="mark">—</span>}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <Прогноз card={card} прогноз={прогноз} />
+
+      <div className="cardbody">
+        <section className="panel panel--main">
+          <Tabs recId={card.id} counts={{
+            files: card.attachmentsCount,
+            log: card.commentsCount,
+          }} />
+          <div className="tabpane">{children}</div>
+        </section>
+
+        <aside className="context">
+          <КарточкаСкважины данные={скважина} wellNumber={card.wellNumber} field={card.fieldName} />
+          <div className="card">
+            <div className="card__h">
+              Ранее по этой скважине
+              {история.total > история.items.length && <a href="#">все {история.total}</a>}
+            </div>
+            {история.items.length ? (
+              <div className="prev">
+                {история.items.map((p) => (
+                  <Link key={p.id} className="prev__i" href={`/rec/${p.id}`}>
+                    <div className="prev__t">
+                      <b>{p.number}</b> · {дата(p.registeredAt)} · {p.statusName}
+                    </div>
+                    <div className="prev__p">{p.problem}</div>
+                  </Link>
+                ))}
+              </div>
+            ) : <div className="block__b">Других рекомендаций нет.</div>}
+          </div>
+        </aside>
+      </div>
+    </main>
   );
 }
 

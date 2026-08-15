@@ -9,8 +9,15 @@
  * шапку, где виден всегда и не уезжает за прокрутку.
  *
  * Форма решения раскрывается не состоянием, а параметром адреса `form`, и
- * ошибка возвращается параметром `err`. Так вкладка переживает перезагрузку и
- * работает без JavaScript: три кнопки — обычные ссылки, форма — обычный POST.
+ * ошибка возвращается параметром `err`: подтверждение переживает перезагрузку,
+ * а ссылку на него можно переслать.
+ *
+ * Сама форма — окно поверх карточки, как действия из меню и разбор спора о
+ * базе. Решение Заказчика необратимо (отменить принятие из интерфейса нельзя),
+ * и между «нажал» и «сделано» должен стоять экран с последствиями. Заодно
+ * кнопки остаются на месте: раньше форма занимала их место, и после её
+ * открытия было не видно, от чего отказываешься. Цена — форма требует
+ * JavaScript; тот же размен уже принят для остальных окон действий.
  */
 
 import Link from 'next/link';
@@ -18,15 +25,19 @@ import { notFound } from 'next/navigation';
 import { getCard, type Card } from '@/db/card';
 import { getRejectReasons } from '@/db/refs';
 import { currentUser, type SessionUser } from '@/lib/session';
-import { control, fmtDur, workHoursBetween } from '@/domain/workhours';
+import { control, fmtDur } from '@/domain/workhours';
 import { дата } from '@/lib/format';
 import { Combobox } from '@/components/ui/Combobox';
 import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Textarea';
 import { PlannedDatePicker } from '@/components/ui/PlannedDatePicker';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { ActionDialog } from '@/components/ui/ActionDialog';
+import { SubmitButton } from '@/components/ui/SubmitButton';
+import { DialogClose, DialogFooter } from '@/components/ui/dialog';
 import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
 import { Separator } from '@/components/ui/separator';
+import { окно } from '../form-meta';
 import { решить, отметитьОткрытие } from '../actions';
 import { ФормаДействия, ЖИЗНЕННЫЕ_ФОРМЫ, type ЖизненнаяФорма } from './lifecycle-forms';
 
@@ -178,15 +189,15 @@ function БлокРешения({ card, user, открытая, ошибка, п
         Норматив ответа — {card.slaHours ?? '—'} рабочих часов с момента передачи, {срок}.
       </div>
 
-      {открытая
-        ? <ФормаРешения card={card} вид={открытая} ошибка={ошибка} причины={причины} />
-        : (
-          <div className="decision__btns">
-            <Button variant="success" asChild><Link href="?form=accept">Принять</Link></Button>
-            <Button variant="destructive" asChild><Link href="?form=reject">Отклонить</Link></Button>
-            <Button variant="warning" asChild><Link href="?form=clarify">Требует уточнения</Link></Button>
-          </div>
-        )}
+      {/* Кнопки не прячутся под открытой формой: окно портируется наружу, и
+          из-под него видно, по какой рекомендации принимается решение. */}
+      <div className="decision__btns">
+        <Button variant="success" asChild><Link href="?form=accept">Принять</Link></Button>
+        <Button variant="destructive" asChild><Link href="?form=reject">Отклонить</Link></Button>
+        <Button variant="warning" asChild><Link href="?form=clarify">Требует уточнения</Link></Button>
+      </div>
+
+      {открытая && <ОкноРешения card={card} вид={открытая} ошибка={ошибка} причины={причины} />}
     </div>
   );
 }
@@ -242,22 +253,20 @@ function ПринятоеРешение({ card }: { card: Card }) {
 
 /* ------------------------------ формы ------------------------------ */
 
-function ФормаРешения({ card, вид, ошибка, причины }: {
+function ОкноРешения({ card, вид, ошибка, причины }: {
   card: Card;
   вид: Форма;
   ошибка?: string;
   причины: { id: number; name: string }[];
 }) {
-  const израсходовано = card.sentAt ? workHoursBetween(card.sentAt, new Date()) : 0;
-  const останется = Math.max(0, (card.slaHours ?? 0) - израсходовано);
   const ошибкаПричины = вид === 'reject' && ошибка?.startsWith('Выберите причину') ? ошибка : undefined;
   const ошибкаТекста = ошибка && !ошибкаПричины ? ошибка : undefined;
 
   return (
-    <form className="form" action={решить.bind(null, вид, card.id)}>
+    <ActionDialog {...окно(вид)}>
+    <form action={решить.bind(null, вид, card.id)}>
       {вид === 'accept' && (
         <>
-          <div className="form__h">Принять рекомендацию</div>
           <FieldGroup>
             <Field>
               <FieldLabel>Плановая дата работ <span className="text-muted-foreground">необязательно</span></FieldLabel>
@@ -269,16 +278,11 @@ function ФормаРешения({ card, вид, ошибка, причины }
                         placeholder="Например: работы включены в план на неделю, ответственный — мастер по добыче." />
             </Field>
           </FieldGroup>
-          <div className="form__hint">
-            Решение останавливает таймер норматива и переводит рекомендацию в «Согласовано
-            к реализации». Дальше факт реализации определяет Исполнитель по телеметрии.
-          </div>
         </>
       )}
 
       {вид === 'reject' && (
         <>
-          <div className="form__h">Отклонить рекомендацию</div>
           <FieldGroup>
             <Field data-invalid={Boolean(ошибкаПричины)}>
               <FieldLabel htmlFor="reject-reason-kind">Причина</FieldLabel>
@@ -296,16 +300,13 @@ function ФормаРешения({ card, вид, ошибка, причины }
             </Field>
           </FieldGroup>
           <div className="form__hint">
-            Обоснование попадает в реестр — колонка «Обоснование при отклонении» — и в историю
-            рекомендации. Отклонение завершает жизненный цикл: продолжение возможно только новой
-            рекомендацией на основе этой.
+            В реестре обоснование попадёт в колонку «Обоснование при отклонении».
           </div>
         </>
       )}
 
       {вид === 'clarify' && (
         <>
-          <div className="form__h">Запросить уточнение</div>
           <Field data-invalid={Boolean(ошибкаТекста)}>
             <FieldLabel htmlFor="clarify-request">Что требуется уточнить <span className="text-muted-foreground">обязательно</span></FieldLabel>
             <Textarea id="clarify-request" name="text" rows={4}
@@ -314,19 +315,23 @@ function ФормаРешения({ card, вид, ошибка, причины }
             <FieldError>{ошибкаТекста}</FieldError>
           </Field>
           <div className="form__hint">
-            Рекомендация вернётся Исполнителю в статус «На уточнении» под тем же номером.
-            Норматив ответа приостановится и продолжится с остатка после повторной передачи:
-            сейчас израсходовано {fmtDur(израсходовано)} из {card.slaHours ?? '—'} ч,
-            останется {fmtDur(останется)}. Вся цепочка кругов сохраняется в истории.
+            Вся цепочка кругов уточнения сохраняется в истории.
           </div>
         </>
       )}
 
-      <div className="form__btns">
-        <Button type="submit" variant={КНОПКА[вид].вариант}>{КНОПКА[вид].текст}</Button>
-        <Button variant="outline" asChild><Link href="?">Отмена</Link></Button>
-      </div>
+      <DialogFooter className="mt-4">
+        <SubmitButton variant={КНОПКА[вид].вариант} pendingText="Отправляю…">
+          {КНОПКА[вид].текст}
+        </SubmitButton>
+        {/* Отмена — штатное закрытие окна: так одинаково работают кнопка, Esc
+            и клик мимо окна. */}
+        <DialogClose asChild>
+          <Button type="button" variant="outline">Отмена</Button>
+        </DialogClose>
+      </DialogFooter>
     </form>
+    </ActionDialog>
   );
 }
 

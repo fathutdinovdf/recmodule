@@ -28,12 +28,18 @@ export default async function Page({ params, searchParams }: {
 }) {
   const { id } = await params;
   const { form, err } = await searchParams;
-  const card = await getCard(Number(id));
+  /* Карточка и пользователь независимы — берём их одним заходом, а не
+     цепочкой: сеть до базы одна и та же, а круговых задержек было две. */
+  const [card, user] = await Promise.all([getCard(Number(id)), currentUser()]);
   if (!card) notFound();
 
-  const user = await currentUser();
-
-  const eff = await getEffect(card);
+  /* Расчёт и скважина тоже независимы: плотности нужны шкале прогноза, а не
+     расчёту, и ждать их по очереди незачем. Расчёт — самый долгий запрос
+     страницы, поэтому именно его стоит вести параллельно со всем остальным. */
+  const [eff, скважина] = await Promise.all([
+    getEffect(card),
+    card.wellId === null ? null : getWell(card.wellId).catch(() => null),
+  ]);
   if (!eff) return <ОкнаНет card={card} user={user} форма={form} ошибка={err} />;
 
   const спорОДате = card.disputes.find((d) => d.subject === 'fact_date' && d.state === 'open');
@@ -43,8 +49,6 @@ export default async function Page({ params, searchParams }: {
      приходит из кэша, где их нет, — а шкала прогноза нужна и там. Запрос
      дешёвый: getWell в cache(), оболочка карточки уже сходила за той же
      скважиной в этом же рендере. */
-  const скважина = card.wellId === null ? null
-    : await getWell(card.wellId).catch(() => null);
   const прогноз = forecastTotal(eff.economy, card.expectQzh, card.expectQn,
     скважина?.oilDensity ?? null, скважина?.waterDensity ?? null, WINDOW_DAYS);
   const считалисьДеньги = eff.days.some((d) => d.money !== null);
