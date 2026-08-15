@@ -185,7 +185,7 @@ export default async function Page({
           {фильтрВключён ? `показано ${total} из ${всего}` : `всего ${всего}`}
         </span>
         <div className="pagehead__actions">
-          <a className="btn btn--accent" href="#"><Icon id="plus" />Создать рекомендацию</a>
+          <Link className="btn btn--accent" href="/rec/new"><Icon id="plus" />Создать рекомендацию</Link>
           <Hint text="Настройка колонок">
             <button className="iconbtn iconbtn--lg" type="button" aria-label="Настройка колонок"><Icon id="cols" size={20} /></button>
           </Hint>

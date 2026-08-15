@@ -14,9 +14,11 @@
 
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { transaction } from '@/db/pool';
+import { query, transaction } from '@/db/pool';
 import { currentUser } from '@/lib/session';
 import { addWorkHours, toWindow } from '@/domain/workhours';
+import { measuredBaseline } from '@/services/baseline';
+import { BASELINE_DAYS } from '@/domain/baseline';
 
 /* Буквенные коды месторождений для номера рекомендации. В ВМАП код числовой и
    у четырёх Южно-Ягунских общий, поэтому список свой — тот же, что в макете и
@@ -74,6 +76,40 @@ async function исполнитель(recId: number, form: string) {
  */
 export async function зарегистрировать(recId: number): Promise<void> {
   const user = await исполнитель(recId, 'register');
+  const сейчас = new Date();
+
+  /* База по замерам привязана именно к регистрации. Черновик мог лежать
+     неделю, поэтому значение, показанное при создании, нельзя молча выпускать
+     как актуальное. Ручную базу сохраняем: её автор уже осознанно заменил и
+     обосновал договорный способ. Сеть вызываем до транзакции, чтобы не держать
+     блокировку рекомендации, пока отвечает чужой стенд. */
+  const подготовка = await query<{ well_id: string | null; baseline_source: string | null }>(`
+    SELECT r.well_id::text,
+           (SELECT b.source FROM rec.baselines b
+            WHERE b.rec_id = r.id AND b.status = 'accepted'
+            ORDER BY b.created_at DESC, b.id DESC LIMIT 1) AS baseline_source
+    FROM rec.recommendations r
+    WHERE r.id = $1 AND r.deleted_at IS NULL
+  `, [recId]);
+
+  let рассчитаннаяБаза: Awaited<ReturnType<typeof measuredBaseline>> | null = null;
+  let ошибкаБазы: string | null = null;
+  const дляБазы = подготовка[0];
+  if (дляБазы && дляБазы.baseline_source !== 'manual') {
+    if (дляБазы.well_id === null) {
+      ошибкаБазы = 'У черновика не выбрана скважина: базовые значения по замерам рассчитать нельзя.';
+    } else {
+      try {
+        рассчитаннаяБаза = await measuredBaseline({ wellId: Number(дляБазы.well_id), until: сейчас });
+        if (рассчитаннаяБаза.usedDays === 0
+          || рассчитаннаяБаза.baseQzh === null || рассчитаннаяБаза.baseQn === null) {
+          ошибкаБазы = 'По скважине недостаточно замеров для базы. Введите ручные значения и обоснование.';
+        }
+      } catch {
+        ошибкаБазы = 'Не удалось получить замеры ВМАП для базовых значений. Повторите регистрацию или введите базу вручную.';
+      }
+    }
+  }
 
   const ошибка = await transaction(async (client) => {
     const { rows } = await client.query(`
@@ -93,9 +129,25 @@ export async function зарегистрировать(recId: number): Promise<v
     if (!rec.problem?.trim() || !rec.action?.trim()) {
       return 'В черновике не заполнены проблема или рекомендуемое мероприятие.';
     }
+    if (ошибкаБазы) return ошибкаБазы;
+
+    if (рассчитаннаяБаза) {
+      await client.query(`
+        UPDATE rec.baselines SET status = 'superseded'
+        WHERE rec_id = $1 AND status = 'accepted'
+      `, [recId]);
+      await client.query(`
+        INSERT INTO rec.baselines
+          (rec_id, base_qzh, base_qn, base_ee, source, period_from, period_to,
+           status, created_by, author_name, note)
+        VALUES ($1,$2,$3,NULL,'measured',$4,$5,'accepted',$6,$7,$8)
+      `, [recId, рассчитаннаяБаза.baseQzh, рассчитаннаяБаза.baseQn,
+        рассчитаннаяБаза.periodFrom, рассчитаннаяБаза.periodTo,
+        user!.id, user!.fullName,
+        `По ${рассчитаннаяБаза.usedDays} из ${BASELINE_DAYS} суток до регистрации`]);
+    }
 
     const код = КОДЫ[rec.field_name] ?? 'XX';
-    const сейчас = new Date();
     const год = сейчас.getFullYear();
 
     /* Счётчик, а не max(number): при двух одновременных регистрациях max()

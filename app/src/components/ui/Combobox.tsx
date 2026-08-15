@@ -29,6 +29,7 @@ export function Combobox({
   disabled,
   invalid,
   id,
+  ariaDescribedBy,
 }: {
   name: string;
   options: SelectOption[];
@@ -41,6 +42,7 @@ export function Combobox({
   disabled?: boolean;
   invalid?: boolean;
   id?: string;
+  ariaDescribedBy?: string;
 }) {
   const [open, setOpen] = React.useState(false);
   const [uncontrolledValue, setUncontrolledValue] = React.useState(defaultValue ?? '');
@@ -65,6 +67,7 @@ export function Combobox({
           aria-expanded={open}
           aria-required={required}
           aria-invalid={invalid}
+          aria-describedby={ariaDescribedBy}
           disabled={disabled}
           data-placeholder={selected ? undefined : ''}
           className="inp combo__inp h-auto justify-start rounded-[var(--corner-radius-component)] px-[var(--item-padding-horizontal-m)] py-[var(--item-padding-vertical-s)] font-normal shadow-none hover:bg-background"
