@@ -24,7 +24,7 @@ export const ВКЛАДКИ: TabDef[] = [
   { key: 'summary', label: 'Сводка', ready: true },
   { key: 'impl', label: 'Реализация', ready: true },
   { key: 'effect', label: 'Расчёт эффекта', ready: true },
-  { key: 'analogs', label: 'Аналоги' },
+  { key: 'analogs', label: 'Аналоги', ready: true },
   { key: 'files', label: 'Файлы', ready: true },
   { key: 'links', label: 'Связи' },
   { key: 'log', label: 'История и обсуждение', ready: true },

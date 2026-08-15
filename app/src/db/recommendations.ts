@@ -46,6 +46,53 @@ export interface RecommendationRow {
   windowCloseAt: Date | null;
 }
 
+export interface AnalogRecommendation {
+  id: number;
+  number: string;
+  statusName: string;
+  tone: string;
+  filled: boolean;
+  wellNumber: string;
+  fieldName: string;
+  problem: string;
+  completeness: 'full' | 'partial' | null;
+  registeredAt: Date;
+}
+
+/** Последний опыт по тому же направлению на других скважинах (решение 88). */
+export async function listAnalogs(recId: number, limit = 5): Promise<AnalogRecommendation[]> {
+  const rows = await query<Record<string, unknown>>(`
+    SELECT r.id, r.number, s.name AS status_name, s.tone, s.filled,
+           r.well_number, r.field_name, r.problem, r.completeness, r.registered_at
+    FROM rec.recommendations r
+    JOIN rec.statuses s ON s.code = r.status
+    JOIN rec.recommendations current ON current.id = $1
+    WHERE r.deleted_at IS NULL
+      AND r.status <> 'draft'
+      AND r.registered_at IS NOT NULL
+      AND r.direction_id = current.direction_id
+      AND NOT (
+        r.well_number = current.well_number
+        AND r.field_id IS NOT DISTINCT FROM current.field_id
+      )
+    ORDER BY r.registered_at DESC, r.id DESC
+    LIMIT $2
+  `, [recId, limit]);
+
+  return rows.map((r) => ({
+    id: Number(r.id),
+    number: r.number as string,
+    statusName: r.status_name as string,
+    tone: r.tone as string,
+    filled: r.filled as boolean,
+    wellNumber: r.well_number as string,
+    fieldName: r.field_name as string,
+    problem: r.problem as string,
+    completeness: r.completeness as 'full' | 'partial' | null,
+    registeredAt: r.registered_at as Date,
+  }));
+}
+
 export async function listStatuses(): Promise<StatusRef[]> {
   const rows = await query<{
     code: string; name: string; tone: string; filled: boolean;
