@@ -24,6 +24,7 @@
 
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Tabs as Сегменты, TabsList, TabsTrigger } from '@/components/animate-ui/components/radix/tabs';
@@ -33,6 +34,8 @@ export function Tabs({ recId, counts }: { recId: number; counts: Record<string, 
   const path = usePathname();
   const router = useRouter();
   const текущая = ВКЛАДКИ.find((t) => path === `/rec/${recId}/${t.key}`)?.key ?? '';
+
+  ПрогревВкладок(recId, текущая, router);
 
   return (
     /* Вертикальный отступ — инлайном: `.tabs` из card.css задаёт `padding: 0
@@ -62,12 +65,13 @@ export function Tabs({ recId, counts }: { recId: number; counts: Record<string, 
 
             return (
               <TabsTrigger key={t.key} value={t.key} asChild>
-                {/* prefetch грузит вкладку заранее, ещё до нажатия. Раньше он
-                    ничего не давал: у динамической страницы без своей заглушки
-                    предзагружать нечего. Теперь у каждой вкладки есть
-                    loading.tsx, и при наведении приезжает и она, и данные —
-                    вкладка открывается почти мгновенно. */}
-                <Link href={`/rec/${recId}/${t.key}`} prefetch>{внутри}</Link>
+                {/* prefetch выключен намеренно: предзагрузкой заведует
+                    `ПрогревВкладок` ниже. Свой у Link запускается по появлению
+                    ссылки в поле зрения, то есть одновременно с загрузкой самой
+                    открытой вкладки — пять рендеров наперегонки за один сервер.
+                    Вкладки за краем горизонтальной прокрутки он при этом не
+                    трогает вовсе. */}
+                <Link href={`/rec/${recId}/${t.key}`} prefetch={false}>{внутри}</Link>
               </TabsTrigger>
             );
           })}
@@ -76,3 +80,66 @@ export function Tabs({ recId, counts }: { recId: number; counts: Record<string, 
     </div>
   );
 }
+
+/* Прогрев остальных вкладок.
+ *
+ * Порядок намеренный: сперва открытая вкладка, и только после её отрисовки —
+ * запрос за остальными. Обратный (предзагрузка вместе с открытием) заставляет
+ * пять рендеров делить один сервер и замедляет ровно то, что человек сейчас
+ * ждёт. Отсюда useEffect: он выполняется после гидрации, то есть когда
+ * открытая вкладка уже на экране.
+ *
+ * Вкладки берутся по очереди, а не залпом. Рендер каждой ходит в базу, а на
+ * деве ещё и компилирует маршрут; параллельно они мешают друг другу и
+ * последней навигации пользователя.
+ *
+ * В деве prefetch у Next отключён наглухо — `createPrefetchURL` возвращает
+ * null при NODE_ENV === 'development', и `router.prefetch` молча ничего не
+ * делает (то же и у Link). Поэтому там маршрут прогревается своим запросом с
+ * заголовком RSC. В клиентский кэш роутера такой ответ не ляжет — это умеет
+ * только сам роутер, — но маршрут скомпилируется и данные прочитаются, а
+ * именно это на деве и составляет задержку.
+ */
+function ПрогревВкладок(recId: number, текущая: string, router: ReturnType<typeof useRouter>) {
+  useEffect(() => {
+    if (!текущая) return;
+
+    const адреса = ВКЛАДКИ
+      .filter((t) => t.ready && t.key !== текущая)
+      .map((t) => `/rec/${recId}/${t.key}`);
+
+    let отменено = false;
+
+    const прогреть = async () => {
+      for (const href of адреса) {
+        if (отменено) return;
+        if (process.env.NODE_ENV === 'production') {
+          router.prefetch(href);
+          /* prefetch синхронный и в очередь не встаёт, поэтому паузу между
+             вкладками ставим сами — иначе залп из пяти запросов. */
+          await новыйКадр(120);
+        } else {
+          await fetch(href, { headers: { RSC: '1' }, credentials: 'same-origin' }).catch(() => {});
+        }
+      }
+    };
+
+    /* Пауза до начала прогрева: дать открытой вкладке дорисоваться и дожить
+       свои запросы. requestIdleCallback точнее таймера, но в Safari его нет.
+       Отменять эти два надо разными функциями и ни в коем случае не обеими:
+       дескрипторы у них из разных пространств, и clearTimeout по номеру
+       простоя погасил бы чужой таймер с тем же номером. */
+    const простой = typeof requestIdleCallback === 'function';
+    const запуск = простой
+      ? requestIdleCallback(() => void прогреть(), { timeout: 1500 })
+      : window.setTimeout(() => void прогреть(), 400);
+
+    return () => {
+      отменено = true;
+      if (простой) cancelIdleCallback(запуск);
+      else clearTimeout(запуск);
+    };
+  }, [recId, текущая, router]);
+}
+
+const новыйКадр = (мс: number) => new Promise((r) => setTimeout(r, мс));
