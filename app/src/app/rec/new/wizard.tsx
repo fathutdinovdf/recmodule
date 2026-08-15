@@ -431,7 +431,7 @@ function ObjectStep({ fieldOptions, fieldId, chooseField, wellOptions, draft, up
           searchable searchPlaceholder="Номер скважины…"
           options={wellOptions.map((well) => ({ value: String(well.wellId), label: well.number, note: `куст ${well.kust}` }))}
           placeholder="Найдите скважину" invalid={invalid} emptyText="В выбранном месторождении скважина не найдена" />
-        <FieldDescription>Полное действующее дерево ТПП «Когалымнефтегаз». Готовность замеров проверяется после выбора.</FieldDescription>
+        <FieldDescription>Добывающие скважины ТПП «Когалымнефтегаз» (тип 1). Готовность замеров проверяется после выбора.</FieldDescription>
         {invalid && <FieldError id="registration-well-error">Выберите скважину.</FieldError>}
       </Field>
     </div>

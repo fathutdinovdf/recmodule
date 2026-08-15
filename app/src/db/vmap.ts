@@ -78,6 +78,14 @@ export const listRegistrationWells = cache(async (): Promise<RegistrationVmapWel
      AND t."DeleteDate" IS NULL
     WHERE w."DeleteDate" IS NULL
       AND t."Name" = 'ТПП "Когалымнефтегаз"'
+      AND EXISTS (
+        SELECT 1
+        FROM ${VMAP_SCHEMA}."WellData" well_type
+        WHERE well_type."WellId" = w."Id"
+          AND well_type."ParameterId" = ${PARAM.WELL_TYPE}
+          AND well_type."DeleteDate" IS NULL
+          AND trim(well_type."Value") = '1'
+      )
     ORDER BY f."Name", lower(w."Name"), w."Name"
   `);
   return rows.map((row) => ({
