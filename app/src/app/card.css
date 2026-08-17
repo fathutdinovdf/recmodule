@@ -133,7 +133,7 @@
 .fc:first-child { padding-left: 0; border-left: 0; }
 
 .fc__k {
-  font: var(--font-weight-text) var(--font-size-text-small) / 1.2 var(--font-family-text);
+  font: var(--font-weight-text) var(--font-size-text-medium) / 1.2 var(--font-family-text);
   color: var(--text-quaternary);
 }
 .fc__v {
