@@ -8,9 +8,10 @@
  * Ожидаемый результат сюда не дублируется: он вынесен полосой прогноза под
  * шапку, где виден всегда и не уезжает за прокрутку.
  *
- * Форма решения раскрывается не состоянием, а параметром адреса `form`, и
- * ошибка возвращается параметром `err`: подтверждение переживает перезагрузку,
- * а ссылку на него можно переслать.
+ * Форма решения раскрывается состоянием, а не переходом: окно стоит в
+ * разметке закрытым, кнопка на вкладке — его `trigger`. `?form=…` задаёт лишь
+ * НАЧАЛЬНУЮ открытость (присланная ссылка, перезагрузка) — тот же приём, что у
+ * спора о базе (`useОкноДействия`).
  *
  * Сама форма — окно поверх карточки, как действия из меню и разбор спора о
  * базе. Решение Заказчика необратимо (отменить принятие из интерфейса нельзя),
@@ -20,37 +21,26 @@
  * JavaScript; тот же размен уже принят для остальных окон действий.
  */
 
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getCard, type Card } from '@/db/card';
 import { getRejectReasons } from '@/db/refs';
 import { currentUser, type SessionUser } from '@/lib/session';
 import { control, fmtDur } from '@/domain/workhours';
 import { дата } from '@/lib/format';
-import { Combobox } from '@/components/ui/Combobox';
-import { Button } from '@/components/ui/Button';
-import { Textarea } from '@/components/ui/Textarea';
-import { PlannedDatePicker } from '@/components/ui/PlannedDatePicker';
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
-import { ActionDialog } from '@/components/ui/ActionDialog';
-import { SubmitButton } from '@/components/ui/SubmitButton';
-import { DialogClose, DialogFooter } from '@/components/ui/dialog';
 import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
 import { Separator } from '@/components/ui/separator';
-import { окно } from '../form-meta';
-import { решить, отметитьОткрытие } from '../actions';
-import { ФормаДействия, ЖИЗНЕННЫЕ_ФОРМЫ, type ЖизненнаяФорма } from './lifecycle-forms';
+import { отметитьОткрытие } from '../actions';
+import { ФормыДействий } from './lifecycle-forms';
+import { ОкноПринятия, ОкноОтклонения, ОкноУточнения } from './decision-forms';
 
 export const dynamic = 'force-dynamic';
 
-type Форма = 'accept' | 'reject' | 'clarify';
-
 export default async function Page({ params, searchParams }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ form?: string; err?: string }>;
+  searchParams: Promise<{ form?: string }>;
 }) {
   const { id } = await params;
-  const { form, err } = await searchParams;
+  const { form } = await searchParams;
   const card = await getCard(Number(id));
   if (!card) notFound();
 
@@ -59,18 +49,14 @@ export default async function Page({ params, searchParams }: {
   await отметитьОткрытие(card.id, card.status);
 
   const [user, причины] = await Promise.all([currentUser(), getRejectReasons()]);
-  const открытая: Форма | null = form === 'accept' || form === 'reject' || form === 'clarify'
-    ? form : null;
 
-  /* Форма действия из меню шапки показывается только Исполнителю: все эти
+  /* Формы действий из меню шапки показываются только Исполнителю: все эти
      операции — его. Заказчику меню и не отдаётся, но адрес можно ввести руками. */
-  const действие = user?.side === 'executor'
-    && ЖИЗНЕННЫЕ_ФОРМЫ.includes(form as ЖизненнаяФорма)
-    ? form as ЖизненнаяФорма : null;
+  const исполнитель = user?.side === 'executor';
 
   return (
     <>
-      {действие && <ФормаДействия card={card} вид={действие} ошибка={err} />}
+      {исполнитель && <ФормыДействий card={card} форма={form} />}
       <div className="mb-[var(--section-gap-default)] flex flex-col gap-4">
         <section className="flex flex-col gap-1.5">
           <h2 className="m-0 text-sm font-medium text-muted-foreground">Проблема / отклонение</h2>
@@ -98,7 +84,7 @@ export default async function Page({ params, searchParams }: {
         </Item>
       </div>
 
-      <БлокРешения card={card} user={user} открытая={открытая} ошибка={err} причины={причины} />
+      <БлокРешения card={card} user={user} форма={form} причины={причины} />
     </>
   );
 }
@@ -120,41 +106,23 @@ const ПОДПИСЬ_КОНТРОЛЯ: Record<string, string> = {
   none: 'срок ответа не задан',
 };
 
-function БлокРешения({ card, user, открытая, ошибка, причины }: {
+function БлокРешения({ card, user, форма, причины }: {
   card: Card;
   user: SessionUser | null;
-  открытая: Форма | null;
-  ошибка?: string;
+  форма?: string;
   причины: { id: number; name: string }[];
 }) {
-  if (card.status === 'draft' || card.status === 'registered') {
-    return (
-      <div className="decision decision--done">
-        <div className="decision__h">Решение Заказчика</div>
-        <div className="decision__hint">
-          Рекомендация ещё не передана Заказчику
-          {card.status === 'registered' && card.sentAt
-            ? `. Передача произойдёт ${дата(card.sentAt, true)}, с открытием рабочего дня.` : '.'}
-        </div>
-      </div>
-    );
+  /* Блок «Решение Заказчика» показывается только пока рекомендация у него на
+     решении и когда решение — отказ; на остальных статусах (черновик,
+     зарегистрирована, отменена, принята, уточнение) он ничего не добавляет к
+     уже видной вкладке и только занимает место. */
+  if (card.status === 'draft' || card.status === 'registered' || card.status === 'cancelled') {
+    return null;
   }
 
-  /* Отменённая рекомендация решения не получит никогда: её отменил Исполнитель
-     до передачи, Заказчик её не видел. Без этой ветки блок доходил бы до
-     кнопок «Принять / Отклонить», а они там бессмысленны. */
-  if (card.status === 'cancelled') {
-    return (
-      <div className="decision decision--done">
-        <div className="decision__h">Решение Заказчика</div>
-        <div className="decision__hint">
-          Рекомендация отменена Исполнителем до передачи — решения по ней нет и не будет.
-        </div>
-      </div>
-    );
+  if (card.decision) {
+    return card.decision.kind === 'reject' ? <ПринятоеРешение card={card} /> : null;
   }
-
-  if (card.decision) return <ПринятоеРешение card={card} />;
 
   const c = control({
     status: card.status, sentAt: card.sentAt, dueAt: card.dueAt, repliedAt: card.repliedAt,
@@ -189,15 +157,14 @@ function БлокРешения({ card, user, открытая, ошибка, п
         Норматив ответа — {card.slaHours ?? '—'} рабочих часов с момента передачи, {срок}.
       </div>
 
-      {/* Кнопки не прячутся под открытой формой: окно портируется наружу, и
-          из-под него видно, по какой рекомендации принимается решение. */}
+      {/* Кнопка — она же `trigger` своего окна: открытие мгновенное, без
+          навигации, и из-под открытого окна по-прежнему видно, по какой
+          рекомендации принимается решение. */}
       <div className="decision__btns">
-        <Button variant="success" asChild><Link href="?form=accept">Принять</Link></Button>
-        <Button variant="destructive" asChild><Link href="?form=reject">Отклонить</Link></Button>
-        <Button variant="warning" asChild><Link href="?form=clarify">Требует уточнения</Link></Button>
+        <ОкноПринятия card={card} стартОткрыто={форма === 'accept'} />
+        <ОкноОтклонения card={card} причины={причины} стартОткрыто={форма === 'reject'} />
+        <ОкноУточнения card={card} стартОткрыто={форма === 'clarify'} />
       </div>
-
-      {открытая && <ОкноРешения card={card} вид={открытая} ошибка={ошибка} причины={причины} />}
     </div>
   );
 }
@@ -251,92 +218,3 @@ function ПринятоеРешение({ card }: { card: Card }) {
   );
 }
 
-/* ------------------------------ формы ------------------------------ */
-
-function ОкноРешения({ card, вид, ошибка, причины }: {
-  card: Card;
-  вид: Форма;
-  ошибка?: string;
-  причины: { id: number; name: string }[];
-}) {
-  const ошибкаПричины = вид === 'reject' && ошибка?.startsWith('Выберите причину') ? ошибка : undefined;
-  const ошибкаТекста = ошибка && !ошибкаПричины ? ошибка : undefined;
-
-  return (
-    <ActionDialog {...окно(вид)}>
-    <form action={решить.bind(null, вид, card.id)}>
-      {вид === 'accept' && (
-        <>
-          <FieldGroup>
-            <Field>
-              <FieldLabel>Плановая дата работ <span className="text-muted-foreground">необязательно</span></FieldLabel>
-              <PlannedDatePicker />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="decision-comment">Комментарий <span className="text-muted-foreground">необязательно</span></FieldLabel>
-              <Textarea id="decision-comment" name="text" rows={3}
-                        placeholder="Например: работы включены в план на неделю, ответственный — мастер по добыче." />
-            </Field>
-          </FieldGroup>
-        </>
-      )}
-
-      {вид === 'reject' && (
-        <>
-          <FieldGroup>
-            <Field data-invalid={Boolean(ошибкаПричины)}>
-              <FieldLabel htmlFor="reject-reason-kind">Причина</FieldLabel>
-              <Combobox id="reject-reason-kind" name="reason" required invalid={Boolean(ошибкаПричины)}
-                        placeholder="Выберите причину"
-                        options={причины.map((r) => ({ value: r.name, label: r.name }))} />
-              <FieldError>{ошибкаПричины}</FieldError>
-            </Field>
-            <Field data-invalid={Boolean(ошибкаТекста)}>
-              <FieldLabel htmlFor="reject-reason">Обоснование <span className="text-muted-foreground">обязательно</span></FieldLabel>
-              <Textarea id="reject-reason" name="text" rows={4}
-                        aria-invalid={Boolean(ошибкаТекста)}
-                        placeholder="Что сделано или планируется вместо рекомендованного, почему рекомендация не принимается." />
-              <FieldError>{ошибкаТекста}</FieldError>
-            </Field>
-          </FieldGroup>
-          <div className="form__hint">
-            В реестре обоснование попадёт в колонку «Обоснование при отклонении».
-          </div>
-        </>
-      )}
-
-      {вид === 'clarify' && (
-        <>
-          <Field data-invalid={Boolean(ошибкаТекста)}>
-            <FieldLabel htmlFor="clarify-request">Что требуется уточнить <span className="text-muted-foreground">обязательно</span></FieldLabel>
-            <Textarea id="clarify-request" name="text" rows={4}
-                      aria-invalid={Boolean(ошибкаТекста)}
-                      placeholder="Какого расчёта, замера или пояснения не хватает для решения." />
-            <FieldError>{ошибкаТекста}</FieldError>
-          </Field>
-          <div className="form__hint">
-            Вся цепочка кругов уточнения сохраняется в истории.
-          </div>
-        </>
-      )}
-
-      <DialogFooter className="mt-4">
-        <SubmitButton variant={КНОПКА[вид].вариант} pendingText="Отправляю…">
-          {КНОПКА[вид].текст}
-        </SubmitButton>
-        {/* Отмена — штатное закрытие окна: так одинаково работают кнопка, Esc
-            и клик мимо окна. */}
-        <DialogClose asChild>
-          <Button type="button" variant="outline">Отмена</Button>
-        </DialogClose>
-      </DialogFooter>
-    </form>
-    </ActionDialog>
-  );
-}
-
-const КНОПКА: Record<Форма, { текст: string; вариант: 'success' | 'destructive' | 'warning' }> = {
-  accept: { текст: 'Подтвердить решение', вариант: 'success' },
-  reject: { текст: 'Отклонить', вариант: 'destructive' },
-  clarify: { текст: 'Отправить запрос', вариант: 'warning' },
-};

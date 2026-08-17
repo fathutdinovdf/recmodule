@@ -90,6 +90,7 @@ function DialogContent({
   const rotateAxis = from === 'top' || from === 'bottom' ? 'rotateX' : 'rotateY';
   const transform = (rotation: string, scale: number) =>
     `perspective(700px) ${rotateAxis}(${rotation}) scale(${scale})`;
+  const contentRef = React.useRef<HTMLDivElement>(null);
 
   return (
     <DialogPrimitive.Content
@@ -104,10 +105,25 @@ function DialogContent({
       <motion.div
         key="dialog-content"
         data-slot="dialog-content"
+        ref={contentRef}
         initial={{ opacity: 0, filter: 'blur(2px)', transform: transform(initialRotation, 0.96) }}
         animate={{ opacity: 1, filter: 'blur(0px)', transform: transform('0deg', 1) }}
         exit={{ opacity: 0, filter: 'blur(2px)', transform: transform(initialRotation, 0.96) }}
         transition={transition}
+        /* Пружина асимптотически подходит к rotate 0/scale 1, не попадая в них
+           точно: остаточные доли градуса держат слой в 3D-композиции, и текст
+           с картинками внутри окна рендерятся мимо пиксельной сетки — отсюда
+           смазанность после открытия. Дообнуляем transform и filter вручную,
+           когда анимация открытия закончилась. */
+        onAnimationComplete={() => {
+          /* Срабатывает и на закрытии тоже — элемент к этому моменту либо
+             виден с чистым transform, либо уже уходит из DOM, так что сброс
+             безвреден в обоих случаях. */
+          if (contentRef.current) {
+            contentRef.current.style.transform = 'none';
+            contentRef.current.style.filter = 'none';
+          }
+        }}
         {...props}
       />
     </DialogPrimitive.Content>

@@ -24,7 +24,7 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Tabs as Сегменты, TabsList, TabsTrigger } from '@/components/animate-ui/components/radix/tabs';
@@ -36,6 +36,7 @@ export function Tabs({ recId, counts }: { recId: number; counts: Record<string, 
   const текущая = ВКЛАДКИ.find((t) => path === `/rec/${recId}/${t.key}`)?.key ?? '';
 
   ПрогревВкладок(recId, текущая, router);
+  const { приехало, новое } = ЖивойСчётчикОбсуждения(recId, текущая);
 
   return (
     /* Вертикальный отступ — инлайном: `.tabs` из card.css задаёт `padding: 0
@@ -49,8 +50,21 @@ export function Tabs({ recId, counts }: { recId: number; counts: Record<string, 
                 className="min-w-0 overflow-x-auto scrollbar-none">
         <TabsList>
           {ВКЛАДКИ.map((t) => {
-            const n = counts[t.key];
-            const внутри = <>{t.label}{n ? <span className="tab__n"> {n}</span> : null}</>;
+            /* Счётчик обсуждения живой: реплики, приехавшие по каналу, пока
+               человек в карточке, прибавляются к серверному числу. */
+            const свежих = t.key === 'log' ? приехало : 0;
+            const n = (counts[t.key] ?? 0) + свежих;
+            const непрочитанные = t.key === 'log' && новое;
+            const внутри = (
+              <>
+                {t.label}
+                {n ? <span className={`tab__n ${непрочитанные ? 'tab__n--new' : ''}`}> {n}</span> : null}
+                {/* Точка — единственное, что отличает «есть новое» от просто
+                    счётчика: число само по себе не меняется на глазах, если
+                    человек на другой вкладке и не помнит прежнего. */}
+                {непрочитанные && <i className="tab__dot" aria-label="есть новые сообщения" />}
+              </>
+            );
 
             /* Вкладка без своей страницы остаётся в полосе приглушённой: по ней
                видно объём модуля, но вести ей некуда. */
@@ -99,32 +113,57 @@ export function Tabs({ recId, counts }: { recId: number; counts: Record<string, 
  * заголовком RSC. В клиентский кэш роутера такой ответ не ляжет — это умеет
  * только сам роутер, — но маршрут скомпилируется и данные прочитаются, а
  * именно это на деве и составляет задержку.
+ *
+ * Прогретое протухает: запись в кэше роутера живёт `staleTimes.dynamic` секунд
+ * (см. next.config.mjs), и через полминуты чтения сводки переход на соседнюю
+ * вкладку снова пошёл бы на сервер со скелетоном. Поэтому прогрев не разовый,
+ * а повторяется чуть чаще, чем протухает.
+ *
+ * Что при этом сделано, чтобы повтор не превратился в поток запросов:
+ *
+ * - эффект не зависит от активной вкладки (она читается из ref), иначе
+ *   переключение перезапускало бы цикл и слало запросы вне очереди;
+ * - в скрытой вкладке браузера тик пропускается: греть кэш никому не видной
+ *   страницы незачем. При возврате прогрев идёт сразу, не дожидаясь тика;
+ * - на деве повтора нет вовсе. Там прогрев не кэширует (кэш пишет только
+ *   роутер, а его prefetch в dev выключен) — он лишь компилирует маршрут, и
+ *   второй раз это уже ничего не даёт.
  */
+const ПЕРИОД_ПРОГРЕВА = 150_000; // staleTimes.dynamic = 180 с, обновляем с запасом
+
 function ПрогревВкладок(recId: number, текущая: string, router: ReturnType<typeof useRouter>) {
+  const активная = useRef(текущая);
+  активная.current = текущая;
+
   useEffect(() => {
-    if (!текущая) return;
-
-    const адреса = ВКЛАДКИ
-      .filter((t) => t.ready && t.key !== текущая)
-      .map((t) => `/rec/${recId}/${t.key}`);
-
     let отменено = false;
+    let идёт = false;
 
     const прогреть = async () => {
-      for (const href of адреса) {
-        if (отменено) return;
-        if (process.env.NODE_ENV === 'production') {
-          router.prefetch(href);
-          /* prefetch синхронный и в очередь не встаёт, поэтому паузу между
-             вкладками ставим сами — иначе залп из пяти запросов. */
-          await новыйКадр(120);
-        } else {
-          await fetch(href, { headers: { RSC: '1' }, credentials: 'same-origin' }).catch(() => {});
+      /* Второй заход поверх незакончившегося первого удвоил бы запросы. */
+      if (идёт || отменено || document.hidden) return;
+      идёт = true;
+      try {
+        for (const t of ВКЛАДКИ) {
+          if (отменено) return;
+          /* Открытая вкладка отрисована — её греть нечего. */
+          if (!t.ready || t.key === активная.current) continue;
+          const href = `/rec/${recId}/${t.key}`;
+          if (process.env.NODE_ENV === 'production') {
+            router.prefetch(href);
+            /* prefetch синхронный и в очередь не встаёт, поэтому паузу между
+               вкладками ставим сами — иначе залп из пяти запросов. */
+            await новыйКадр(120);
+          } else {
+            await fetch(href, { headers: { RSC: '1' }, credentials: 'same-origin' }).catch(() => {});
+          }
         }
+      } finally {
+        идёт = false;
       }
     };
 
-    /* Пауза до начала прогрева: дать открытой вкладке дорисоваться и дожить
+    /* Пауза до первого прогрева: дать открытой вкладке дорисоваться и дожить
        свои запросы. requestIdleCallback точнее таймера, но в Safari его нет.
        Отменять эти два надо разными функциями и ни в коем случае не обеими:
        дескрипторы у них из разных пространств, и clearTimeout по номеру
@@ -134,12 +173,66 @@ function ПрогревВкладок(recId: number, текущая: string, rou
       ? requestIdleCallback(() => void прогреть(), { timeout: 1500 })
       : window.setTimeout(() => void прогреть(), 400);
 
+    /* Повтор — только в проде: см. комментарий выше. */
+    const повтор = process.env.NODE_ENV === 'production'
+      ? window.setInterval(() => void прогреть(), ПЕРИОД_ПРОГРЕВА)
+      : null;
+
+    const приВозврате = () => { if (!document.hidden) void прогреть(); };
+    document.addEventListener('visibilitychange', приВозврате);
+
     return () => {
       отменено = true;
       if (простой) cancelIdleCallback(запуск);
       else clearTimeout(запуск);
+      if (повтор !== null) clearInterval(повтор);
+      document.removeEventListener('visibilitychange', приВозврате);
     };
-  }, [recId, текущая, router]);
+  }, [recId, router]);
 }
 
 const новыйКадр = (мс: number) => new Promise((r) => setTimeout(r, мс));
+
+/* Живой счётчик обсуждения.
+ *
+ * Полоса вкладок живёт в layout карточки, то есть переживает переходы между
+ * вкладками, — поэтому канал слушать удобнее всего отсюда: реплика, пришедшая
+ * пока человек смотрит расчёт эффекта, видна сразу, а не после захода в
+ * обсуждение.
+ *
+ * Пока открыто само обсуждение, канал здесь НЕ слушается: чат держит свой, а
+ * два соединения к одному потоку на страницу — лишний расход и на сервере, и в
+ * лимите соединений браузера. Заодно это решает вопрос «считать ли новым то,
+ * что человек видит прямо сейчас»: не считаем вовсе.
+ *
+ * Счётчик поверх серверного числа, а не вместо него: layout при переходах
+ * между вкладками не перерисовывается, свежее число оттуда не придёт.
+ */
+function ЖивойСчётчикОбсуждения(recId: number, текущая: string) {
+  const [приехало, setПриехало] = useState(0);
+  const [новое, setНовое] = useState(false);
+
+  useEffect(() => {
+    /* Открыли обсуждение — пометка снята, а надбавка обнулена: чат при
+       открытии просит свежий рендер, и серверное число приезжает уже с этими
+       репликами. Не обнулить — они посчитались бы дважды. */
+    if (текущая === 'log') {
+      setНовое(false);
+      setПриехало(0);
+      return;
+    }
+    if (!текущая) return; // адрес ещё не сопоставлен со вкладкой
+
+    const канал = new EventSource(`/api/rec/${recId}/stream`);
+    канал.addEventListener('comment', () => {
+      setПриехало((n) => n + 1);
+      setНовое(true);
+    });
+    return () => канал.close();
+  }, [recId, текущая]);
+
+  /* Соседняя рекомендация — свой счёт с нуля. */
+  useEffect(() => { setПриехало(0); setНовое(false); }, [recId]);
+
+  return { приехало, новое };
+}

@@ -32,27 +32,34 @@ DialogContentProps & { showCloseButton?: boolean }) {
   return (
     <DialogPortal>
       <DialogOverlay />
-      <DialogContentPrimitive
-        className={cn(
-          'fixed top-1/2 left-1/2 z-50 grid w-full max-w-[480px] -translate-x-1/2 -translate-y-1/2',
-          'gap-4 rounded-xl border border-border bg-background p-6 shadow-lg',
-          className,
-        )}
-        {...props}
-      >
-        {children}
-        {showCloseButton && (
-          <DialogClose
-            data-slot="dialog-close"
-            aria-label="Закрыть"
-            /* Рамку и фон снимаем явно: в registry.css у button есть свои,
-               и без сброса крестик выглядит второй кнопкой рядом с формой. */
-            className="absolute top-4 right-4 rounded-sm border-0 bg-transparent p-0 text-muted-foreground opacity-70 transition-opacity hover:opacity-100 focus-visible:ring-[3px] focus-visible:ring-ring/35 focus-visible:outline-none"
-          >
-            <XIcon className="size-4" />
-          </DialogClose>
-        )}
-      </DialogContentPrimitive>
+      {/* Центрирование — flex-контейнером, а не `translate(-50%,-50%)`: у
+          процентного translate дробный физический пиксель, и при сочетании
+          с transform-анимацией окна (perspective/rotate/scale) итоговый слой
+          то попадает на пиксельную сетку, то нет — отсюда текст, чёткость
+          которого плавает при смене масштаба страницы. */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+        <DialogContentPrimitive
+          className={cn(
+            'pointer-events-auto grid w-full max-w-[480px]',
+            'gap-4 rounded-xl border border-border bg-background p-6 shadow-lg',
+            className,
+          )}
+          {...props}
+        >
+          {children}
+          {showCloseButton && (
+            <DialogClose
+              data-slot="dialog-close"
+              aria-label="Закрыть"
+              /* Рамку и фон снимаем явно: в registry.css у button есть свои,
+                 и без сброса крестик выглядит второй кнопкой рядом с формой. */
+              className="absolute top-4 right-4 rounded-sm border-0 bg-transparent p-0 text-muted-foreground opacity-70 transition-opacity hover:opacity-100 focus-visible:ring-[3px] focus-visible:ring-ring/35 focus-visible:outline-none"
+            >
+              <XIcon className="size-4" />
+            </DialogClose>
+          )}
+        </DialogContentPrimitive>
+      </div>
     </DialogPortal>
   );
 }

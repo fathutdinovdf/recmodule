@@ -24,10 +24,12 @@ export const dynamic = 'force-dynamic';
 
 export default async function Page({ params, searchParams }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ form?: string; err?: string }>;
+  /* err больше не приходит: отказ валидации возвращается ответом действия
+     и остаётся в открытом окне, не трогая адрес. */
+  searchParams: Promise<{ form?: string }>;
 }) {
   const { id } = await params;
-  const { form, err } = await searchParams;
+  const { form } = await searchParams;
   /* Карточка и пользователь независимы — берём их одним заходом, а не
      цепочкой: сеть до базы одна и та же, а круговых задержек было две. */
   const [card, user] = await Promise.all([getCard(Number(id)), currentUser()]);
@@ -40,7 +42,7 @@ export default async function Page({ params, searchParams }: {
     getEffect(card),
     card.wellId === null ? null : getWell(card.wellId).catch(() => null),
   ]);
-  if (!eff) return <ОкнаНет card={card} user={user} форма={form} ошибка={err} />;
+  if (!eff) return <ОкнаНет card={card} user={user} форма={form} />;
 
   const спорОДате = card.disputes.find((d) => d.subject === 'fact_date' && d.state === 'open');
   const спорОБазе = card.disputes.find((d) => d.subject === 'baseline' && d.state === 'open');
@@ -90,25 +92,12 @@ export default async function Page({ params, searchParams }: {
       )}
 
       <БлокБазы card={card} user={user} заголовок="База, от которой считается прирост"
-                форма={form} ошибка={err} />
+                форма={form} />
 
-      {/* Спор о дате разбирается на вкладке «Реализация», здесь он показывается
-          справкой: от даты зависит, с какого дня считается окно. */}
-      {спорОДате && (
-        <section>
-          <div className="alertbox">
-            <div className="alertbox__h">Дата реализации оспорена</div>
-            <div className="alertbox__m">
-              {спорОДате.openedByName}, {дата(спорОДате.openedAt, true)} · предложена {дата(спорОДате.proposedDate)}
-            </div>
-            <div className="alertbox__b">{спорОДате.reason}</div>
-            <div className="alertbox__m">
-              Если дату примут, окно сдвинется и расчёт пересоберётся по сохранённым суткам —
-              заново замеры не запрашиваются.
-            </div>
-          </div>
-        </section>
-      )}
+      {/* Спор о дате целиком живёт на вкладке «Реализация» — и разбор, и
+          справка о нём. Здесь он был вторым пересказом того же: на итог влияет
+          признак «предварительный», а разбирать спор отсюда всё равно нельзя.
+          В шапке карточки о нём говорит тег. */}
 
       <section>
         <div className="eff__h">Прогресс окна</div>
@@ -187,8 +176,8 @@ const БЕЗ_ОКНА: Record<string, string> = {
   cancelled: 'Рекомендация отменена Исполнителем — мероприятия не будет, считать нечего.',
 };
 
-function ОкнаНет({ card, user, форма, ошибка }: {
-  card: Card; user: SessionUser | null; форма?: string; ошибка?: string;
+function ОкнаНет({ card, user, форма }: {
+  card: Card; user: SessionUser | null; форма?: string;
 }) {
   const мёртвая = card.status === 'rejected' || card.status === 'cancelled';
   return (
@@ -209,7 +198,7 @@ function ОкнаНет({ card, user, форма, ошибка }: {
           разумнее до начала счёта, а не посреди него. */}
       {card.baseline && (
         <БлокБазы card={card} user={user} заголовок="База уже внесена"
-                  форма={форма} ошибка={ошибка} />
+                  форма={форма} />
       )}
     </div>
   );

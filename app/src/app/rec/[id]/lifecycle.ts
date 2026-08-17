@@ -10,6 +10,14 @@
  * Каждая операция — транзакция со сменой статуса и записью в хронологию:
  * статус без события в истории означает «непонятно, кто и когда», а история
  * рекомендации по договору — доказательство исполнения.
+ *
+ * Ошибка возвращается ЗНАЧЕНИЕМ (`ОтветФормы`), а не редиректом на
+ * `?form=…&err=…`: окна этих действий теперь стоят в разметке закрытыми и
+ * открываются состоянием (`summary/lifecycle-forms.tsx`), а не переходом по
+ * адресу — тот же приём, что у спора о базе. Редирект их закрывал бы и
+ * открывал заново. Успех, где он остаётся навигацией (удаление черновика — на
+ * реестр, копия отклонённой — на новую карточку), — это переход на другую
+ * страницу, а не закрытие окна, и `redirect()` здесь уместен по-прежнему.
  */
 
 import { redirect } from 'next/navigation';
@@ -19,6 +27,11 @@ import { currentUser } from '@/lib/session';
 import { addWorkHours, toWindow } from '@/domain/workhours';
 import { measuredBaseline } from '@/services/baseline';
 import { BASELINE_DAYS } from '@/domain/baseline';
+
+/** Ответ формы. `null` — форму ещё не отправляли. */
+export type ОтветФормы = { ошибка: string } | { готово: true } | null;
+
+const ошибкой = (текст: string): ОтветФормы => ({ ошибка: текст });
 
 /* Буквенные коды месторождений для номера рекомендации. В ВМАП код числовой и
    у четырёх Южно-Ягунских общий, поэтому список свой — тот же, что в макете и
@@ -38,13 +51,11 @@ const КОДЫ: Record<string, string> = {
 
 type Клиент = Parameters<Parameters<typeof transaction>[0]>[0];
 
-function вернуться(recId: number, form: string, ошибка: string): never {
-  redirect(`/rec/${recId}/summary?form=${form}&err=${encodeURIComponent(ошибка)}`);
-}
-
-function готово(recId: number, вкладка = 'summary'): never {
+/* Успех не редиректит: адрес и так тот, что нужен, а `revalidatePath`
+   перерисовывает карточку целиком. Окно закрывает клиент, увидев `готово`. */
+function готово(recId: number): ОтветФормы {
   revalidatePath(`/rec/${recId}`, 'layout');
-  redirect(`/rec/${recId}/${вкладка}`);
+  return { готово: true };
 }
 
 async function событие(client: Клиент, recId: number, kind: string, actor: { id: number; fullName: string },
@@ -56,13 +67,12 @@ async function событие(client: Клиент, recId: number, kind: string,
 }
 
 /** Исполнитель за экраном — общая проверка для всех операций этого файла. */
-async function исполнитель(recId: number, form: string) {
+async function исполнитель() {
   const user = await currentUser();
-  if (!user || user.side !== 'executor') {
-    вернуться(recId, form, 'Это действие выполняет Исполнитель: у вашей учётной записи такого права нет.');
-  }
-  return user;
+  return user && user.side === 'executor' ? user : null;
 }
+
+const НЕТ_ПРАВА = 'Это действие выполняет Исполнитель: у вашей учётной записи такого права нет.';
 
 /* ------------------------------ регистрация ------------------------------ */
 
@@ -74,8 +84,11 @@ async function исполнитель(recId: number, form: string) {
  * Норматив ответа считается от передачи, поэтому у ждущей срок ещё не идёт —
  * статус «Зарегистрировано» ровно об этом.
  */
-export async function зарегистрировать(recId: number): Promise<void> {
-  const user = await исполнитель(recId, 'register');
+export async function зарегистрировать(
+  recId: number, _прошлый: ОтветФормы, _form: FormData,
+): Promise<ОтветФормы> {
+  const user = await исполнитель();
+  if (!user) return ошибкой(НЕТ_ПРАВА);
   const сейчас = new Date();
 
   /* База по замерам привязана именно к регистрации. Черновик мог лежать
@@ -180,8 +193,8 @@ export async function зарегистрировать(recId: number): Promise<v
     return null;
   });
 
-  if (ошибка) вернуться(recId, 'register', ошибка);
-  готово(recId);
+  if (ошибка) return ошибкой(ошибка);
+  return готово(recId);
 }
 
 /* ------------------------------ удаление черновика ------------------------------ */
@@ -192,8 +205,11 @@ export async function зарегистрировать(recId: number): Promise<v
  * Удалить можно только черновик: у зарегистрированной есть номер, она ушла
  * Заказчику, и «удаления» для неё не существует — есть отмена.
  */
-export async function удалить(recId: number): Promise<void> {
-  const user = await исполнитель(recId, 'delete');
+export async function удалить(
+  recId: number, _прошлый: ОтветФормы, _form: FormData,
+): Promise<ОтветФормы> {
+  const user = await исполнитель();
+  if (!user) return ошибкой(НЕТ_ПРАВА);
 
   const ошибка = await transaction(async (client) => {
     const { rows } = await client.query(`
@@ -209,8 +225,10 @@ export async function удалить(recId: number): Promise<void> {
     return null;
   });
 
-  if (ошибка) вернуться(recId, 'delete', ошибка);
+  if (ошибка) return ошибкой(ошибка);
 
+  /* Удаление уводит с карточки — на реестр, её больше нет. Настоящий переход,
+     а не закрытие окна, поэтому redirect() здесь остаётся уместным. */
   revalidatePath('/', 'layout');
   redirect('/');
 }
@@ -223,11 +241,14 @@ export async function удалить(recId: number): Promise<void> {
  * Причина обязательна: рекомендация уже получила номер и попала в отчётность,
  * и «отменено» без объяснения через месяц нечитаемо.
  */
-export async function отменить(recId: number, form: FormData): Promise<void> {
+export async function отменить(
+  recId: number, _прошлый: ОтветФормы, form: FormData,
+): Promise<ОтветФормы> {
   const причина = String(form.get('text') ?? '').trim();
-  if (!причина) вернуться(recId, 'cancel', 'Укажите причину отмены: рекомендация уже выпущена под номером.');
+  if (!причина) return ошибкой('Укажите причину отмены: рекомендация уже выпущена под номером.');
 
-  const user = await исполнитель(recId, 'cancel');
+  const user = await исполнитель();
+  if (!user) return ошибкой(НЕТ_ПРАВА);
 
   const ошибка = await transaction(async (client) => {
     const { rows } = await client.query(`
@@ -250,8 +271,8 @@ export async function отменить(recId: number, form: FormData): Promise<v
     return null;
   });
 
-  if (ошибка) вернуться(recId, 'cancel', ошибка);
-  готово(recId);
+  if (ошибка) return ошибкой(ошибка);
+  return готово(recId);
 }
 
 /* ------------------------------ повторная передача ------------------------------ */
@@ -263,13 +284,16 @@ export async function отменить(recId: number, form: FormData): Promise<v
  * от 30.07.2026. Остаток посчитан при запросе уточнения и лежит в
  * `sla_hours_left`; здесь он превращается в новый срок ответа.
  */
-export async function передатьПовторно(recId: number, form: FormData): Promise<void> {
+export async function передатьПовторно(
+  recId: number, _прошлый: ОтветФормы, form: FormData,
+): Promise<ОтветФормы> {
   const текст = String(form.get('text') ?? '').trim();
   if (!текст) {
-    вернуться(recId, 'resend', 'Опишите уточнение: Заказчик запросил его, и рекомендация вернётся к нему с этим текстом.');
+    return ошибкой('Опишите уточнение: Заказчик запросил его, и рекомендация вернётся к нему с этим текстом.');
   }
 
-  const user = await исполнитель(recId, 'resend');
+  const user = await исполнитель();
+  if (!user) return ошибкой(НЕТ_ПРАВА);
 
   const ошибка = await transaction(async (client) => {
     const { rows } = await client.query(`
@@ -308,8 +332,8 @@ export async function передатьПовторно(recId: number, form: Form
     return null;
   });
 
-  if (ошибка) вернуться(recId, 'resend', ошибка);
-  готово(recId);
+  if (ошибка) return ошибкой(ошибка);
+  return готово(recId);
 }
 
 /* ------------------------------ досрочное закрытие окна ------------------------------ */
@@ -321,17 +345,17 @@ export async function передатьПовторно(recId: number, form: Form
  * скважина встала в ремонт, эффект вышел на полку — дальше считать нечего.
  * Сутки после закрытия в расчёт не входят, и итог становится окончательным.
  */
-export async function закрытьОкноДосрочно(recId: number, form: FormData): Promise<void> {
+export async function закрытьОкноДосрочно(
+  recId: number, _прошлый: ОтветФормы, form: FormData,
+): Promise<ОтветФормы> {
   const причина = String(form.get('text') ?? '').trim();
   if (!причина) {
-    redirect(`/rec/${recId}/impl?form=close&err=${encodeURIComponent(
-      'Укажите причину досрочного закрытия: она объясняет, почему эффект посчитан не за полные 90 суток.')}`);
+    return ошибкой('Укажите причину досрочного закрытия: она объясняет, почему эффект посчитан не за полные 90 суток.');
   }
 
   const user = await currentUser();
   if (!user || user.side !== 'executor') {
-    redirect(`/rec/${recId}/impl?form=close&err=${encodeURIComponent(
-      'Окно закрывает Исполнитель: у вашей учётной записи такого права нет.')}`);
+    return ошибкой('Окно закрывает Исполнитель: у вашей учётной записи такого права нет.');
   }
 
   const ошибка = await transaction(async (client) => {
@@ -364,10 +388,8 @@ export async function закрытьОкноДосрочно(recId: number, form
     return null;
   });
 
-  if (ошибка) {
-    redirect(`/rec/${recId}/impl?form=close&err=${encodeURIComponent(ошибка)}`);
-  }
-  готово(recId, 'impl');
+  if (ошибка) return ошибкой(ошибка);
+  return готово(recId);
 }
 
 /* ------------------------------ новая на основе ------------------------------ */
@@ -380,8 +402,11 @@ export async function закрытьОкноДосрочно(recId: number, form
  * хранится только событием в хронологии обеих: таблицы связей ещё нет, а
  * терять родство нельзя — по нему видно, что вопрос поднимался второй раз.
  */
-export async function создатьНаОснове(recId: number): Promise<void> {
-  const user = await исполнитель(recId, 'copy');
+export async function создатьНаОснове(
+  recId: number, _прошлый: ОтветФормы, _form: FormData,
+): Promise<ОтветФормы> {
+  const user = await исполнитель();
+  if (!user) return ошибкой(НЕТ_ПРАВА);
 
   const новый = await transaction(async (client) => {
     const { rows } = await client.query(`
@@ -416,8 +441,10 @@ export async function создатьНаОснове(recId: number): Promise<voi
     return { id: новыйId };
   });
 
-  if ('ошибка' in новый) вернуться(recId, 'copy', новый.ошибка!);
+  if ('ошибка' in новый) return ошибкой(новый.ошибка!);
 
+  /* Копия — другая рекомендация: настоящий переход на её карточку, а не
+     закрытие окна на этой, поэтому redirect() здесь остаётся уместным. */
   revalidatePath('/', 'layout');
   redirect(`/rec/${новый.id}/summary`);
 }

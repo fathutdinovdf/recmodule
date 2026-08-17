@@ -19,6 +19,20 @@
 
 .tab { text-decoration: none; }
 
+/* Непрочитанное в обсуждении. Счётчик у вкладки есть всегда, поэтому одного
+   лишь изменившегося числа мало: человек на другой вкладке не помнит прежнего.
+   Отличие несёт точка, а цвет счётчика её поддерживает. */
+.tab__n--new { color: var(--text-accent); font-weight: var(--font-weight-subtitle); }
+.tab__dot {
+  width: 6px; height: 6px; border-radius: 999px; flex: 0 0 auto;
+  background: var(--component-accent);
+  animation: tabDot var(--motion-base) var(--ease-out);
+}
+@keyframes tabDot {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
 /* ------------------------------ вкладка «Расчёт эффекта» ------------------------------ */
 
 .eff { display: flex; flex-direction: column; gap: var(--section-padding-default); }

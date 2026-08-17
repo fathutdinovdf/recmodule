@@ -11,30 +11,22 @@
  * целиком — скрывать от Заказчика то, по чему ему потом принимать эффект,
  * незачем; различаются только кнопки.
  *
- * Формы раскрываются параметром адреса `form`, ошибка возвращается в `err` —
- * тот же приём, что на сводке: подтверждение переживает перезагрузку, ссылку
- * на него можно переслать. Показываются они окном поверх карточки: все четыре
- * действия необратимы, а принятие даты вдобавок стирает посуточный расчёт.
- * Кнопки при этом остаются на месте — из-под окна видно, о какой дате спор.
+ * Окна показываются поверх карточки, состоянием, а не переходом: они стоят в
+ * разметке закрытыми, кнопка на вкладке — их `trigger` (кроме досрочного
+ * закрытия — его открывает только пункт меню в шапке). `?form=…` задаёт лишь
+ * НАЧАЛЬНУЮ открытость — тот же приём, что у спора о базе (`useОкноДействия`,
+ * клиентская половина — `action-forms.tsx`). Кнопки при этом остаются на
+ * месте — из-под окна видно, о какой дате спор.
  */
 
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getCard, type Card, type CardDispute } from '@/db/card';
 import { currentUser, type SessionUser } from '@/lib/session';
 import { WINDOW_DAYS } from '@/services/effect-store';
 import { дата, сутки } from '@/lib/format';
-import { Button } from '@/components/ui/Button';
-import { DatePicker } from '@/components/ui/DatePicker';
-import { Textarea } from '@/components/ui/Textarea';
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
-import { ActionDialog } from '@/components/ui/ActionDialog';
-import { SubmitButton } from '@/components/ui/SubmitButton';
-import { DialogClose, DialogFooter } from '@/components/ui/dialog';
-import { окно } from '../form-meta';
-import { ФормаФиксации } from './fix-form';
-import { зафиксировать, оспоритьДату, принятьДату, отклонитьВозражение } from './actions';
-import { закрытьОкноДосрочно } from '../lifecycle';
+import {
+  ОкноФиксации, ФормаЗакрытия, ОкноВозражения, ОкноПринятияДаты, ОкноОтклонения,
+} from './action-forms';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,10 +45,10 @@ const ПОЧЕМУ_ПУСТО: Record<string, string> = {
 
 export default async function Page({ params, searchParams }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ form?: string; err?: string; compl?: string }>;
+  searchParams: Promise<{ form?: string }>;
 }) {
   const { id } = await params;
-  const { form, err, compl } = await searchParams;
+  const { form } = await searchParams;
   const [card, user] = await Promise.all([getCard(Number(id)), currentUser()]);
   if (!card) notFound();
 
@@ -64,8 +56,7 @@ export default async function Page({ params, searchParams }: {
 
   if (card.status === 'approved') {
     return (
-      <ФактНеЗафиксирован card={card} исполнитель={исполнитель}
-                         форма={form === 'fact'} ошибка={err} полнота={compl} />
+      <ФактНеЗафиксирован card={card} исполнитель={исполнитель} стартОткрыто={form === 'fact'} />
     );
   }
 
@@ -127,27 +118,25 @@ export default async function Page({ params, searchParams }: {
         {impl.note && <div className="block__b" style={{ marginTop: 'var(--item-gap-vertical-s)' }}>{impl.note}</div>}
       </div>
 
-      {/* Досрочное закрытие приходит из меню шапки и раскрывается здесь: окно
-          живёт на этой вкладке, и решение о его закрытии принимают, глядя на
-          даты окна, а не на пункт меню. */}
-      {form === 'close' && исполнитель && !закрыто && (
-        <ФормаЗакрытия card={card} ошибка={err} />
+      {/* Досрочное закрытие приходит из меню шапки: своей кнопки на вкладке у
+          него нет, окно стоит здесь же — решение о его закрытии принимают,
+          глядя на даты окна, а не на пункт меню. */}
+      {исполнитель && !закрыто && (
+        <ФормаЗакрытия card={card} стартОткрыто={form === 'close'} />
       )}
 
       <БлокСпора card={card} спор={спор} исполнитель={исполнитель} user={user}
-                 закрыто={закрыто} форма={form} ошибка={err} />
+                 закрыто={закрыто} форма={form} />
     </>
   );
 }
 
 /* ------------------------------ до фиксации ------------------------------ */
 
-function ФактНеЗафиксирован({ card, исполнитель, форма, ошибка, полнота }: {
+function ФактНеЗафиксирован({ card, исполнитель, стартОткрыто }: {
   card: Card;
   исполнитель: boolean;
-  форма: boolean;
-  ошибка?: string;
-  полнота?: string;
+  стартОткрыто: boolean;
 }) {
   return (
     <div className="block">
@@ -161,17 +150,10 @@ function ФактНеЗафиксирован({ card, исполнитель, ф
       </div>
 
       {исполнитель ? (
-          <>
-            <div className="form__btns" style={{ marginTop: 'var(--group-gap-m)' }}>
-              <Button asChild><Link href="?form=fact">Зафиксировать реализацию</Link></Button>
-              <span className="form__note">Действие Исполнителя</span>
-            </div>
-            {форма && (
-              <ActionDialog {...окно('fact')}>
-                <ФормаФиксации action={зафиксировать.bind(null, card.id)} ошибка={ошибка} полнота={полнота} />
-              </ActionDialog>
-            )}
-          </>
+          <div className="form__btns" style={{ marginTop: 'var(--group-gap-m)' }}>
+            <ОкноФиксации card={card} стартОткрыто={стартОткрыто} />
+            <span className="form__note">Действие Исполнителя</span>
+          </div>
         ) : (
           <div className="form__hint" style={{ marginTop: 'var(--group-gap-m)' }}>
             {card.decision?.plannedAt
@@ -184,41 +166,15 @@ function ФактНеЗафиксирован({ card, исполнитель, ф
   );
 }
 
-/* ------------------------------ досрочное закрытие ------------------------------ */
-
-function ФормаЗакрытия({ card, ошибка }: { card: Card; ошибка?: string }) {
-  return (
-    <ActionDialog {...окно('close')}>
-      <form action={закрытьОкноДосрочно.bind(null, card.id)}>
-        <Field data-invalid={Boolean(ошибка)}>
-          <FieldLabel htmlFor="close-reason">
-            Причина <span className="text-muted-foreground">обязательно</span>
-          </FieldLabel>
-          <Textarea id="close-reason" name="text" rows={3} aria-invalid={Boolean(ошибка)}
-                    placeholder="Скважина остановлена в ремонт" />
-          {ошибка && <FieldError>{ошибка}</FieldError>}
-        </Field>
-        <DialogFooter className="mt-4">
-          <SubmitButton variant="destructive" pendingText="Закрываю…">Закрыть окно</SubmitButton>
-          <DialogClose asChild>
-            <Button type="button" variant="outline">Отмена</Button>
-          </DialogClose>
-        </DialogFooter>
-      </form>
-    </ActionDialog>
-  );
-}
-
 /* ------------------------------ спор о дате ------------------------------ */
 
-function БлокСпора({ card, спор, исполнитель, user, закрыто, форма, ошибка }: {
+function БлокСпора({ card, спор, исполнитель, user, закрыто, форма }: {
   card: Card;
   спор: CardDispute | null;
   исполнитель: boolean;
   user: SessionUser | null;
   закрыто: boolean;
   форма?: string;
-  ошибка?: string;
 }) {
   const impl = card.implementation!;
 
@@ -249,15 +205,10 @@ function БлокСпора({ card, спор, исполнитель, user, за
               пока окно не закрыто: после закрытия эффект финализирован.
             </div>
             {user?.side === 'customer' && (
-              <>
-                <div className="form__btns" style={{ marginTop: 'var(--group-gap-m)' }}>
-                  <Button variant="outline" asChild>
-                    <Link href="?form=dispute">Оспорить дату реализации</Link>
-                  </Button>
-                  <span className="form__note">Действие Заказчика</span>
-                </div>
-                {форма === 'dispute' && <ОкноВозражения card={card} ошибка={ошибка} />}
-              </>
+              <div className="form__btns" style={{ marginTop: 'var(--group-gap-m)' }}>
+                <ОкноВозражения card={card} стартОткрыто={форма === 'dispute'} />
+                <span className="form__note">Действие Заказчика</span>
+              </div>
             )}
           </div>
         )}
@@ -276,122 +227,17 @@ function БлокСпора({ card, спор, исполнитель, user, за
       </div>
 
       {исполнитель ? (
-          <>
-            <div className="form__btns">
-              {/* Принятие тоже идёт через окно, а не отправляется сразу:
-                  оно переносит окно эффекта целиком и стирает посуточный
-                  расчёт — это не то, что делают одним кликом из ленты. */}
-              <Button variant="success" asChild>
-                <Link href="?form=acceptDispute">Принять дату Заказчика</Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="?form=declineDispute">Отклонить возражение</Link>
-              </Button>
-              <span className="form__note">Действие Исполнителя</span>
-            </div>
-            {форма === 'acceptDispute' && <ОкноПринятияДаты card={card} спор={спор} ошибка={ошибка} />}
-            {форма === 'declineDispute' && <ОкноОтклонения card={card} спор={спор} ошибка={ошибка} />}
-          </>
+          /* Принятие тоже идёт через окно, а не отправляется сразу: оно
+             переносит окно эффекта целиком и стирает посуточный расчёт — это
+             не то, что делают одним кликом из ленты. */
+          <div className="form__btns">
+            <ОкноПринятияДаты card={card} спор={спор} стартОткрыто={форма === 'acceptDispute'} />
+            <ОкноОтклонения card={card} спор={спор} стартОткрыто={форма === 'declineDispute'} />
+            <span className="form__note">Действие Исполнителя</span>
+          </div>
         ) : (
           <div className="form__hint">Возражение разбирает Исполнитель: он же определял дату по телеметрии.</div>
         )}
     </div>
-  );
-}
-
-function ОкноВозражения({ card, ошибка }: { card: Card; ошибка?: string }) {
-  const impl = card.implementation!;
-  const ошибкаДаты = ошибка && ошибка.includes('дат') && !ошибка.startsWith('Обоснование');
-
-  return (
-    <ActionDialog {...окно('dispute')}>
-    <form action={оспоритьДату.bind(null, card.id)}>
-      <FieldGroup>
-        <Field data-invalid={Boolean(ошибкаДаты)}>
-          <FieldLabel htmlFor="proposed-date">
-            Дата, которую считаете верной <span className="text-muted-foreground">обязательно</span>
-          </FieldLabel>
-          <DatePicker id="proposed-date" name="proposed_date" label="Дата, которую считаете верной"
-                      defaultValue={impl.factDate} invalid={Boolean(ошибкаДаты)}
-                      disabled={{ after: new Date() }} endMonth={new Date()} />
-          {ошибкаДаты && <FieldError>{ошибка}</FieldError>}
-        </Field>
-
-        <Field data-invalid={Boolean(ошибка && !ошибкаДаты)}>
-          <FieldLabel htmlFor="dispute-reason">
-            Обоснование <span className="text-muted-foreground">обязательно</span>
-          </FieldLabel>
-          <Textarea id="dispute-reason" name="text" rows={4} aria-invalid={Boolean(ошибка && !ошибкаДаты)}
-                    placeholder="Почему изменение режима в указанные сутки не связано с выполнением рекомендации." />
-          {ошибка && !ошибкаДаты && <FieldError>{ошибка}</FieldError>}
-        </Field>
-      </FieldGroup>
-
-      <DialogFooter className="mt-4">
-        <SubmitButton variant="warning" pendingText="Отправляю…">Отправить возражение</SubmitButton>
-        <Отмена />
-      </DialogFooter>
-    </form>
-    </ActionDialog>
-  );
-}
-
-/* Принятие даты Заказчика. Окно необратимое: оно переносит все 90 суток и
-   удаляет посуточный расчёт — он посчитан по суткам старого окна. */
-function ОкноПринятияДаты({ card, спор, ошибка }: {
-  card: Card;
-  спор: CardDispute;
-  ошибка?: string;
-}) {
-  return (
-    <ActionDialog {...окно('acceptDispute')}>
-      <form action={принятьДату.bind(null, card.id, спор.id)}>
-        <div className="form__hint">
-          Пересчёт идёт по сохранённым замерам: на стенд ВМАП расчёт не ходит заново,
-          меняется только то, какие сутки попадают в окно.
-        </div>
-        {ошибка && <FieldError className="mt-[var(--group-gap-m)]">{ошибка}</FieldError>}
-        <DialogFooter className="mt-4">
-          <SubmitButton variant="success" pendingText="Принимаю…">Принять дату</SubmitButton>
-          <Отмена />
-        </DialogFooter>
-      </form>
-    </ActionDialog>
-  );
-}
-
-function ОкноОтклонения({ card, спор, ошибка }: {
-  card: Card;
-  спор: CardDispute;
-  ошибка?: string;
-}) {
-  return (
-    <ActionDialog {...окно('declineDispute')}>
-    <form action={отклонитьВозражение.bind(null, card.id, спор.id)}>
-      <Field data-invalid={Boolean(ошибка)}>
-        <FieldLabel htmlFor="decline-reason">
-          Обоснование <span className="text-muted-foreground">обязательно</span>
-        </FieldLabel>
-        <Textarea id="decline-reason" name="text" rows={3} aria-invalid={Boolean(ошибка)}
-                  placeholder="Почему дата остаётся прежней: что показывает телеметрия в спорные сутки." />
-        {ошибка && <FieldError>{ошибка}</FieldError>}
-      </Field>
-
-      <DialogFooter className="mt-4">
-        <SubmitButton variant="destructive" pendingText="Отклоняю…">Отклонить возражение</SubmitButton>
-        <Отмена />
-      </DialogFooter>
-    </form>
-    </ActionDialog>
-  );
-}
-
-/* Отмена — штатное закрытие окна средствами Radix, а не ссылка: так одинаково
-   работают и кнопка, и Esc, и клик мимо окна. */
-function Отмена() {
-  return (
-    <DialogClose asChild>
-      <Button type="button" variant="outline">Отмена</Button>
-    </DialogClose>
   );
 }

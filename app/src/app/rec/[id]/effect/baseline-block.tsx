@@ -11,26 +11,19 @@
  * Тот же круг, что у даты реализации, и по той же причине: величину определяет
  * одна сторона, а принимать по ней эффект — другой.
  *
- * Формы — окном поверх карточки (ActionDialog), открытость живёт в адресе
- * (`?form=...`): ссылку на подтверждение можно переслать, и перезагрузка не
- * закрывает окно посреди подтверждения.
+ * Формы — окном поверх карточки; сами окна и их состояние лежат в
+ * `baseline-forms.tsx` с 'use client'. Здесь остаётся серверная часть: что
+ * показывать, кому и с какими значениями, плюс справка по замерам, которую
+ * окна получают готовой разметкой.
  */
 
-import Link from 'next/link';
-import { getBaseline, type Card, type CardBaseline, type CardDispute } from '@/db/card';
+import { Suspense } from 'react';
+import { getBaseline, type Card, type CardBaseline } from '@/db/card';
 import type { SessionUser } from '@/lib/session';
 import { measuredBaseline } from '@/services/baseline';
 import { BASELINE_DAYS } from '@/domain/baseline';
 import { дата, число, прирост } from '@/lib/format';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Textarea } from '@/components/ui/Textarea';
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
-import { ActionDialog } from '@/components/ui/ActionDialog';
-import { SubmitButton } from '@/components/ui/SubmitButton';
-import { DialogClose, DialogFooter } from '@/components/ui/dialog';
-import { окно } from '../form-meta';
-import { оспоритьБазу, принятьБазу, отклонитьВозражениеПоБазе } from './actions';
+import { ОкноВозражения, ОкноПринятия, ОкноОтклонения } from './baseline-forms';
 
 /* Статусы, на которых базу можно оспорить. Дублируется с actions.ts намеренно:
    здесь список решает, показывать ли кнопку, там — пускать ли операцию, и
@@ -43,12 +36,12 @@ const ИСТОЧНИК_БАЗЫ: Record<string, string> = {
   disputed: 'Предложена Заказчиком в споре',
 };
 
-export async function БлокБазы({ card, user, заголовок, форма, ошибка }: {
+export async function БлокБазы({ card, user, заголовок, форма }: {
   card: Card;
   user: SessionUser | null;
   заголовок: string;
+  /** Окно из адреса (`?form=`): задаёт начальную открытость. */
   форма?: string;
-  ошибка?: string;
 }) {
   const спор = card.disputes.find((d) => d.subject === 'baseline') ?? null;
   const открытый = спор && спор.state === 'open' ? спор : null;
@@ -107,13 +100,17 @@ export async function БлокБазы({ card, user, заголовок, фор�
           </div>
 
           {исполнитель ? (
+            /* Кнопка и окно — одно целое: окно стоит здесь же закрытым и
+               открывается мгновенно, без похода на сервер. */
             <div className="form__btns">
-              <Button variant="success" asChild>
-                <Link href="?form=baseAccept">Принять базу Заказчика</Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="?form=baseDecline">Отклонить возражение</Link>
-              </Button>
+              {предложенная && (
+                <ОкноПринятия recId={card.id} disputeId={открытый.id}
+                              справка={<Справка card={card} />}
+                              стартОткрыто={форма === 'baseAccept'} />
+              )}
+              <ОкноОтклонения recId={card.id} disputeId={открытый.id}
+                              справка={<Справка card={card} />}
+                              стартОткрыто={форма === 'baseDecline'} />
               <span className="form__note">Действие Исполнителя</span>
             </div>
           ) : (
@@ -149,25 +146,21 @@ export async function БлокБазы({ card, user, заголовок, фор�
             </div>
           )}
 
-          {заказчик && можноОспорить && (
+          {заказчик && можноОспорить && card.baseline && (
             <div className="form__btns" style={{ marginTop: 'var(--group-gap-m)' }}>
-              <Button variant="outline" asChild>
-                <Link href="?form=baseDispute">Оспорить базовые значения</Link>
-              </Button>
+              <ОкноВозражения
+                recId={card.id}
+                значения={{
+                  qzh: дляВвода(card.baseline.baseQzh),
+                  qn: дляВвода(card.baseline.baseQn),
+                  ee: дляВвода(card.baseline.baseEe),
+                }}
+                справка={<Справка card={card} />}
+                стартОткрыто={форма === 'baseDispute'} />
               <span className="form__note">Действие Заказчика</span>
             </div>
           )}
         </>
-      )}
-
-      {форма === 'baseDispute' && заказчик && можноОспорить && (
-        <ОкноВозражения card={card} ошибка={ошибка} />
-      )}
-      {форма === 'baseAccept' && исполнитель && открытый && предложенная && (
-        <ОкноПринятия card={card} спор={открытый} ошибка={ошибка} />
-      )}
-      {форма === 'baseDecline' && исполнитель && открытый && (
-        <ОкноОтклонения card={card} спор={открытый} ошибка={ошибка} />
       )}
     </section>
   );
@@ -267,127 +260,19 @@ async function СправкаПоЗамерам({ card }: { card: Card }) {
         ? 'кондиционных суток в периоде не нашлось, посчитать нечем.'
         : <>Qж <b>{число(b.baseQzh)}</b> м³/сут, Qн <b>{число(b.baseQn, 2)}</b> т/сут
             {' '}по {b.usedDays} из {BASELINE_DAYS} суток.</>}
-      {' '}Это не позиция ни одной из сторон: тот же расчёт видят обе.
     </div>
   );
 }
 
-/* ------------------------------ окна действий ------------------------------ */
 
-function ОкноВозражения({ card, ошибка }: { card: Card; ошибка?: string }) {
-  const b = card.baseline!;
-  const ошибкаТекста = ошибка?.startsWith('Обоснование');
-  const ошибкаЧисел = Boolean(ошибка) && !ошибкаТекста;
-
+/* Справка в Suspense: окна теперь стоят в разметке всегда, а не появляются по
+   переходу, и без границы поход на стенд ВМАП задерживал бы всю вкладку —
+   ради текста внутри закрытого окна. Пустой fallback: у закрытого окна
+   показывать нечего, а к открытию справка обычно уже здесь. */
+function Справка({ card }: { card: Card }) {
   return (
-    <ActionDialog {...окно('baseDispute')}>
-      <form action={оспоритьБазу.bind(null, card.id)}>
-        {/* Поля в строку: три числа одной природы, и разнесённые по вертикали
-            они читались бы как три разных вопроса. Подписи короткие — с полными
-            («Дебит жидкости, м³/сут») они переносятся в три строки, и поля
-            встают на разной высоте. Что есть что, сказано в фактах над формой. */}
-      <FieldGroup>
-        <div className="flex flex-wrap items-end gap-[var(--block-gap-default)]">
-          <Field className="flex-1 basis-[96px]" data-invalid={ошибкаЧисел}>
-            <FieldLabel htmlFor="base-qzh">Qж, м³/сут</FieldLabel>
-            <Input id="base-qzh" name="base_qzh" inputMode="decimal" className="text-right"
-                   defaultValue={дляВвода(b.baseQzh)} aria-invalid={ошибкаЧисел} />
-          </Field>
-          <Field className="flex-1 basis-[96px]" data-invalid={ошибкаЧисел}>
-            <FieldLabel htmlFor="base-qn">Qн, т/сут</FieldLabel>
-            <Input id="base-qn" name="base_qn" inputMode="decimal" className="text-right"
-                   defaultValue={дляВвода(b.baseQn)} aria-invalid={ошибкаЧисел} />
-          </Field>
-          <Field className="flex-1 basis-[96px]" data-invalid={ошибкаЧисел}>
-            <FieldLabel htmlFor="base-ee">ЭЭ, кВт·ч/сут</FieldLabel>
-            <Input id="base-ee" name="base_ee" inputMode="decimal" className="text-right"
-                   defaultValue={дляВвода(b.baseEe)} aria-invalid={ошибкаЧисел} />
-          </Field>
-        </div>
-        {ошибкаЧисел && <FieldError>{ошибка}</FieldError>}
-
-        <Field data-invalid={ошибкаТекста}>
-          <FieldLabel htmlFor="base-dispute-reason">
-            Обоснование <span className="text-muted-foreground">обязательно</span>
-          </FieldLabel>
-          <Textarea id="base-dispute-reason" name="text" rows={4} aria-invalid={ошибкаТекста}
-                    placeholder="Откуда взяты предлагаемые значения: режим месяца, замеры каких суток, что не так в действующей базе." />
-          {ошибкаТекста && <FieldError>{ошибка}</FieldError>}
-        </Field>
-      </FieldGroup>
-
-        <СправкаПоЗамерам card={card} />
-
-        <div className="form__hint" style={{ marginTop: 'var(--item-gap-vertical-s)' }}>
-          Жидкость и нефть обязательны — без любой из них расчёт денег встанет целиком.
-          Энергопотребление можно оставить пустым: в формулу эффекта оно не входит,
-          источника факта по нему пока нет.
-        </div>
-
-        <DialogFooter className="mt-4">
-          <SubmitButton variant="warning" pendingText="Отправляю…">Отправить возражение</SubmitButton>
-          <DialogClose asChild>
-            <Button type="button" variant="outline">Отмена</Button>
-          </DialogClose>
-        </DialogFooter>
-      </form>
-    </ActionDialog>
-  );
-}
-
-function ОкноПринятия({ card, спор, ошибка }: {
-  card: Card; спор: CardDispute; ошибка?: string;
-}) {
-  return (
-    <ActionDialog {...окно('baseAccept')}>
-      <form action={принятьБазу.bind(null, card.id, спор.id)}>
-        <СправкаПоЗамерам card={card} />
-        <div className="form__hint" style={{ marginTop: 'var(--item-gap-vertical-s)' }}>
-          Пересчёт идёт по сохранённым замерам: заново на стенд ВМАП расчёт не ходит,
-          меняется только то, от чего отсчитывается прирост. Итог станет окончательным,
-          когда закроется окно.
-        </div>
-        {ошибка && <FieldError className="mt-[var(--group-gap-m)]">{ошибка}</FieldError>}
-        <DialogFooter className="mt-4">
-          <SubmitButton variant="success" pendingText="Принимаю…">Принять базу</SubmitButton>
-          <DialogClose asChild>
-            <Button type="button" variant="outline">Отмена</Button>
-          </DialogClose>
-        </DialogFooter>
-      </form>
-    </ActionDialog>
-  );
-}
-
-function ОкноОтклонения({ card, спор, ошибка }: {
-  card: Card; спор: CardDispute; ошибка?: string;
-}) {
-  return (
-    <ActionDialog {...окно('baseDecline')}>
-      <form action={отклонитьВозражениеПоБазе.bind(null, card.id, спор.id)}>
-        <Field data-invalid={Boolean(ошибка)}>
-          <FieldLabel htmlFor="base-decline-reason">
-            Обоснование <span className="text-muted-foreground">обязательно</span>
-          </FieldLabel>
-          <Textarea id="base-decline-reason" name="text" rows={3} aria-invalid={Boolean(ошибка)}
-                    placeholder="Почему база остаётся прежней: какими замерами она подтверждается." />
-          {ошибка && <FieldError>{ошибка}</FieldError>}
-        </Field>
-
-        <СправкаПоЗамерам card={card} />
-
-        <div className="form__hint" style={{ marginTop: 'var(--item-gap-vertical-s)' }}>
-          Пометка о споре сохраняется в карточке и в истории. Дальнейшее разбирательство
-          идёт вне модуля, по разделу 10 договора.
-        </div>
-
-        <DialogFooter className="mt-4">
-          <SubmitButton variant="destructive" pendingText="Отклоняю…">Отклонить возражение</SubmitButton>
-          <DialogClose asChild>
-            <Button type="button" variant="outline">Отмена</Button>
-          </DialogClose>
-        </DialogFooter>
-      </form>
-    </ActionDialog>
+    <Suspense fallback={null}>
+      <СправкаПоЗамерам card={card} />
+    </Suspense>
   );
 }

@@ -160,6 +160,6 @@ export async function сохранитьРекомендацию(
     return id;
   });
 
-  if (intent === 'register') await зарегистрировать(recId);
+  if (intent === 'register') await зарегистрировать(recId, null, new FormData());
   redirect(`/rec/${recId}/summary?form=draft-saved`);
 }

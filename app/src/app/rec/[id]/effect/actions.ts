@@ -25,15 +25,24 @@
  *             со всей рекомендацией: не согласен с базой — не согласовывай или
  *             запроси уточнение, отдельный спор для этого не нужен.
  *
- * Валидация вся здесь: формы отправляются обычным POST и работают без
- * JavaScript, а права — тем более не дело клиента.
+ * Валидация вся здесь: права и границы операции — не дело клиента.
+ *
+ * Ошибка возвращается ЗНАЧЕНИЕМ, а не редиректом на `?form=…&err=…`, как было
+ * раньше. Редирект — навигация: окно закрывалось, вкладка перерисовывалась с
+ * заглушкой, и окно открывалось заново с подсвеченным полем. Теперь форма
+ * читает ответ через `useActionState`, и отказ валидации ничего не двигает.
+ * Цена — формы этих трёх окон требуют JavaScript; тот же размен уже принят для
+ * меню действий.
  */
 
-import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { transaction } from '@/db/pool';
 import { currentUser } from '@/lib/session';
 import { число as числоНаЭкран } from '@/lib/format';
+
+/** Ответ формы. `null` — форму ещё не отправляли, отсюда отдельное «готово»:
+    начальное состояние useActionState иначе не отличить от успеха. */
+export type ОтветФормы = { ошибка: string } | { готово: true } | null;
 
 /** Статусы, на которых базу ещё можно оспорить. */
 const СТАТУСЫ_СПОРА = new Set(['approved', 'windowOpen']);
@@ -48,13 +57,14 @@ function числоИзФормы(v: unknown): number | null {
   return Number.isFinite(n) ? n : NaN;
 }
 
-function вернуться(recId: number, form: string, ошибка: string): never {
-  redirect(`/rec/${recId}/effect?form=${form}&err=${encodeURIComponent(ошибка)}`);
-}
+const вернуться = (ошибка: string): ОтветФормы => ({ ошибка });
 
-function готово(recId: number): never {
+/* Успех не редиректит: адрес и так тот, что нужен, а `revalidatePath`
+   перерисовывает карточку целиком — и вкладку, и шапку со статусом. Окно
+   закрывает клиент, увидев пустой ответ. */
+function готово(recId: number): ОтветФормы {
   revalidatePath(`/rec/${recId}`, 'layout');
-  redirect(`/rec/${recId}/effect`);
+  return { готово: true };
 }
 
 /* ------------------------------ подача возражения ------------------------------ */
@@ -67,7 +77,9 @@ function готово(recId: number): never {
  * не разобран, эффект считается по ней, а итог помечается предварительным —
  * это делает `effect-store` по наличию открытого спора.
  */
-export async function оспоритьБазу(recId: number, form: FormData): Promise<void> {
+export async function оспоритьБазу(
+  recId: number, _прошлый: ОтветФормы, form: FormData,
+): Promise<ОтветФормы> {
   const qzh = числоИзФормы(form.get('base_qzh'));
   const qn = числоИзФормы(form.get('base_qn'));
   const ee = числоИзФормы(form.get('base_ee'));
@@ -76,21 +88,21 @@ export async function оспоритьБазу(recId: number, form: FormData): P
   /* Жидкость и нефть обязательны: без любой из них расчёт денег встаёт целиком
      (часть статей висит на жидкости, часть на нефти). ЭЭ необязательна — она в
      формулу не входит вовсе, источника факта по ней пока нет. */
-  if (qzh === null || Number.isNaN(qzh)) вернуться(recId, 'baseDispute', 'Укажите базовый дебит жидкости числом.');
-  if (qn === null || Number.isNaN(qn)) вернуться(recId, 'baseDispute', 'Укажите базовый дебит нефти числом.');
-  if (Number.isNaN(ee)) вернуться(recId, 'baseDispute', 'Энергопотребление указано не числом.');
-  if (qzh! < 0 || qn! < 0 || (ee ?? 0) < 0) вернуться(recId, 'baseDispute', 'Базовые значения не могут быть отрицательными.');
+  if (qzh === null || Number.isNaN(qzh)) return вернуться('Укажите базовый дебит жидкости числом.');
+  if (qn === null || Number.isNaN(qn)) return вернуться('Укажите базовый дебит нефти числом.');
+  if (Number.isNaN(ee)) return вернуться('Энергопотребление указано не числом.');
+  if (qzh! < 0 || qn! < 0 || (ee ?? 0) < 0) return вернуться('Базовые значения не могут быть отрицательными.');
   /* Нефть не может превышать жидкость даже при нулевой обводнённости: нефть в
      тоннах, жидкость в кубометрах, и плотность нефти всегда меньше тонны на
      куб. Проверка грубая, но ловит перепутанные местами поля. */
-  if (qn! > qzh!) вернуться(recId, 'baseDispute', 'Дебит нефти больше дебита жидкости — проверьте, не перепутаны ли поля.');
+  if (qn! > qzh!) return вернуться('Дебит нефти больше дебита жидкости — проверьте, не перепутаны ли поля.');
   if (!обоснование) {
-    вернуться(recId, 'baseDispute', 'Обоснование обязательно: Исполнителю нужно понять, откуда взяты предлагаемые значения.');
+    return вернуться('Заполните обоснование.');
   }
 
   const user = await currentUser();
   if (!user || user.side !== 'customer') {
-    вернуться(recId, 'baseDispute', 'Оспорить базовые значения может только Заказчик.');
+    return вернуться('Оспорить базовые значения может только Заказчик.');
   }
 
   const ошибка = await transaction(async (client) => {
@@ -157,8 +169,8 @@ export async function оспоритьБазу(recId: number, form: FormData): P
     return null;
   });
 
-  if (ошибка) вернуться(recId, 'baseDispute', ошибка);
-  готово(recId);
+  if (ошибка) return вернуться(ошибка);
+  return готово(recId);
 }
 
 /* ------------------------------ разбор возражения ------------------------------ */
@@ -171,13 +183,15 @@ export async function оспоритьБазу(recId: number, form: FormData): P
  * чего считали раньше. Кэш `effect_daily` удаляется целиком: каждые сутки в нём
  * посчитаны как разность с прежней базой, и «поправить» их нечем.
  */
-export async function принятьБазу(recId: number, disputeId: number): Promise<void> {
+export async function принятьБазу(
+  recId: number, disputeId: number, _прошлый: ОтветФормы, _form: FormData,
+): Promise<ОтветФормы> {
   const user = await currentUser();
   /* Ошибка возвращается в окно ПРИНЯТИЯ, а не отклонения: иначе на нажатие
      «Принять» открывается окно «Отклонить» с претензией, и человек читает
      ответ не на свой вопрос. */
   if (!user || user.side !== 'executor') {
-    вернуться(recId, 'baseAccept', 'Разбирать возражение по базе может только Исполнитель.');
+    return вернуться('Разбирать возражение по базе может только Исполнитель.');
   }
 
   const ошибка = await transaction(async (client) => {
@@ -232,8 +246,8 @@ export async function принятьБазу(recId: number, disputeId: number): 
     return null;
   });
 
-  if (ошибка) вернуться(recId, 'baseAccept', ошибка);
-  готово(recId);
+  if (ошибка) return вернуться(ошибка);
+  return готово(recId);
 }
 
 /**
@@ -242,16 +256,16 @@ export async function принятьБазу(recId: number, disputeId: number): 
  * предлагал Заказчик и чем ему ответили.
  */
 export async function отклонитьВозражениеПоБазе(
-  recId: number, disputeId: number, form: FormData,
-): Promise<void> {
+  recId: number, disputeId: number, _прошлый: ОтветФормы, form: FormData,
+): Promise<ОтветФормы> {
   const обоснование = String(form.get('text') ?? '').trim();
   if (!обоснование) {
-    вернуться(recId, 'baseDecline', 'Обоснование обязательно: Заказчику нужно знать, почему база остаётся прежней.');
+    return вернуться('Заполните обоснование.');
   }
 
   const user = await currentUser();
   if (!user || user.side !== 'executor') {
-    вернуться(recId, 'baseDecline', 'Разбирать возражение по базе может только Исполнитель.');
+    return вернуться('Разбирать возражение по базе может только Исполнитель.');
   }
 
   const ошибка = await transaction(async (client) => {
@@ -285,6 +299,6 @@ export async function отклонитьВозражениеПоБазе(
     return null;
   });
 
-  if (ошибка) вернуться(recId, 'baseDecline', ошибка);
-  готово(recId);
+  if (ошибка) return вернуться(ошибка);
+  return готово(recId);
 }

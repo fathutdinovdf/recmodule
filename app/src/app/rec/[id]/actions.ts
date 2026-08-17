@@ -10,15 +10,22 @@
  *
  * Валидация вынесена сюда целиком, а не в браузер: форма отправляется обычным
  * POST и без JavaScript, а проверка прав — тем более не дело клиента.
+ *
+ * Ошибка возвращается ЗНАЧЕНИЕМ (`ОтветФормы`), а не редиректом на
+ * `?form=…&err=…`: окно решения теперь стоит в разметке сводки закрытым и
+ * открывается состоянием (`summary/decision-forms.tsx`), тот же приём, что у
+ * спора о базе. Редирект закрывал бы окно и открывал заново.
  */
 
-import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { transaction } from '@/db/pool';
 import { currentUser } from '@/lib/session';
 import { workHoursBetween } from '@/domain/workhours';
 
 type Kind = 'accept' | 'reject' | 'clarify';
+
+/** Ответ формы. `null` — форму ещё не отправляли. */
+export type ОтветФормы = { ошибка: string } | { готово: true } | null;
 
 /* Статусы, на которых решение вообще возможно. «Передано» и «На рассмотрении»
    различаются только тем, открывал ли Заказчик карточку; отвечать можно с
@@ -37,7 +44,19 @@ const СОБЫТИЕ: Record<Kind, string> = {
   clarify: 'Запрошено уточнение',
 };
 
-export async function решить(kind: Kind, recId: number, form: FormData): Promise<void> {
+/* Хвост к тексту события: было ли решение принято в норматив ответа.
+   Без часов (норматив неизвестен или карточка ещё не передавалась в этом
+   круге — например, повторно после уточнения без сохранённого остатка)
+   хвоста нет: писать «просрочено» без сравнения не с чем. */
+function срокОтвета(норматив: number | null, израсходовано: number | null): string {
+  if (норматив === null || израсходовано === null) return '';
+  if (израсходовано <= норматив) return ` — в срок (${Math.round(норматив - израсходовано)} ч в запасе)`;
+  return ` — с просрочкой на ${Math.round(израсходовано - норматив)} ч`;
+}
+
+export async function решить(
+  kind: Kind, recId: number, _прошлый: ОтветФормы, form: FormData,
+): Promise<ОтветФормы> {
   const текст = String(form.get('text') ?? '').trim();
   const причина = String(form.get('reason') ?? '').trim();
   const план = String(form.get('planned') ?? '').trim();
@@ -47,17 +66,17 @@ export async function решить(kind: Kind, recId: number, form: FormData): P
      единственное, чем Заказчик объясняет отказ в отчётности по договору
      (решение 50). */
   if ((kind === 'reject' || kind === 'clarify') && !текст) {
-    вернуться(recId, kind, kind === 'reject'
+    return вернуться(kind === 'reject'
       ? 'Обоснование отказа обязательно: без него Исполнитель не поймёт, что делать дальше, а Заказчику нечего показать в отчётности по договору.'
       : 'Опишите, что именно требуется уточнить: рекомендация вернётся Исполнителю с этим текстом.');
   }
   if (kind === 'reject' && !причина) {
-    вернуться(recId, kind, 'Выберите причину отклонения из списка.');
+    return вернуться('Выберите причину отклонения из списка.');
   }
 
   const user = await currentUser();
   if (!user || user.side !== 'customer' || !user.canDecide) {
-    вернуться(recId, kind, 'Решение принимает уполномоченный сотрудник Заказчика; у вашей учётной записи права решения нет.');
+    return вернуться('Решение принимает уполномоченный сотрудник Заказчика; у вашей учётной записи права решения нет.');
   }
 
   const ошибка = await transaction(async (client) => {
@@ -111,15 +130,16 @@ export async function решить(kind: Kind, recId: number, form: FormData): P
     await client.query(`
       INSERT INTO rec.recommendation_events (rec_id, kind, actor_id, actor_name, from_status, to_status, text)
       VALUES ($1,'decision',$2,$3,$4,$5,$6)
-    `, [recId, user!.id, user!.fullName, rec.status, НОВЫЙ_СТАТУС[kind], СОБЫТИЕ[kind]]);
+    `, [recId, user!.id, user!.fullName, rec.status, НОВЫЙ_СТАТУС[kind],
+      СОБЫТИЕ[kind] + срокОтвета(норматив, израсходовано)]);
 
     return null;
   });
 
-  if (ошибка) вернуться(recId, kind, ошибка);
+  if (ошибка) return вернуться(ошибка);
 
   revalidatePath(`/rec/${recId}`, 'layout');
-  redirect(`/rec/${recId}/summary`);
+  return { готово: true };
 }
 
 /**
@@ -130,8 +150,11 @@ export async function решить(kind: Kind, recId: number, form: FormData): P
  * ответом видно, читали рекомендацию или подписали не глядя.
  *
  * Единственное место, где модуль пишет при показе страницы, а не по нажатию.
- * Поэтому запись строго однократная — вторая попытка отсекается в самом SQL,
- * а не проверкой перед ним: карточку открывают и в двух вкладках сразу.
+ * Поэтому запись строго однократная — вторая попытка отсекается уникальным
+ * индексом `recommendation_events_opened_once` (миграция 007), а не проверкой
+ * перед вставкой: `WHERE NOT EXISTS` внутри транзакции не атомарен под READ
+ * COMMITTED и пропускал дубль, когда карточку открывали в двух вкладках сразу
+ * или Next.js успевал prefetch-нуть страницу вплотную к настоящей навигации.
  */
 export async function отметитьОткрытие(recId: number, status: string): Promise<void> {
   if (status !== 'sent') return;
@@ -142,10 +165,8 @@ export async function отметитьОткрытие(recId: number, status: st
   await transaction(async (client) => {
     const { rowCount } = await client.query(`
       INSERT INTO rec.recommendation_events (rec_id, kind, actor_id, actor_name, from_status, to_status, text)
-      SELECT $1, 'opened', $2, $3, 'sent', 'review', 'Карточка открыта Заказчиком'
-       WHERE NOT EXISTS (
-         SELECT 1 FROM rec.recommendation_events WHERE rec_id = $1 AND kind = 'opened'
-       )
+      VALUES ($1, 'opened', $2, $3, 'sent', 'review', 'Карточка открыта Заказчиком')
+      ON CONFLICT (rec_id) WHERE kind = 'opened' DO NOTHING
     `, [recId, user.id, user.fullName]);
 
     if (rowCount) {
@@ -157,8 +178,4 @@ export async function отметитьОткрытие(recId: number, status: st
   });
 }
 
-/* Ошибка возвращается в адресе, а не состоянием: форма раскрыта параметром
-   `form`, и обе половины должны переживать обычную перезагрузку страницы. */
-function вернуться(recId: number, form: Kind, ошибка: string): never {
-  redirect(`/rec/${recId}/summary?form=${form}&err=${encodeURIComponent(ошибка)}`);
-}
+const вернуться = (ошибка: string): ОтветФормы => ({ ошибка });

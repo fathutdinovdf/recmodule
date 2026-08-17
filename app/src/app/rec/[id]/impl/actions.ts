@@ -13,14 +13,24 @@
  *
  * Валидация вся здесь, а не в браузере: формы отправляются обычным POST и
  * работают без JavaScript, а права — тем более не дело клиента.
+ *
+ * Ошибка возвращается ЗНАЧЕНИЕМ (`ОтветФормы`), а не редиректом на
+ * `?form=…&err=…`: все пять окон вкладки стоят в разметке закрытыми и
+ * открываются состоянием (`impl/action-forms.tsx`), тот же приём, что у
+ * спора о базе. Заодно ушёл `compl` в адресе — выбор полноты при отказе
+ * валидации раньше возвращали через параметр, потому что редирект уносил
+ * несохранённое состояние формы; теперь форма не перерисовывается, и
+ * выбранный переключатель остаётся как есть.
  */
 
-import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { transaction } from '@/db/pool';
 import { currentUser } from '@/lib/session';
 import { WINDOW_DAYS } from '@/services/effect-store';
 import { дата as датаНаЭкран } from '@/lib/format';
+
+/** Ответ формы. `null` — форму ещё не отправляли. */
+export type ОтветФормы = { ошибка: string } | { готово: true } | null;
 
 /* Дата приходит из календаря в ISO. Разбираем руками, а не через `new Date`:
    строка без часового пояса читается как UTC, и в Когалыме дата уезжает на
@@ -40,20 +50,11 @@ const плюсСуток = (d: Date, n: number) => {
 };
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-/* Ошибка возвращается в адресе, как и на сводке: форма раскрыта параметром
-   `form`, и обе половины должны переживать обычную перезагрузку страницы.
- *
- * Выбранная полнота возвращается вместе с ошибкой: без неё переключатель после
- * возврата встаёт в «Полностью», и человек читает претензию про частичную
- * реализацию, глядя на форму, где выбрано обратное. */
-function вернуться(recId: number, form: string, ошибка: string, полнота?: string): never {
-  const хвост = полнота ? `&compl=${полнота}` : '';
-  redirect(`/rec/${recId}/impl?form=${form}&err=${encodeURIComponent(ошибка)}${хвост}`);
-}
+const вернуться = (ошибка: string): ОтветФормы => ({ ошибка });
 
-function готово(recId: number): never {
+function готово(recId: number): ОтветФормы {
   revalidatePath(`/rec/${recId}`, 'layout');
-  redirect(`/rec/${recId}/impl`);
+  return { готово: true };
 }
 
 /* ------------------------------ фиксация реализации ------------------------------ */
@@ -63,29 +64,31 @@ function готово(recId: number): never {
  * эффекта: разделять их нечем — окно отсчитывается от даты реализации, и
  * «зафиксировал, но окно не открыл» состояния в договоре нет.
  */
-export async function зафиксировать(recId: number, form: FormData): Promise<void> {
+export async function зафиксировать(
+  recId: number, _прошлый: ОтветФормы, form: FormData,
+): Promise<ОтветФормы> {
   const дата = датаИзФормы(String(form.get('fact_date') ?? ''));
   const полнота = String(form.get('completeness') ?? '');
   const чтоНеВыполнено = String(form.get('completeness_note') ?? '').trim();
   const комментарий = String(form.get('note') ?? '').trim();
 
-  if (!дата) вернуться(recId, 'fact', 'Укажите дату фактической реализации.', полнота);
+  if (!дата) return вернуться('Укажите дату фактической реализации.');
   if (дата > сутки(new Date())) {
-    вернуться(recId, 'fact', 'Дата реализации не может быть в будущем: фиксируется то, что уже видно в телеметрии.', полнота);
+    return вернуться('Дата реализации не может быть в будущем: фиксируется то, что уже видно в телеметрии.');
   }
   if (полнота !== 'full' && полнота !== 'partial') {
-    вернуться(recId, 'fact', 'Укажите полноту реализации.');
+    return вернуться('Укажите полноту реализации.');
   }
   /* Полнота — поле, а не статус (решение 12), и «частично» без объяснения
      превращает поле в пустую отметку: без перечня невыполненного ни спорить о
      базе, ни объяснять недобор эффекта потом нечем. */
   if (полнота === 'partial' && !чтоНеВыполнено) {
-    вернуться(recId, 'fact', 'При частичной реализации опишите, что именно не выполнено.', полнота);
+    return вернуться('При частичной реализации опишите, что именно не выполнено.');
   }
 
   const user = await currentUser();
   if (!user || user.side !== 'executor') {
-    вернуться(recId, 'fact', 'Факт реализации фиксирует Исполнитель по телеметрии: у вашей учётной записи такого права нет.', полнота);
+    return вернуться('Факт реализации фиксирует Исполнитель по телеметрии: у вашей учётной записи такого права нет.');
   }
 
   const ошибка = await transaction(async (client) => {
@@ -136,8 +139,8 @@ export async function зафиксировать(recId: number, form: FormData):
     return null;
   });
 
-  if (ошибка) вернуться(recId, 'fact', ошибка, полнота);
-  готово(recId);
+  if (ошибка) return вернуться(ошибка);
+  return готово(recId);
 }
 
 /* ------------------------------ спор о дате ------------------------------ */
@@ -150,21 +153,23 @@ export async function зафиксировать(recId: number, form: FormData):
  * возражения расчёт помечается предварительным — это делает `effect-store` по
  * наличию открытого спора.
  */
-export async function оспоритьДату(recId: number, form: FormData): Promise<void> {
+export async function оспоритьДату(
+  recId: number, _прошлый: ОтветФормы, form: FormData,
+): Promise<ОтветФормы> {
   const дата = датаИзФормы(String(form.get('proposed_date') ?? ''));
   const обоснование = String(form.get('text') ?? '').trim();
 
-  if (!дата) вернуться(recId, 'dispute', 'Укажите дату, которую считаете верной.');
+  if (!дата) return вернуться('Укажите дату, которую считаете верной.');
   if (дата > сутки(new Date())) {
-    вернуться(recId, 'dispute', 'Предлагаемая дата не может быть в будущем.');
+    return вернуться('Предлагаемая дата не может быть в будущем.');
   }
   if (!обоснование) {
-    вернуться(recId, 'dispute', 'Обоснование обязательно: Исполнителю нужно понять, что в его дате не так.');
+    return вернуться('Обоснование обязательно: Исполнителю нужно понять, что в его дате не так.');
   }
 
   const user = await currentUser();
   if (!user || user.side !== 'customer') {
-    вернуться(recId, 'dispute', 'Оспорить дату реализации может только Заказчик.');
+    return вернуться('Оспорить дату реализации может только Заказчик.');
   }
 
   const ошибка = await transaction(async (client) => {
@@ -208,8 +213,8 @@ export async function оспоритьДату(recId: number, form: FormData): P
     return null;
   });
 
-  if (ошибка) вернуться(recId, 'dispute', ошибка);
-  готово(recId);
+  if (ошибка) return вернуться(ошибка);
+  return готово(recId);
 }
 
 /**
@@ -219,10 +224,12 @@ export async function оспоритьДату(recId: number, form: FormData): P
  * Кэш расчёта при этом удаляется, а не правится: он посчитан по суткам старого
  * окна, и часть из них в новое не входит.
  */
-export async function принятьДату(recId: number, disputeId: number): Promise<void> {
+export async function принятьДату(
+  recId: number, disputeId: number, _прошлый: ОтветФормы, _form: FormData,
+): Promise<ОтветФормы> {
   const user = await currentUser();
   if (!user || user.side !== 'executor') {
-    вернуться(recId, 'declineDispute', 'Разбирать возражение по дате может только Исполнитель.');
+    return вернуться('Разбирать возражение по дате может только Исполнитель.');
   }
 
   const ошибка = await transaction(async (client) => {
@@ -264,20 +271,22 @@ export async function принятьДату(recId: number, disputeId: number): 
     return null;
   });
 
-  if (ошибка) вернуться(recId, 'declineDispute', ошибка);
-  готово(recId);
+  if (ошибка) return вернуться(ошибка);
+  return готово(recId);
 }
 
 /** Исполнитель отклоняет возражение: дата остаётся прежней, спор — в истории. */
-export async function отклонитьВозражение(recId: number, disputeId: number, form: FormData): Promise<void> {
+export async function отклонитьВозражение(
+  recId: number, disputeId: number, _прошлый: ОтветФормы, form: FormData,
+): Promise<ОтветФормы> {
   const обоснование = String(form.get('text') ?? '').trim();
   if (!обоснование) {
-    вернуться(recId, 'declineDispute', 'Обоснование обязательно: Заказчику нужно знать, что показывает телеметрия в спорные сутки.');
+    return вернуться('Обоснование обязательно: Заказчику нужно знать, что показывает телеметрия в спорные сутки.');
   }
 
   const user = await currentUser();
   if (!user || user.side !== 'executor') {
-    вернуться(recId, 'declineDispute', 'Разбирать возражение по дате может только Исполнитель.');
+    return вернуться('Разбирать возражение по дате может только Исполнитель.');
   }
 
   const ошибка = await transaction(async (client) => {
@@ -305,6 +314,6 @@ export async function отклонитьВозражение(recId: number, disp
     return null;
   });
 
-  if (ошибка) вернуться(recId, 'declineDispute', ошибка);
-  готово(recId);
+  if (ошибка) return вернуться(ошибка);
+  return готово(recId);
 }

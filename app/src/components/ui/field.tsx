@@ -55,7 +55,10 @@ function FieldGroup({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 const fieldVariants = cva(
-  "group/field flex w-full gap-3 data-[invalid=true]:text-destructive",
+  /* Заголовок поля при ошибке НЕ красится: в макете ВМАП ошибку несут рамка
+     поля и строка под формой, а красная подпись поверх розовой рамки читалась
+     плохо и удваивала сигнал. */
+    "group/field flex w-full gap-3",
   {
     variants: {
       orientation: {
@@ -226,7 +229,7 @@ function FieldError({
     <div
       role="alert"
       data-slot="field-error"
-      className={cn("text-sm font-normal text-destructive", className)}
+      className={cn("text-sm font-normal text-[var(--status-error-text)]", className)}
       {...props}
     >
       {content}
