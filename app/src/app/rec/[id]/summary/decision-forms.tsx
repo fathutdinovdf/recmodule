@@ -17,7 +17,7 @@ import { Combobox } from '@/components/ui/Combobox';
 import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Textarea';
 import { PlannedDatePicker } from '@/components/ui/PlannedDatePicker';
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Field, FieldError, FieldGroup, FieldLabel, Required } from '@/components/ui/field';
 import { ActionDialog } from '@/components/ui/ActionDialog';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { DialogClose, DialogFooter } from '@/components/ui/dialog';
@@ -50,11 +50,11 @@ export function ОкноПринятия({ card, стартОткрыто }: { c
       <form action={отправить}>
         <FieldGroup>
           <Field>
-            <FieldLabel>Плановая дата работ <span className="text-muted-foreground">необязательно</span></FieldLabel>
+            <FieldLabel>Плановая дата работ</FieldLabel>
             <PlannedDatePicker />
           </Field>
           <Field>
-            <FieldLabel htmlFor="decision-comment">Комментарий <span className="text-muted-foreground">необязательно</span></FieldLabel>
+            <FieldLabel htmlFor="decision-comment">Комментарий</FieldLabel>
             <Textarea id="decision-comment" name="text" rows={3}
                       placeholder="Например: работы включены в план на неделю, ответственный — мастер по добыче." />
           </Field>
@@ -95,7 +95,7 @@ export function ОкноОтклонения({ card, причины, старт�
             <FieldError>{ошибкаПричины}</FieldError>
           </Field>
           <Field data-invalid={Boolean(ошибкаТекста)}>
-            <FieldLabel htmlFor="reject-reason">Обоснование <span className="text-muted-foreground">обязательно</span></FieldLabel>
+            <FieldLabel htmlFor="reject-reason">Обоснование <Required /></FieldLabel>
             <Textarea id="reject-reason" name="text" rows={4}
                       aria-invalid={Boolean(ошибкаТекста)}
                       placeholder="Что сделано или планируется вместо рекомендованного, почему рекомендация не принимается." />
@@ -128,7 +128,7 @@ export function ОкноУточнения({ card, стартОткрыто }: {
     >
       <form action={отправить}>
         <Field data-invalid={Boolean(ошибка)}>
-          <FieldLabel htmlFor="clarify-request">Что требуется уточнить <span className="text-muted-foreground">обязательно</span></FieldLabel>
+          <FieldLabel htmlFor="clarify-request">Что требуется уточнить <Required /></FieldLabel>
           <Textarea id="clarify-request" name="text" rows={4}
                     aria-invalid={Boolean(ошибка)}
                     placeholder="Какого расчёта, замера или пояснения не хватает для решения." />

@@ -71,6 +71,7 @@ export async function зафиксировать(
   const полнота = String(form.get('completeness') ?? '');
   const чтоНеВыполнено = String(form.get('completeness_note') ?? '').trim();
   const комментарий = String(form.get('note') ?? '').trim();
+  const файлы = form.getAll('attachments').filter((f): f is File => f instanceof File && f.size > 0);
 
   if (!дата) return вернуться('Укажите дату фактической реализации.');
   if (дата > сутки(new Date())) {
@@ -84,6 +85,14 @@ export async function зафиксировать(
      базе, ни объяснять недобор эффекта потом нечем. */
   if (полнота === 'partial' && !чтоНеВыполнено) {
     return вернуться('При частичной реализации опишите, что именно не выполнено.');
+  }
+  /* Пределы те же, что у вложений к обсуждению и к самой рекомендации
+     (`api/rec/[id]/comment`, `rec/new/actions.ts`): файл лежит прямо в строке
+     базы (миграция 006), а не во внешнем хранилище, поэтому лимит бережёт не
+     формат, а бэкап. */
+  if (файлы.length > 5) return вернуться('К фиксации можно приложить не больше пяти файлов.');
+  if (файлы.some((f) => f.size > 10 * 1024 * 1024)) {
+    return вернуться('Размер каждого файла не должен превышать 10 МБ.');
   }
 
   const user = await currentUser();
@@ -135,6 +144,15 @@ export async function зафиксировать(
       VALUES ($1,'fact',$2,$3,'approved','windowOpen',$4)
     `, [recId, user!.id, user!.fullName,
       `Зафиксирована реализация ${полнота === 'partial' ? 'частично' : 'полностью'}, открыто окно подтверждения эффекта`]);
+
+    for (const f of файлы) {
+      const содержимое = Buffer.from(await f.arrayBuffer());
+      await client.query(`
+        INSERT INTO rec.attachments
+          (rec_id, file_name, mime_type, size_bytes, uploaded_by, context, content)
+        VALUES ($1,$2,$3,$4,$5,'implementation',$6)
+      `, [recId, f.name, f.type || null, f.size, user!.id, содержимое]);
+    }
 
     return null;
   });

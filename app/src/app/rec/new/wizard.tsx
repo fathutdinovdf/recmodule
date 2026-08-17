@@ -519,7 +519,7 @@ function RecommendationStep({ draft, update, invalid, files, addFiles, removeFil
     <TextField label="Технологическое обоснование" value={draft.rationale} onChange={(value) => update('rationale', value)}
       invalid={invalid.has('rationale')} area rows={5} placeholder="Почему мероприятие устранит проблему и какими данными это подтверждается." />
     <Field>
-      <FieldLabel>Вложения <span className="wz-optional">необязательно</span></FieldLabel>
+      <FieldLabel>Вложения</FieldLabel>
       <div className="wz-files">
         {files.map((file, index) => <span key={`${file.name}-${file.size}`}><FileText />
           <span><b>{file.name}</b><small>{Math.ceil(file.size / 1024)} КБ</small></span>
@@ -542,7 +542,7 @@ function ResultStep({ draft, update, invalid, baseline, baselineStatus, manualOp
       <NumberField label="Δ Qн, т/сут" value={draft.expectQn} onChange={(value) => update('expectQn', value)} invalid={invalid.has('expectQn')} step="0.01" />
       <NumberField label="Δ ЭЭ, кВт·ч/сут" value={draft.expectEe} onChange={(value) => update('expectEe', value)} invalid={invalid.has('expectEe')} step="1" />
     </div>
-    <TextField label="Пояснение к прогнозу" optional value={draft.resultNote}
+    <TextField label="Пояснение к прогнозу" value={draft.resultNote}
       onChange={(value) => update('resultNote', value)} area rows={2}
       placeholder="Например: выход на режим ожидается на третьи сутки." />
     <div className="wz-baseline">
@@ -590,7 +590,7 @@ function HandoverStep({ draft, update, invalid, executors, summary, priorities, 
         placeholder="Выберите ответственного" invalid={invalid.has('executorId')} />
       {invalid.has('executorId') && <FieldError id="registration-executor-error">Выберите ответственного.</FieldError>}
     </Field>
-    <TextField label="Комментарий при передаче" optional value={draft.comment}
+    <TextField label="Комментарий при передаче" value={draft.comment}
       onChange={(value) => update('comment', value)} area rows={3}
       placeholder="Договорённости с цехом, срочность или связанный контекст." />
     <div className="wz-summary"><h3>Проверка перед регистрацией</h3>
@@ -620,14 +620,14 @@ function AnalogGate({ analogs, checked, onCheckedChange, error }: {
   </section>;
 }
 
-function TextField({ label, optional, value, onChange, invalid, area, rows, placeholder }: {
-  label: string; optional?: boolean; value: string; onChange: (value: string) => void;
+function TextField({ label, value, onChange, invalid, area, rows, placeholder }: {
+  label: string; value: string; onChange: (value: string) => void;
   invalid?: boolean; area?: boolean; rows?: number; placeholder?: string;
 }) {
   const id = React.useId();
   const errorId = `${id}-error`;
   return <Field data-invalid={invalid}>
-    <FieldLabel htmlFor={id}>{label}{optional && <span className="wz-optional">необязательно</span>}</FieldLabel>
+    <FieldLabel htmlFor={id}>{label}</FieldLabel>
     {area ? <Textarea id={id} value={value} rows={rows} placeholder={placeholder} aria-invalid={invalid}
       aria-describedby={invalid ? errorId : undefined}
       onChange={(event) => onChange(event.target.value)} />

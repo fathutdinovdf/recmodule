@@ -120,7 +120,11 @@ function FieldLabel({
       className={cn(
         "group/field-label peer/field-label flex w-fit gap-2 leading-snug group-data-[disabled=true]/field:opacity-50",
         "has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:flex-col has-[>[data-slot=field]]:rounded-md has-[>[data-slot=field]]:border [&>*]:data-[slot=field]:p-4",
-        "has-data-[state=checked]:border-primary has-data-[state=checked]:bg-primary/5 dark:has-data-[state=checked]:bg-primary/10",
+        /* Заливка фона у отмеченного варианта — только у карточного варианта
+           (радио/чекбокс в рамке-`Field`). На обычной строке «кружок + текст»
+           without рамки та же заливка полосой красилась под словом и читалась
+           как подсветка текста синим — поэтому здесь она под тем же условием. */
+        "has-[>[data-slot=field]]:has-data-[state=checked]:border-primary has-[>[data-slot=field]]:has-data-[state=checked]:bg-primary/5 dark:has-[>[data-slot=field]]:has-data-[state=checked]:bg-primary/10",
         className
       )}
       {...props}
@@ -237,6 +241,14 @@ function FieldError({
   )
 }
 
+/** Отметка обязательного поля — звёздочка вместо слова «обязательно»: та же
+ *  информация, но не удлиняет подпись и не требует перевода взглядом. */
+function Required() {
+  return (
+    <span aria-hidden="true" className="text-[var(--status-error-text)]">*</span>
+  )
+}
+
 export {
   Field,
   FieldLabel,
@@ -248,4 +260,5 @@ export {
   FieldSet,
   FieldContent,
   FieldTitle,
+  Required,
 }

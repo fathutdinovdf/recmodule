@@ -19,7 +19,7 @@ import type { Card, CardDispute } from '@/db/card';
 import { Button } from '@/components/ui/Button';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Textarea } from '@/components/ui/Textarea';
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Field, FieldError, FieldGroup, FieldLabel, Required } from '@/components/ui/field';
 import { ActionDialog } from '@/components/ui/ActionDialog';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { DialogClose, DialogFooter } from '@/components/ui/dialog';
@@ -71,7 +71,7 @@ export function ФормаЗакрытия({ card, стартОткрыто }: {
       <form action={отправить}>
         <Field data-invalid={Boolean(ошибка)}>
           <FieldLabel htmlFor="close-reason">
-            Причина <span className="text-muted-foreground">обязательно</span>
+            Причина <Required />
           </FieldLabel>
           <Textarea id="close-reason" name="text" rows={3} aria-invalid={Boolean(ошибка)}
                     placeholder="Скважина остановлена в ремонт" />
@@ -106,7 +106,7 @@ export function ОкноВозражения({ card, стартОткрыто }:
         <FieldGroup>
           <Field data-invalid={Boolean(ошибкаДаты)}>
             <FieldLabel htmlFor="proposed-date">
-              Дата, которую считаете верной <span className="text-muted-foreground">обязательно</span>
+              Дата, которую считаете верной <Required />
             </FieldLabel>
             <DatePicker id="proposed-date" name="proposed_date" label="Дата, которую считаете верной"
                         defaultValue={impl.factDate} invalid={Boolean(ошибкаДаты)}
@@ -116,7 +116,7 @@ export function ОкноВозражения({ card, стартОткрыто }:
 
           <Field data-invalid={Boolean(ошибка && !ошибкаДаты)}>
             <FieldLabel htmlFor="dispute-reason">
-              Обоснование <span className="text-muted-foreground">обязательно</span>
+              Обоснование <Required />
             </FieldLabel>
             <Textarea id="dispute-reason" name="text" rows={4} aria-invalid={Boolean(ошибка && !ошибкаДаты)}
                       placeholder="Почему изменение режима в указанные сутки не связано с выполнением рекомендации." />
@@ -181,7 +181,7 @@ export function ОкноОтклонения({ card, спор, стартОтк�
       <form action={отправить}>
         <Field data-invalid={Boolean(ошибка)}>
           <FieldLabel htmlFor="decline-reason">
-            Обоснование <span className="text-muted-foreground">обязательно</span>
+            Обоснование <Required />
           </FieldLabel>
           <Textarea id="decline-reason" name="text" rows={3} aria-invalid={Boolean(ошибка)}
                     placeholder="Почему дата остаётся прежней: что показывает телеметрия в спорные сутки." />

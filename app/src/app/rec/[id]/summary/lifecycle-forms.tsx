@@ -34,7 +34,7 @@ import { Button } from '@/components/ui/Button';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { Textarea } from '@/components/ui/Textarea';
 import { DialogClose, DialogFooter } from '@/components/ui/dialog';
-import { Field, FieldError, FieldLabel } from '@/components/ui/field';
+import { Field, FieldError, FieldLabel, Required } from '@/components/ui/field';
 import {
   зарегистрировать, удалить, отменить, передатьПовторно, создатьНаОснове, type ОтветФормы,
 } from '../lifecycle';
@@ -132,7 +132,7 @@ function ОкноОтмены({ recId, стартОткрыто }: { recId: numb
       <form action={отправить}>
         <Field data-invalid={Boolean(ошибка)}>
           <FieldLabel htmlFor="cancel-reason">
-            Причина отмены <span className="text-muted-foreground">обязательно</span>
+            Причина отмены <Required />
           </FieldLabel>
           <Textarea id="cancel-reason" name="text" rows={3} aria-invalid={Boolean(ошибка)}
                     placeholder="Скважина выведена в ремонт" />
@@ -157,7 +157,7 @@ function ОкноПовторнойПередачи({ card, стартОткры
       <form action={отправить}>
         <Field data-invalid={Boolean(ошибка)}>
           <FieldLabel htmlFor="resend-text">
-            Уточнение <span className="text-muted-foreground">обязательно</span>
+            Уточнение <Required />
           </FieldLabel>
           <Textarea id="resend-text" name="text" rows={4} aria-invalid={Boolean(ошибка)}
                     placeholder={card.decision?.kind === 'clarify' && card.decision.comment

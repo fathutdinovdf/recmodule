@@ -67,7 +67,6 @@
 .wz-fields { max-width: 760px; display: flex; flex-direction: column; gap: var(--section-gap-default); }
 .wz-columns { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: var(--screen-gap-default); align-items: start; }
 .wz-columns .wz-fields { max-width: none; }
-.wz-optional { color: var(--text-quaternary); font-weight: var(--font-weight-text); }
 
 .wz-evidence {
   border: 1px solid var(--border-divider-light); border-radius: var(--corner-radius-l);
