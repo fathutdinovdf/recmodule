@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   description: 'Экспертное сопровождение механизированного фонда скважин',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children, modal }: { children: React.ReactNode; modal: React.ReactNode }) {
   return (
     /* suppressHydrationWarning: скрипт ниже правит data-theme до гидрации, и
        React иначе ругается на расхождение атрибута с серверной разметкой. */
@@ -38,6 +38,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <MotionProvider>
           <TooltipProvider delayDuration={350}>
             <AppShell>{children}</AppShell>
+            {/* Слот перехватывающего маршрута @modal: пуст на обычной
+                навигации, а при переходе с реестра на /rec/new несёт мастер
+                поверх него — реестр в children при этом не размонтируется. */}
+            {modal}
           </TooltipProvider>
         </MotionProvider>
         {/* Индикатор прокрутки окна. Экраны с собственным прокручиваемым

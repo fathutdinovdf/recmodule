@@ -29,7 +29,10 @@
   position: relative; z-index: 2;
 }
 .wz-head__copy { min-width: 0; }
-.wz-title { font: var(--font-weight-headline) var(--font-size-h4) / var(--line-height-h4) var(--font-family-headline); }
+/* h4 в токенах не определён (только h3/h5/h6) — раньше правило молча
+   игнорировалось целиком, и заголовок наследовал обычный размер текста.
+   h3 — самый крупный из существующих токенов заголовков. */
+.wz-title { font: var(--font-weight-headline) var(--font-size-h3) / var(--line-height-h3) var(--font-family-headline); }
 .wz-progress { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: var(--item-gap-horizontal-m); }
 .wz-progress > span { color: var(--text-tertiary); font-size: var(--font-size-text-small); white-space: nowrap; }
 
@@ -65,19 +68,16 @@
 .wz-pane__motion { min-height: 100%; padding: var(--section-padding-default); }
 .wz-pane__kicker { margin-bottom: var(--group-gap-m); color: var(--text-quaternary); font-size: var(--font-size-text-caption); letter-spacing: var(--letter-spacing-text-caption); text-transform: uppercase; }
 .wz-fields { max-width: 760px; display: flex; flex-direction: column; gap: var(--section-gap-default); }
-.wz-columns { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: var(--screen-gap-default); align-items: start; }
-.wz-columns .wz-fields { max-width: none; }
 
-.wz-evidence {
-  border: 1px solid var(--border-divider-light); border-radius: var(--corner-radius-l);
-  background: var(--bg-secondary); overflow: hidden;
+.wz-baserate {
+  display: flex; align-items: center; gap: var(--item-gap-horizontal-m);
+  padding: var(--group-padding-s) var(--group-padding-m);
+  border: 1px solid var(--border-divider-light); border-radius: var(--corner-radius-m);
+  background: var(--bg-secondary);
 }
-.wz-evidence > div { display: flex; flex-direction: column; gap: 3px; padding: var(--group-padding-m); border-top: 1px solid var(--border-divider-light); }
-.wz-evidence > div:first-child { border-top: 0; }
-.wz-evidence span, .wz-baseline__values span { color: var(--text-quaternary); font-size: var(--font-size-text-caption); }
-.wz-evidence b { color: var(--text-primary); }
-.wz-evidence small { color: var(--text-tertiary); line-height: var(--line-height-text-small); }
-.wz-empty { color: var(--text-quaternary); font-size: var(--font-size-text-small); line-height: var(--line-height-text-small); }
+.wz-baserate span { color: var(--text-tertiary); font-size: var(--font-size-text-small); }
+.wz-baserate b { margin-left: auto; color: var(--text-primary); font-size: var(--font-size-text-medium); }
+.wz-baserate__empty { color: var(--text-quaternary); font-weight: var(--font-weight-text); }
 
 .wz-priorities { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--block-gap-default); }
 .wz-priorities button {
@@ -108,16 +108,32 @@
 .wz-number-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--block-gap-default); }
 .wz-baseline { border: 1px solid var(--border-divider-light); border-radius: var(--corner-radius-l); overflow: hidden; }
 .wz-baseline__head { display: flex; align-items: center; justify-content: space-between; gap: var(--group-gap-m); padding: var(--group-padding-m); background: var(--bg-secondary); }
-.wz-baseline__head > div { display: flex; flex-direction: column; gap: 2px; }
-.wz-baseline__head span { color: var(--text-tertiary); font-size: var(--font-size-text-small); }
 .wz-baseline__values { display: grid; grid-template-columns: repeat(3, 1fr); padding: var(--group-padding-m); }
-.wz-baseline__values > div { display: flex; flex-direction: column; gap: 3px; padding-inline: var(--group-padding-m); border-left: 1px solid var(--border-divider-light); }
-.wz-baseline__values > div:first-child { padding-left: 0; border-left: 0; }
-.wz-baseline__values small { color: var(--text-quaternary); }
 .wz-baseline__loading { display: flex; align-items: center; gap: var(--item-gap-horizontal-m); padding: var(--group-padding-m); color: var(--text-tertiary); }
-.wz-baseline__trigger { width: 100%; justify-content: space-between; border-radius: 0; border-top: 1px solid var(--border-divider-light); }
-.wz-baseline__trigger svg { transition: transform .18s cubic-bezier(.22,1,.36,1); }
-.wz-manual { display: flex; flex-direction: column; gap: var(--group-gap-m); padding: var(--group-padding-m); border-top: 1px solid var(--border-divider-light); background: var(--bg-secondary); animation: wz-reveal .18s cubic-bezier(.22,1,.36,1); }
+.wz-baseline__period { padding: 0 var(--group-padding-m) var(--group-padding-m); color: var(--text-quaternary); font-size: var(--font-size-text-caption); }
+
+/* Значение базы — кликабельная ячейка, редактирование начинается прямо по
+   клику на число: расчёт по замерам остаётся рекомендацией, а не фактом,
+   которую пользователь волен переопределить без отдельного режима формы. */
+.wz-baseline__stat {
+  display: flex; flex-direction: column; gap: 3px;
+  padding-inline: var(--group-padding-m); border-left: 1px solid var(--border-divider-light);
+  border-top: 0; background: transparent; text-align: left; cursor: default;
+}
+.wz-baseline__stat:first-child { padding-left: 0; border-left: 0; }
+.wz-baseline__stat > span { color: var(--text-quaternary); font-size: var(--font-size-text-caption); }
+.wz-baseline__stat--edit { cursor: pointer; border-radius: var(--corner-radius-s); transition: background-color .14s ease; }
+.wz-baseline__stat--edit:hover { background: var(--state-hover); }
+.wz-baseline__stat--edit b {
+  display: flex; align-items: center; gap: 6px;
+  color: var(--text-primary); font-size: var(--font-size-text-medium); font-weight: var(--font-weight-subtitle);
+}
+.wz-baseline__stat--edit b svg { width: 13px; color: var(--icon-light); opacity: 0; transition: opacity .14s ease; }
+.wz-baseline__stat--edit:hover b svg { opacity: 1; }
+.wz-baseline__stat input { width: 100%; }
+
+.wz-manual { display: flex; flex-direction: column; align-items: flex-start; gap: var(--group-gap-m); padding: var(--group-padding-m); border-top: 1px solid var(--border-divider-light); background: var(--bg-secondary); animation: wz-reveal .18s cubic-bezier(.22,1,.36,1); }
+.wz-manual .field { width: 100%; }
 @keyframes wz-reveal { from { opacity: 0; clip-path: inset(0 0 100%); } to { opacity: 1; clip-path: inset(0); } }
 .wz-fixed, .wz-handover { display: flex; align-items: flex-start; gap: var(--item-gap-horizontal-m); padding: var(--group-padding-m); border-radius: var(--corner-radius-l); background: var(--component-inverse-tertiary); }
 .wz-fixed > svg, .wz-handover > svg { width: 18px; color: var(--icon-default); flex: 0 0 auto; }

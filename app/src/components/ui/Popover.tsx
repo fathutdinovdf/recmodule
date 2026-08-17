@@ -13,10 +13,19 @@ export function PopoverTrigger(props: React.ComponentProps<typeof PopoverPrimiti
 }
 
 export function PopoverContent({
-  className, align = 'start', sideOffset = 6, ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Content>) {
+  className, align = 'start', sideOffset = 6, container, ...props
+}: React.ComponentProps<typeof PopoverPrimitive.Content> & {
+  /** Куда портализовать содержимое. По умолчанию — document.body (как раньше).
+   * Комбобоксы внутри Dialog передают сюда контейнер самого диалога: колёсико
+   * мыши/тачпад над списком, портализованным в body, глушится блокировкой
+   * фоновой прокрутки Radix Dialog (react-remove-scroll не считает список
+   * своим, раз тот физически не внутри DOM-поддерева диалога) — работали
+   * только клавиатура и программная прокрутка. Портал внутри диалога решает
+   * это без выключения самой блокировки. */
+  container?: HTMLElement | null;
+}) {
   return (
-    <PopoverPrimitive.Portal>
+    <PopoverPrimitive.Portal container={container ?? undefined}>
       <PopoverPrimitive.Content
         data-slot="popover-content"
         align={align}

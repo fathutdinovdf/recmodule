@@ -52,6 +52,16 @@ export function Combobox({
   const [uncontrolledValue, setUncontrolledValue] = React.useState(defaultValue ?? '');
   const value = controlledValue ?? uncontrolledValue;
   const selected = options.find((option) => option.value === value);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
+  const [dialogContainer, setDialogContainer] = React.useState<HTMLElement | null>(null);
+
+  /* Внутри окна (Dialog) список надо портализовать в само окно, а не в body —
+   * иначе колесо мыши/тачпад над списком глушит блокировка фоновой прокрутки
+   * Radix Dialog, которая не признаёт портал в body «своим». Ищем контейнер
+   * один раз после монтирования: до него ref ещё пуст. */
+  React.useEffect(() => {
+    setDialogContainer(triggerRef.current?.closest('[role="dialog"]') as HTMLElement ?? null);
+  }, []);
 
   function select(nextValue: string) {
     if (controlledValue === undefined) setUncontrolledValue(nextValue);
@@ -64,6 +74,7 @@ export function Combobox({
       <input type="hidden" name={name} value={value} disabled={disabled} />
       <PopoverTrigger asChild>
         <Button
+          ref={triggerRef}
           id={id}
           type="button"
           variant="outline"
@@ -83,6 +94,7 @@ export function Combobox({
       </PopoverTrigger>
 
       <PopoverContent
+        container={dialogContainer}
         className="combo__menu w-[var(--radix-popover-trigger-width)]"
       >
         <Command shouldFilter={searchable}>

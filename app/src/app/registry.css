@@ -74,7 +74,9 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .layout { flex: 1 1 auto; display: flex; min-height: 0; }
 
 .sidenav {
-  width: var(--layout-sidebar-width);
+  /* Уже токена выгрузки: сужено по решению пользователя без правки самого
+     --layout-sidebar-width — токен остаётся точной копией макета. */
+  width: calc(var(--layout-sidebar-width) - 32px);
   flex: 0 0 auto;
   background: var(--bg-default);
   border-right: 1px solid var(--border-divider-light);

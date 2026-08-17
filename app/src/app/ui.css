@@ -26,6 +26,11 @@
 }
 .combo__inp[data-placeholder] { color: var(--text-placeholder); }
 .combo__inp:disabled { cursor: default; opacity: .6; }
+/* Точка отсчёта для .combo__caret (position: absolute). В Select.tsx её даёт
+   обёртка span.combo, а Combobox.tsx кладёт стрелку прямо в кнопку без
+   обёртки — без этого правила стрелка уезжала к ближайшему position:fixed
+   предку (обычно это весь диалог) и повисала в случайном месте экрана. */
+.combo__inp { position: relative; }
 
 .combo__caret {
   position: absolute; right: 11px; top: 50%; margin-top: -8px;
@@ -75,7 +80,7 @@
   to   { opacity: 1; transform: translateY(0)   scale(1); }
 }
 
-.combo__list { max-height: 276px; overflow-y: auto; overscroll-behavior: contain; }
+.combo__list { max-height: 276px; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
 
 .combo__empty {
   padding: var(--item-padding-horizontal-m);
@@ -89,7 +94,7 @@
   padding: 9px 12px;
   border-radius: 8px;
   font: var(--font-weight-text) var(--font-size-text-medium) / 1.35 var(--font-family-text);
-  color: var(--text-secondary);
+  color: var(--text-primary);
   cursor: pointer;
   outline: none;
 }
@@ -100,7 +105,11 @@
   color: var(--text-accent); font-weight: var(--font-weight-subtitle);
 }
 .combo__opt[data-current] { color: var(--text-accent); font-weight: var(--font-weight-subtitle); }
-.combo__opt[data-disabled] { color: var(--text-quaternary); cursor: default; }
+/* Только по значению "true": cmdk ставит data-disabled="false" на КАЖДЫЙ
+   обычный пункт (не убирает атрибут), и селектор по одному наличию
+   `[data-disabled]` красил бы в блёклый весь список, а не только
+   недоступные пункты — это и была причина общей бледности выпадающих
+   списков во всей системе. */
 .combo__opt[data-disabled="true"] { color: var(--text-quaternary); cursor: default; }
 
 .combo__txt { flex: 1 1 auto; min-width: 0; }

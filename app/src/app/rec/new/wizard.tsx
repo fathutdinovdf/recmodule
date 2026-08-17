@@ -7,8 +7,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'motion/react';
 import {
-  AlertTriangle, Check, ChevronDown, ChevronLeft, ChevronRight,
-  FileText, LockKeyhole, Paperclip, Save, X,
+  AlertTriangle, Check, ChevronLeft, ChevronRight,
+  LockKeyhole, Paperclip, Pencil, Save, X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Combobox } from '@/components/ui/Combobox';
@@ -16,12 +16,17 @@ import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Progress } from '@/components/ui/Progress';
 import { Checkbox } from '@/components/ui/Checkbox';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/Collapsible';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field';
 import { Spinner } from '@/components/ui/spinner';
+import {
+  Attachment, AttachmentAction, AttachmentActions, AttachmentContent,
+  AttachmentDescription, AttachmentMedia, AttachmentTitle,
+} from '@/components/ui/attachment';
+import { ИконкаФайла, типФайла } from '../[id]/log/file-icon';
+import { размер } from '../[id]/log/format';
 import type {
   RegistrationDirection, RegistrationExecutor, RegistrationPriority,
 } from '@/db/registration';
@@ -107,7 +112,6 @@ export function RegistrationWizard({
   const [closeAsked, setCloseAsked] = useState(false);
   const [gate, setGate] = useState(false);
   const [duplicatesConfirmed, setDuplicatesConfirmed] = useState(false);
-  const [manualOpen, setManualOpen] = useState(false);
   const [localNotice, setLocalNotice] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -293,7 +297,13 @@ export function RegistrationWizard({
             <input type="hidden" name="duplicatesConfirmed" value={duplicatesConfirmed ? 'yes' : 'no'} />
             <input type="hidden" name="duplicatesFingerprint" value={actionState.analogFingerprint ?? ''} />
             <input ref={fileInput} className="sr-only" type="file" name="attachments" multiple
-              onChange={(event) => syncFiles(Array.from(event.target.files ?? []).slice(0, 5))} />
+              onChange={(event) => {
+                const picked = Array.from(event.target.files ?? []);
+                syncFiles([...files, ...picked].slice(0, 5));
+                /* Сбрасываем значение поля: иначе повторный выбор того же файла
+                   не даёт события change, и добавить его снова нельзя. */
+                event.target.value = '';
+              }} />
 
             <DialogHeader className="wz-head">
               <div className="wz-head__copy">
@@ -307,7 +317,7 @@ export function RegistrationWizard({
                 <Progress value={((step + 1) / STEPS.length) * 100} />
               </div>
               <Button type="button" variant="ghost" size="icon" aria-label="Закрыть мастер"
-                onClick={() => dirty ? setCloseAsked(true) : router.push('/')}>
+                onClick={() => dirty ? setCloseAsked(true) : router.back()}>
                 <X />
               </Button>
             </DialogHeader>
@@ -360,8 +370,7 @@ export function RegistrationWizard({
                       )}
                       {step === 3 && (
                         <ResultStep draft={draft} update={update} invalid={invalidKeys}
-                          baseline={baseline} baselineStatus={baselineStatus} manualOpen={manualOpen}
-                          setManualOpen={setManualOpen} />
+                          baseline={baseline} baselineStatus={baselineStatus} />
                       )}
                       {step === 4 && (
                         <HandoverStep draft={draft} update={update} invalid={invalidKeys}
@@ -387,7 +396,7 @@ export function RegistrationWizard({
                 <SubmitControl name="intent" value="draft" variant="outline" onClick={saveDraft}>
                   <Save />Сохранить черновик
                 </SubmitControl>
-                <Button type="button" variant="ghost" onClick={() => dirty ? setCloseAsked(true) : router.push('/')}>Отмена</Button>
+                <Button type="button" variant="ghost" onClick={() => dirty ? setCloseAsked(true) : router.back()}>Отмена</Button>
               </div>
               <div className="wz-foot__right">
                 <Button type="button" variant="outline" disabled={step === 0 || gate} onClick={() => go(step - 1)}>
@@ -414,7 +423,7 @@ export function RegistrationWizard({
           </DialogHeader>
           <DialogFooter className="justify-end">
             <Button type="button" variant="outline" onClick={() => setCloseAsked(false)}>Продолжить заполнение</Button>
-            <Button type="button" variant="destructive" onClick={() => router.push('/')}>Закрыть без сохранения</Button>
+            <Button type="button" variant="destructive" onClick={() => router.back()}>Закрыть без сохранения</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -438,41 +447,39 @@ function ObjectStep({ fieldOptions, fieldId, chooseField, wellOptions, draft, up
   selectedWell: RegistrationWell | null; baseline: BaselinePreview | null;
   baselineStatus: string; wellsStatus: 'loading' | 'ready' | 'error'; invalid: boolean;
 }) {
-  return <div className="wz-columns">
-    <div className="wz-fields">
-      <Field>
-        <FieldLabel htmlFor="registration-field">Месторождение</FieldLabel>
-        <Combobox name="fieldPicker" value={fieldId} onValueChange={chooseField}
-          id="registration-field"
-          searchable searchPlaceholder="Найти месторождение…"
-          options={fieldOptions.map(([id, field]) => ({ value: String(id), label: field.name, note: `${field.count} скв.` }))}
-          placeholder={wellsStatus === 'loading' ? 'Загружаем фонд ВМАП…' : 'Выберите месторождение'}
-          disabled={wellsStatus !== 'ready'} />
-      </Field>
-      <Field data-invalid={invalid}>
-        <FieldLabel htmlFor="registration-well">Скважина</FieldLabel>
-        <Combobox name="wellPicker" value={draft.wellId} onValueChange={(value) => update('wellId', value)}
-          id="registration-well" ariaDescribedBy={invalid ? 'registration-well-error' : undefined}
-          searchable searchPlaceholder="Номер скважины…"
-          options={wellOptions.map((well) => ({ value: String(well.wellId), label: well.number, note: `куст ${well.kust}` }))}
-          placeholder={wellsStatus === 'loading' ? 'Загружаем скважины…' : 'Найдите скважину'}
-          disabled={wellsStatus !== 'ready'} invalid={invalid}
-          emptyText="В выбранном месторождении скважина не найдена" />
-        <FieldDescription>{wellsStatus === 'error'
-          ? 'Не удалось загрузить фонд ВМАП. Закройте мастер и попробуйте ещё раз.'
-          : 'Добывающие скважины ТПП «Когалымнефтегаз» (тип 1). Готовность замеров проверяется после выбора.'}</FieldDescription>
-        {invalid && <FieldError id="registration-well-error">Выберите скважину.</FieldError>}
-      </Field>
-    </div>
-    <aside className="wz-evidence">
-      {!selectedWell ? <div className="wz-empty">Выберите скважину — здесь появятся её контекст и готовность данных.</div> : <>
-        <div><span>Объект</span><b>Скважина {selectedWell.number}</b><small>{selectedWell.fieldName} · куст {selectedWell.kust}</small></div>
-        <div><span>База по замерам</span>{baselineStatus === 'loading' ? <Spinner />
-          : baseline ? <><b>{baseline.baseQzh?.toLocaleString('ru-RU', { maximumFractionDigits: 1 }) ?? '—'} м³/сут</b>
-            <small>нефть {baseline.baseQn?.toLocaleString('ru-RU', { maximumFractionDigits: 2 }) ?? '—'} т/сут · {baseline.usedDays} из {baseline.requestedDays} суток</small></>
-          : <small>Не удалось получить предварительный расчёт. При регистрации будет повторная попытка.</small>}</div>
-      </>}
-    </aside>
+  return <div className="wz-fields">
+    <Field>
+      <FieldLabel htmlFor="registration-field">Месторождение</FieldLabel>
+      <Combobox name="fieldPicker" value={fieldId} onValueChange={chooseField}
+        id="registration-field"
+        searchable searchPlaceholder="Найти месторождение…"
+        options={fieldOptions.map(([id, field]) => ({ value: String(id), label: field.name, note: `${field.count} скв.` }))}
+        placeholder={wellsStatus === 'loading' ? 'Загружаем фонд ВМАП…' : 'Выберите месторождение'}
+        disabled={wellsStatus !== 'ready'} />
+    </Field>
+    <Field data-invalid={invalid}>
+      <FieldLabel htmlFor="registration-well">Скважина</FieldLabel>
+      <Combobox name="wellPicker" value={draft.wellId} onValueChange={(value) => update('wellId', value)}
+        id="registration-well" ariaDescribedBy={invalid ? 'registration-well-error' : undefined}
+        searchable searchPlaceholder="Номер скважины…"
+        options={wellOptions.map((well) => ({ value: String(well.wellId), label: well.number, note: `куст ${well.kust}` }))}
+        placeholder={wellsStatus === 'loading' ? 'Загружаем скважины…' : 'Найдите скважину'}
+        disabled={wellsStatus !== 'ready'} invalid={invalid}
+        emptyText="В выбранном месторождении скважина не найдена" />
+      {wellsStatus === 'error' && (
+        <FieldDescription>Не удалось загрузить фонд ВМАП. Закройте мастер и попробуйте ещё раз.</FieldDescription>
+      )}
+      {invalid && <FieldError id="registration-well-error">Выберите скважину.</FieldError>}
+    </Field>
+    {selectedWell && (
+      <div className="wz-baserate">
+        <span>Базовый дебит жидкости по замерам</span>
+        {baselineStatus === 'loading' ? <Spinner />
+          : baseline?.baseQzh != null
+            ? <b>{baseline.baseQzh.toLocaleString('ru-RU', { maximumFractionDigits: 1 })} м³/сут</b>
+            : <b className="wz-baserate__empty">нет расчёта</b>}
+      </div>
+    )}
   </div>;
 }
 
@@ -503,7 +510,6 @@ function ProblemStep({ directions, priorities, draft, update, invalid }: {
           <b>{item.name.split('—')[1]?.trim() ?? item.name}</b><small>ответ {item.responseHours} рабочих ч</small>
         </button>)}
       </div>
-      <FieldDescription>Норматив начинается с передачи Заказчику, а не с сохранения черновика.</FieldDescription>
       {invalid.has('priority') && <FieldError id="registration-priority-error">Выберите приоритет.</FieldError>}
     </Field>
   </div>;
@@ -520,22 +526,57 @@ function RecommendationStep({ draft, update, invalid, files, addFiles, removeFil
       invalid={invalid.has('rationale')} area rows={5} placeholder="Почему мероприятие устранит проблему и какими данными это подтверждается." />
     <Field>
       <FieldLabel>Вложения</FieldLabel>
-      <div className="wz-files">
-        {files.map((file, index) => <span key={`${file.name}-${file.size}`}><FileText />
-          <span><b>{file.name}</b><small>{Math.ceil(file.size / 1024)} КБ</small></span>
-          <button type="button" aria-label={`Убрать ${file.name}`} onClick={() => removeFile(index)}><X /></button></span>)}
-        <Button type="button" variant="outline" onClick={addFiles} disabled={files.length >= 5}><Paperclip />Прикрепить файл</Button>
-      </div>
+      {files.length > 0 && (
+        <div className="wz-files">
+          {files.map((file, index) => (
+            <Attachment key={`${file.name}-${file.size}-${index}`} size="sm" className="max-w-full flex-nowrap">
+              <AttachmentMedia><ИконкаФайла имя={file.name} /></AttachmentMedia>
+              <AttachmentContent>
+                <AttachmentTitle>{file.name}</AttachmentTitle>
+                <AttachmentDescription>{типФайла(file.name)} · {размер(file.size)}</AttachmentDescription>
+              </AttachmentContent>
+              <AttachmentActions>
+                <AttachmentAction aria-label={`Убрать ${file.name}`}
+                  className="border-transparent bg-transparent text-muted-foreground hover:text-foreground"
+                  onClick={() => removeFile(index)}>
+                  <X />
+                </AttachmentAction>
+              </AttachmentActions>
+            </Attachment>
+          ))}
+        </div>
+      )}
+      <Button type="button" variant="outline" size="sm" onClick={addFiles} disabled={files.length >= 5}>
+        <Paperclip className="size-3.5" />Прикрепить файл
+      </Button>
       <FieldDescription>До пяти файлов, каждый не больше 10 МБ.</FieldDescription>
     </Field>
   </div>;
 }
 
-function ResultStep({ draft, update, invalid, baseline, baselineStatus, manualOpen, setManualOpen }: {
+function ResultStep({ draft, update, invalid, baseline, baselineStatus }: {
   draft: Draft; update: <K extends keyof Draft>(key: K, value: Draft[K]) => void;
   invalid: Set<keyof Draft>; baseline: BaselinePreview | null; baselineStatus: string;
-  manualOpen: boolean; setManualOpen: (value: boolean) => void;
 }) {
+  const [editing, setEditing] = React.useState<null | 'baseQzh' | 'baseQn' | 'baseEe'>(null);
+
+  function editValue<K extends 'baseQzh' | 'baseQn' | 'baseEe'>(key: K, value: string) {
+    update(key, value);
+    update('baselineSource', 'manual');
+    setEditing(null);
+  }
+
+  function сброситьБазу() {
+    update('baselineSource', 'measured');
+    update('baseQzh', ''); update('baseQn', ''); update('baseEe', ''); update('baselineNote', '');
+    setEditing(null);
+  }
+
+  const computedQzh = baseline?.baseQzh != null
+    ? baseline.baseQzh.toLocaleString('ru-RU', { maximumFractionDigits: 1 }) : null;
+  const computedQn = baseline?.baseQn != null
+    ? baseline.baseQn.toLocaleString('ru-RU', { maximumFractionDigits: 2 }) : null;
+
   return <div className="wz-fields">
     <div className="wz-number-grid">
       <NumberField label="Δ Qж, м³/сут" value={draft.expectQzh} onChange={(value) => update('expectQzh', value)} invalid={invalid.has('expectQzh')} step="0.1" />
@@ -546,33 +587,64 @@ function ResultStep({ draft, update, invalid, baseline, baselineStatus, manualOp
       onChange={(value) => update('resultNote', value)} area rows={2}
       placeholder="Например: выход на режим ожидается на третьи сутки." />
     <div className="wz-baseline">
-      <div className="wz-baseline__head"><div><b>Базовые значения</b><span>пересчитываются в момент регистрации</span></div>
-        <span className="tag tag--default">{draft.baselineSource === 'manual' ? 'вручную' : 'по замерам'}</span></div>
-      {baselineStatus === 'loading' ? <div className="wz-baseline__loading"><Spinner />Получаю замеры ВМАП…</div>
-        : baseline ? <div className="wz-baseline__values">
-          <div><span>Жидкость</span><b>{baseline.baseQzh?.toLocaleString('ru-RU', { maximumFractionDigits: 1 }) ?? '—'} м³/сут</b></div>
-          <div><span>Нефть</span><b>{baseline.baseQn?.toLocaleString('ru-RU', { maximumFractionDigits: 2 }) ?? '—'} т/сут</b></div>
-          <div><span>Период</span><b>{дата(baseline.periodFrom)} — {дата(baseline.periodTo)}</b><small>{baseline.usedDays} из {baseline.requestedDays} суток</small></div>
-        </div> : <div className="wz-baseline__loading">Предварительный расчёт недоступен. Можно ввести обоснованную ручную базу.</div>}
-      <Collapsible open={manualOpen} onOpenChange={setManualOpen}>
-        <CollapsibleTrigger asChild><Button type="button" variant="ghost" className="wz-baseline__trigger">
-          Заменить базу вручную<ChevronDown className={manualOpen ? 'rotate-180' : ''} />
-        </Button></CollapsibleTrigger>
-        <CollapsibleContent className="wz-manual">
-          <div className="wz-number-grid">
-            <NumberField label="База Qж" value={draft.baseQzh} onChange={(value) => { update('baseQzh', value); update('baselineSource', 'manual'); }} step="0.1" />
-            <NumberField label="База Qн" value={draft.baseQn} onChange={(value) => { update('baseQn', value); update('baselineSource', 'manual'); }} step="0.01" />
-            <NumberField label="База ЭЭ" value={draft.baseEe} onChange={(value) => { update('baseEe', value); update('baselineSource', 'manual'); }} step="1" />
-          </div>
+      <div className="wz-baseline__head">
+        <b>Базовые значения</b>
+        <span className="tag tag--default">{draft.baselineSource === 'manual' ? 'вручную' : 'по замерам'}</span>
+      </div>
+      {baselineStatus === 'loading' ? <div className="wz-baseline__loading"><Spinner />Получаю замеры ВМАП…</div> : (
+        /* Расчёт по замерам — это рекомендация, а не факт: значения можно
+           переопределить кликом прямо по числу, без отдельного режима формы. */
+        <div className="wz-baseline__values">
+          <BaselineStat label="Жидкость, м³/сут" step="0.1"
+            value={draft.baseQzh} computed={computedQzh}
+            editing={editing === 'baseQzh'} onEdit={() => setEditing('baseQzh')}
+            onCommit={(value) => editValue('baseQzh', value)} />
+          <BaselineStat label="Нефть, т/сут" step="0.01"
+            value={draft.baseQn} computed={computedQn}
+            editing={editing === 'baseQn'} onEdit={() => setEditing('baseQn')}
+            onCommit={(value) => editValue('baseQn', value)} />
+          <BaselineStat label="ЭЭ, кВт·ч/сут" step="1"
+            value={draft.baseEe} computed={null}
+            editing={editing === 'baseEe'} onEdit={() => setEditing('baseEe')}
+            onCommit={(value) => editValue('baseEe', value)} />
+        </div>
+      )}
+      {baseline && (
+        <div className="wz-baseline__period">
+          Период по замерам {дата(baseline.periodFrom)} — {дата(baseline.periodTo)} · {baseline.usedDays} из {baseline.requestedDays} суток
+        </div>
+      )}
+      {draft.baselineSource === 'manual' && (
+        <div className="wz-manual">
           <TextField label="Обоснование ручной базы" value={draft.baselineNote}
-            onChange={(value) => { update('baselineNote', value); update('baselineSource', 'manual'); }} area rows={3}
+            onChange={(value) => update('baselineNote', value)} area rows={2}
             placeholder="Какие сутки или режим использованы и почему расчёт по замерам не подходит." />
-          {draft.baselineSource === 'manual' && <Button type="button" variant="outline" onClick={() => update('baselineSource', 'measured')}>Вернуть расчёт по замерам</Button>}
-        </CollapsibleContent>
-      </Collapsible>
+          <Button type="button" variant="ghost" size="sm" onClick={сброситьБазу}>Вернуть расчёт по замерам</Button>
+        </div>
+      )}
     </div>
-    <div className="wz-fixed"><LockKeyhole /><div><b>Горизонт подтверждения — 90 суток</b><span>Отсчитывается от даты фактической реализации и не редактируется.</span></div></div>
+    <div className="wz-fixed"><LockKeyhole /><div><b>Горизонт оценки эффекта — 90 суток</b><span>Отсчитывается от даты фактической реализации и не редактируется.</span></div></div>
   </div>;
+}
+
+function BaselineStat({ label, value, computed, editing, onEdit, onCommit, step }: {
+  label: string; value: string; computed: string | null; editing: boolean;
+  onEdit: () => void; onCommit: (value: string) => void; step: string;
+}) {
+  const shown = value || computed;
+  if (editing) {
+    return <div className="wz-baseline__stat">
+      <span>{label}</span>
+      <Input type="number" inputMode="decimal" step={step} defaultValue={value || computed || ''}
+        autoFocus className="text-right tabular-nums"
+        onBlur={(event) => onCommit(event.target.value)}
+        onKeyDown={(event) => { if (event.key === 'Enter') (event.target as HTMLInputElement).blur(); }} />
+    </div>;
+  }
+  return <button type="button" className="wz-baseline__stat wz-baseline__stat--edit" onClick={onEdit}>
+    <span>{label}</span>
+    <b>{shown || 'не задано'}<Pencil /></b>
+  </button>;
 }
 
 function HandoverStep({ draft, update, invalid, executors, summary, priorities, onGo }: {
