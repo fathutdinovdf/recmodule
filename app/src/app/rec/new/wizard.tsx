@@ -3,7 +3,6 @@
 import * as React from 'react';
 import { useActionState, useEffect, useMemo, useRef, useState } from 'react';
 import { useFormStatus } from 'react-dom';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'motion/react';
 import {
@@ -96,14 +95,16 @@ const LOCAL_DRAFT_KEY = 'rec-registration-draft';
 const дата = (value: string) => new Date(value).toLocaleDateString('ru-RU');
 
 export function RegistrationWizard({
-  directions, priorities, executors, currentExecutorId,
+  directions, priorities, executors, currentExecutorId, onClose,
 }: {
   directions: RegistrationDirection[];
   priorities: RegistrationPriority[];
   executors: RegistrationExecutor[];
   currentExecutorId: number | null;
+  /* Мастер открывается окном без своего адреса (см. RegistrationLauncher) —
+     закрытие поэтому не навигация, а сброс состояния у родителя. */
+  onClose: () => void;
 }) {
-  const router = useRouter();
   const [actionState, formAction] = useActionState(сохранитьРекомендацию, initialState);
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState(1);
@@ -288,8 +289,18 @@ export function RegistrationWizard({
 
   return (
     <>
-      <Dialog open onOpenChange={(open) => { if (!open) setCloseAsked(true); }}>
-        <DialogContent showCloseButton={false} className="wz-dialog">
+      {/* Окно всегда открыто (`open` — литерал, не state): реальное закрытие
+         идёт только через onClose из родителя, минуя onOpenChange(false).
+         Esc и клик вовне гасятся на уровне DialogContent (preventDefault),
+         а не через onOpenChange — если дать Radix once вызвать onOpenChange(false),
+         animate-ui на миг рассинхронизирует свой анимационный isOpen с реальным
+         open=true (useControlledState в dialog.tsx эхом обновляет internal state
+         сразу, до того как эффект вернёт его обратно), и слой окна застревает
+         невидимым (opacity: 0) после того как чек-диалог закрыт. */}
+      <Dialog open>
+        <DialogContent showCloseButton={false} className="wz-dialog"
+          onEscapeKeyDown={(event) => { event.preventDefault(); setCloseAsked(true); }}
+          onPointerDownOutside={(event) => { event.preventDefault(); setCloseAsked(true); }}>
           <form action={formAction} className="wz-form">
             {Object.entries(draft).map(([key, value]) => (
               <input key={key} type="hidden" name={key} value={value} />
@@ -317,7 +328,7 @@ export function RegistrationWizard({
                 <Progress value={((step + 1) / STEPS.length) * 100} />
               </div>
               <Button type="button" variant="ghost" size="icon" aria-label="Закрыть мастер"
-                onClick={() => dirty ? setCloseAsked(true) : router.back()}>
+                onClick={() => dirty ? setCloseAsked(true) : onClose()}>
                 <X />
               </Button>
             </DialogHeader>
@@ -396,7 +407,7 @@ export function RegistrationWizard({
                 <SubmitControl name="intent" value="draft" variant="outline" onClick={saveDraft}>
                   <Save />Сохранить черновик
                 </SubmitControl>
-                <Button type="button" variant="ghost" onClick={() => dirty ? setCloseAsked(true) : router.back()}>Отмена</Button>
+                <Button type="button" variant="ghost" onClick={() => dirty ? setCloseAsked(true) : onClose()}>Отмена</Button>
               </div>
               <div className="wz-foot__right">
                 <Button type="button" variant="outline" disabled={step === 0 || gate} onClick={() => go(step - 1)}>
@@ -423,7 +434,7 @@ export function RegistrationWizard({
           </DialogHeader>
           <DialogFooter className="justify-end">
             <Button type="button" variant="outline" onClick={() => setCloseAsked(false)}>Продолжить заполнение</Button>
-            <Button type="button" variant="destructive" onClick={() => router.back()}>Закрыть без сохранения</Button>
+            <Button type="button" variant="destructive" onClick={() => onClose()}>Закрыть без сохранения</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

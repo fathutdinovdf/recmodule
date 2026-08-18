@@ -3,7 +3,10 @@
 import { redirect } from 'next/navigation';
 import { transaction } from '@/db/pool';
 import { currentUser } from '@/lib/session';
-import { registrationAnalogs, type RegistrationAnalog } from '@/db/registration';
+import {
+  registrationAnalogs, registrationReferences, type RegistrationAnalog,
+  type RegistrationDirection, type RegistrationExecutor, type RegistrationPriority,
+} from '@/db/registration';
 import { зарегистрировать } from '@/app/rec/[id]/lifecycle';
 import { getRegistrationWell } from '@/db/vmap';
 
@@ -11,6 +14,29 @@ export interface RegistrationActionState {
   error?: string;
   analogs?: Array<Omit<RegistrationAnalog, 'registeredAt'> & { registeredAt: string }>;
   analogFingerprint?: string;
+}
+
+export interface RegistrationReferencesResult {
+  allowed: boolean;
+  directions: RegistrationDirection[];
+  priorities: RegistrationPriority[];
+  executors: RegistrationExecutor[];
+  currentExecutorId: number | null;
+}
+
+/* Мастер открывается окном без перехода — справочники нужны только в момент
+   открытия, поэтому тянутся отдельным вызовом действия с клиента, а не через
+   проп со страницы реестра (иначе они грузились бы при каждом заходе в
+   реестр, даже если мастер так и не открыли). */
+export async function справочникиМастера(): Promise<RegistrationReferencesResult> {
+  const user = await currentUser();
+  if (user?.side !== 'executor') {
+    return {
+      allowed: false, directions: [], priorities: [], executors: [], currentExecutorId: null,
+    };
+  }
+  const references = await registrationReferences();
+  return { allowed: true, ...references, currentExecutorId: user.id };
 }
 
 const LIMIT = 10 * 1024 * 1024;
