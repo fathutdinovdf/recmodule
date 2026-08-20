@@ -18,16 +18,33 @@ export interface TabDef {
   label: string;
   /** Вкладка, у которой ещё нет своей страницы, показывается приглушённой. */
   ready?: boolean;
+  /** Только когда замеры вводятся руками (DATA_SOURCE=manual). */
+  manualOnly?: boolean;
 }
 
 export const ВКЛАДКИ: TabDef[] = [
   { key: 'summary', label: 'Сводка', ready: true },
   { key: 'impl', label: 'Реализация', ready: true },
   { key: 'effect', label: 'Расчёт эффекта', ready: true },
+  /* Сразу за расчётом, а не в конце: сюда уходят, увидев в расчёте пробел в
+     сутках, и возвращаются обратно. Соседство здесь — про этот маршрут. */
+  { key: 'daily', label: 'Суточные данные', ready: true, manualOnly: true },
   { key: 'analogs', label: 'Аналоги', ready: true },
   { key: 'files', label: 'Файлы', ready: true },
   { key: 'log', label: 'История и обсуждение', ready: true },
 ];
+
+/**
+ * Состав вкладок для текущего источника данных.
+ *
+ * Отбор живёт здесь, а не в компоненте вкладок: тот помечен 'use client', а
+ * `process.env.DATA_SOURCE` на клиенте не существует — вкладка не показалась
+ * бы никогда. Серверная половина карточки зовёт эту функцию и отдаёт
+ * результат пропсом.
+ */
+export function вкладкиДля(ручнойИсточник: boolean): TabDef[] {
+  return ВКЛАДКИ.filter((t) => !t.manualOnly || ручнойИсточник);
+}
 
 /** Первая вкладка со своей страницей — на неё уходит адрес без сегмента. */
 export const ВКЛАДКА_ПО_УМОЛЧАНИЮ = ВКЛАДКИ.find((t) => t.ready)!.key;

@@ -9,15 +9,8 @@
 
 import { AppChrome } from './AppChrome';
 import { currentUser, allUsers } from '@/lib/session';
-import { РУЧНОЙ_ИСТОЧНИК } from '@/db/wells-data';
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const [user, users] = await Promise.all([currentUser(), allUsers()]);
-  /* Режим источника читается на сервере: process.env клиенту не виден, а
-     класть его в NEXT_PUBLIC_ ради одного пункта меню незачем. */
-  return (
-    <AppChrome user={user} users={users} ручнойИсточник={РУЧНОЙ_ИСТОЧНИК}>
-      {children}
-    </AppChrome>
-  );
+  return <AppChrome user={user} users={users}>{children}</AppChrome>;
 }

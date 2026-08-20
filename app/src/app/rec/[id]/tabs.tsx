@@ -28,14 +28,20 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Tabs as Сегменты, TabsList, TabsTrigger } from '@/components/animate-ui/components/radix/tabs';
-import { ВКЛАДКИ } from './tabs-def';
+import { ВКЛАДКИ, type TabDef } from './tabs-def';
 
-export function Tabs({ recId, counts }: { recId: number; counts: Record<string, number> }) {
+export function Tabs({ recId, counts, вкладки = ВКЛАДКИ }: {
+  recId: number;
+  counts: Record<string, number>;
+  /* Состав приходит с сервера: часть вкладок зависит от источника данных,
+     а его переменная окружения на клиенте не видна (см. tabs-def.ts). */
+  вкладки?: TabDef[];
+}) {
   const path = usePathname();
   const router = useRouter();
-  const текущая = ВКЛАДКИ.find((t) => path === `/rec/${recId}/${t.key}`)?.key ?? '';
+  const текущая = вкладки.find((t) => path === `/rec/${recId}/${t.key}`)?.key ?? '';
 
-  ПрогревВкладок(recId, текущая, router);
+  ПрогревВкладок(recId, текущая, router, вкладки);
   const { приехало, новое } = ЖивойСчётчикОбсуждения(recId, текущая);
 
   return (
@@ -49,7 +55,7 @@ export function Tabs({ recId, counts }: { recId: number; counts: Record<string, 
                 onValueChange={(v) => { if (v !== текущая) router.push(`/rec/${recId}/${v}`); }}
                 className="min-w-0 overflow-x-auto scrollbar-none">
         <TabsList>
-          {ВКЛАДКИ.map((t) => {
+          {вкладки.map((t) => {
             /* Счётчик обсуждения живой: реплики, приехавшие по каналу, пока
                человек в карточке, прибавляются к серверному числу. */
             const свежих = t.key === 'log' ? приехало : 0;
@@ -131,7 +137,8 @@ export function Tabs({ recId, counts }: { recId: number; counts: Record<string, 
  */
 const ПЕРИОД_ПРОГРЕВА = 150_000; // staleTimes.dynamic = 180 с, обновляем с запасом
 
-function ПрогревВкладок(recId: number, текущая: string, router: ReturnType<typeof useRouter>) {
+function ПрогревВкладок(recId: number, текущая: string,
+                        router: ReturnType<typeof useRouter>, вкладки: TabDef[]) {
   const активная = useRef(текущая);
   активная.current = текущая;
 
@@ -144,7 +151,7 @@ function ПрогревВкладок(recId: number, текущая: string, rou
       if (идёт || отменено || document.hidden) return;
       идёт = true;
       try {
-        for (const t of ВКЛАДКИ) {
+        for (const t of вкладки) {
           if (отменено) return;
           /* Открытая вкладка отрисована — её греть нечего. */
           if (!t.ready || t.key === активная.current) continue;
