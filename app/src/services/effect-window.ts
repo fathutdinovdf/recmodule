@@ -5,10 +5,10 @@
  * про базы не знает.
  */
 
-import { dailySeries, liquidMass, oilFromLiquid } from '@/domain/measurements';
+import { liquidMass, oilFromLiquid } from '@/domain/measurements';
 import { dailyEffect, sumBreakdowns, missingRates,
          type WellEconomy, type EffectBreakdown } from '@/domain/effect';
-import { getMeasurementsWithLookback, getWell, PARAM } from '@/db/wells-data';
+import { dailySeriesFor, getWell, PARAM } from '@/db/wells-data';
 import { getWellEconomy } from '@/db/economy';
 
 export interface Baseline {
@@ -82,15 +82,14 @@ export async function calculateEffect(params: {
   const плотностьВоды = well?.waterDensity ?? null;
   if (плотностьВоды === null) problems.push('Нет плотности воды по скважине');
 
-  const [замерыЖидкости, замерыОбводнённости] = await Promise.all([
-    getMeasurementsWithLookback(wellId, PARAM.QZH_MEASURED, windowFrom, windowTo),
-    getMeasurementsWithLookback(wellId, PARAM.WATERCUT, windowFrom, windowTo),
+  const [рядЖидкости, рядОбводнённости] = await Promise.all([
+    dailySeriesFor(wellId, PARAM.QZH_MEASURED, windowFrom, windowTo),
+    dailySeriesFor(wellId, PARAM.WATERCUT, windowFrom, windowTo),
   ]);
 
-  if (замерыЖидкости.length === 0) problems.push('За период нет замеров дебита');
-
-  const рядЖидкости = dailySeries(замерыЖидкости, windowFrom, windowTo);
-  const рядОбводнённости = dailySeries(замерыОбводнённости, windowFrom, windowTo);
+  if (рядЖидкости.every((d) => d.value === null)) {
+    problems.push('За период нет данных о дебите');
+  }
   const обводнённостьПоДню = new Map(
     рядОбводнённости.map((d) => [d.date.getTime(), d.value]),
   );

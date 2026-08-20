@@ -11,9 +11,8 @@
  * Функция честно возвращает базу с usedDays = 0, и решение принимает человек.
  */
 
-import { dailySeries } from '@/domain/measurements';
 import { baselineFromSeries, BASELINE_DAYS, type MeasuredBaseline } from '@/domain/baseline';
-import { getMeasurementsWithLookback, getWell, PARAM } from '@/db/wells-data';
+import { dailySeriesFor, getWell, PARAM } from '@/db/wells-data';
 
 export async function measuredBaseline(params: {
   wellId: number;
@@ -32,15 +31,15 @@ export async function measuredBaseline(params: {
   const начало = new Date(конец);
   начало.setDate(начало.getDate() - (days - 1));
 
-  const [well, замерыЖидкости, замерыОбводнённости] = await Promise.all([
+  const [well, рядЖидкости, рядОбводнённости] = await Promise.all([
     getWell(wellId),
-    getMeasurementsWithLookback(wellId, PARAM.QZH_MEASURED, начало, конец),
-    getMeasurementsWithLookback(wellId, PARAM.WATERCUT, начало, конец),
+    dailySeriesFor(wellId, PARAM.QZH_MEASURED, начало, конец),
+    dailySeriesFor(wellId, PARAM.WATERCUT, начало, конец),
   ]);
 
   return baselineFromSeries({
-    qzh: dailySeries(замерыЖидкости, начало, конец),
-    watercut: dailySeries(замерыОбводнённости, начало, конец),
+    qzh: рядЖидкости,
+    watercut: рядОбводнённости,
     oilDensity: well?.oilDensity ?? null,
     waterDensity: well?.waterDensity ?? null,
   });

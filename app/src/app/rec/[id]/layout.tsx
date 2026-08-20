@@ -15,9 +15,9 @@ import { Icon } from '@/components/Icons';
 import { Hint } from '@/components/ui/Hint';
 import { getCard, getNeighbours, getWellHistory } from '@/db/card';
 import { getWellEconomy } from '@/db/economy';
-import { getWell, getMeasurementsWithLookback, PARAM, РУЧНОЙ_ИСТОЧНИК } from '@/db/wells-data';
+import { getWell, dailySeriesFor, PARAM, РУЧНОЙ_ИСТОЧНИК } from '@/db/wells-data';
 import { вкладкиДля } from './tabs-def';
-import { dailySeries, dayStart } from '@/domain/measurements';
+import { dayStart } from '@/domain/measurements';
 import { forecastTotal } from '@/domain/effect';
 import { control, fmtDur } from '@/domain/workhours';
 import { WINDOW_DAYS } from '@/services/effect-store';
@@ -277,13 +277,13 @@ async function читатьСкважину(wellId: number | null): Promise<Да
   const конец = dayStart(new Date());
   const начало = new Date(конец.getTime() - 29 * 86400000);
   try {
-    const [well, замеры] = await Promise.all([
+    const [well, ряд] = await Promise.all([
       getWell(wellId),
-      getMeasurementsWithLookback(wellId, PARAM.QZH_MEASURED, начало, конец),
+      dailySeriesFor(wellId, PARAM.QZH_MEASURED, начало, конец),
     ]);
-    return { well, ряд: dailySeries(замеры, начало, конец), ошибка: '' };
+    return { well, ряд, ошибка: '' };
   } catch {
-    return { well: null, ряд: [], ошибка: 'Стенд ВМАП сейчас недоступен — параметры скважины не прочитаны.' };
+    return { well: null, ряд: [], ошибка: 'Данные по скважине сейчас недоступны — параметры не прочитаны.' };
   }
 }
 

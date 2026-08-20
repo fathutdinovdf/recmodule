@@ -11,7 +11,13 @@
 import { query } from './pool';
 import { PARAM } from './vmap-sql';
 import type { VmapWell, RegistrationVmapWell } from './vmap';
-import { dayStart, type Measurement } from '@/domain/measurements';
+import { dayStart, type DailyPoint } from '@/domain/measurements';
+
+const СУТКИ_МС = 86_400_000;
+const LOOKBACK_DAYS = 30;
+
+/** Ключ суток без часового пояса: даты приходят из pg локальной полночью. */
+const ключСуток = (d: Date) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
 
 async function loadRefWell(wellId: number) {
   const rows = await query<{
@@ -65,32 +71,83 @@ export async function getWell(wellId: number): Promise<VmapWell | null> {
 }
 
 /**
- * Построчный суточный факт превращается в Measurement[] — тот же тип, что
- * отдаёт vmap.ts. Момент замера ставится на секунду позже начала суток:
- * domain/measurements.ts (dailyAverage) сам умеет и протяжку значения вперёд
- * при пропущенных сутках, и расчёт coverage/points, так что введённая
- * вручную суточная величина получает coverage ≈ 1, а пропущенная — 0
- * (протяжка), без единой строки нового кода в domain/.
+ * Суточный ряд по введённым вручную значениям.
+ *
+ * Отдаём сразу DailyPoint[], а не Measurement[], и это принципиально.
+ * Замер ВМАП — мгновенное показание, между замерами последнее значение
+ * законно протягивается: телеметрия — ступенька, и сутки без замера всё
+ * равно чем-то описаны. Введённое руками число — не показание, а СУТОЧНОЕ
+ * значение, и незаполненный день значит «ещё не внесли», а не «столько же,
+ * сколько вчера».
+ *
+ * Разница не косметическая: пропусти это, и одни введённые сутки в начале
+ * окна протянулись бы на все девяносто, дав полный эффект в деньгах из
+ * единственной цифры. Плюс через Measurement[] значение приезжало обратно
+ * искажённым (введённые 100 превращались в 100,00023) — первую секунду
+ * суток занимало прежнее значение.
+ *
+ * Обводнённость — исключение, её протягиваем. Причина та же, по которой её
+ * протягивает отбор суток базы (см. domain/baseline.ts): её определяют
+ * лабораторно и много реже дебита, и требовать собственного значения на
+ * каждые сутки значило бы оставить без нефти почти весь расчёт. Протянутые
+ * сутки помечены points = 0, поэтому отбор базы по-прежнему их различает.
  */
-export async function getMeasurementsWithLookback(
+export async function dailySeriesFor(
   wellId: number,
   parameterId: number,
   from: Date,
   to: Date,
-  lookbackDays = 30,
-): Promise<Measurement[]> {
+): Promise<DailyPoint[]> {
+  /* Запас назад нужен только протягиваемому параметру: дебит за пределами
+     периода ни на что не влияет, а обводнённости нужно значение, знакомое
+     до начала периода. */
+  const протягивать = parameterId === PARAM.WATERCUT;
   const начало = new Date(from);
-  начало.setDate(начало.getDate() - lookbackDays);
+  if (протягивать) начало.setDate(начало.getDate() - LOOKBACK_DAYS);
 
   const rows = await query<{ date: Date; value: string }>(`
-    SELECT date, value FROM rec.daily_facts
+    SELECT date, value::text FROM rec.daily_facts
     WHERE well_id = $1 AND parameter_id = $2 AND date >= $3 AND date <= $4
     ORDER BY date
   `, [wellId, parameterId, начало, to]);
 
-  return rows
-    .map((r) => ({ at: new Date(dayStart(new Date(r.date)).getTime() + 1000), value: Number(r.value) }))
-    .filter((m) => Number.isFinite(m.value));
+  const свои = new Map<string, number>();
+  for (const r of rows) {
+    const v = Number(r.value);
+    if (Number.isFinite(v)) свои.set(ключСуток(new Date(r.date)), v);
+  }
+
+  /* Последнее значение ДО периода — с него начинается протяжка. */
+  let протянутое: number | null = null;
+  if (протягивать) {
+    for (const r of rows) {
+      const д = new Date(r.date);
+      if (dayStart(д) >= dayStart(from)) break;
+      const v = Number(r.value);
+      if (Number.isFinite(v)) протянутое = v;
+    }
+  }
+
+  const ряд: DailyPoint[] = [];
+  for (let t = dayStart(from).getTime(); t <= dayStart(to).getTime(); t += СУТКИ_МС) {
+    const день = new Date(t);
+    const своё = свои.get(ключСуток(день));
+
+    if (своё !== undefined) {
+      протянутое = своё;
+      ряд.push({ date: день, value: своё, points: 1, coverage: 1 });
+    } else {
+      /* points = 0 — «нет собственного значения»: отбор суток базы по этому
+         признаку исключит день, а расчёт окна покажет его в «протянуто». */
+      ряд.push({
+        date: день,
+        value: протягивать ? протянутое : null,
+        points: 0,
+        coverage: 0,
+      });
+    }
+  }
+  return ряд;
 }
 
 export { PARAM };
