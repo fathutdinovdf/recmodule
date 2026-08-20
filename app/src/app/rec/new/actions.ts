@@ -8,7 +8,7 @@ import {
   type RegistrationDirection, type RegistrationExecutor, type RegistrationPriority,
 } from '@/db/registration';
 import { зарегистрировать } from '@/app/rec/[id]/lifecycle';
-import { getRegistrationWell } from '@/db/vmap';
+import { getRegistrationWell } from '@/db/wells-data';
 
 export interface RegistrationActionState {
   error?: string;

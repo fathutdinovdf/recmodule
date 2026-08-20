@@ -8,7 +8,7 @@
 import { dailySeries, liquidMass, oilFromLiquid } from '@/domain/measurements';
 import { dailyEffect, sumBreakdowns, missingRates,
          type WellEconomy, type EffectBreakdown } from '@/domain/effect';
-import { getMeasurementsWithLookback, getWell, PARAM } from '@/db/vmap';
+import { getMeasurementsWithLookback, getWell, PARAM } from '@/db/wells-data';
 import { getWellEconomy } from '@/db/economy';
 
 export interface Baseline {

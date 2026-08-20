@@ -14,7 +14,7 @@ import { notFound } from 'next/navigation';
 import { getCard, type Card } from '@/db/card';
 import { getEffect, WINDOW_DAYS, type EffectView } from '@/services/effect-store';
 import { forecastTotal } from '@/domain/effect';
-import { getWell } from '@/db/vmap';
+import { getWell } from '@/db/wells-data';
 import { currentUser, type SessionUser } from '@/lib/session';
 import type { EffectDay } from '@/services/effect-window';
 import { дата, рубли, сутки, число, прирост } from '@/lib/format';

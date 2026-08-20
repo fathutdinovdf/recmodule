@@ -15,7 +15,7 @@ import { Icon } from '@/components/Icons';
 import { Hint } from '@/components/ui/Hint';
 import { getCard, getNeighbours, getWellHistory } from '@/db/card';
 import { getWellEconomy } from '@/db/economy';
-import { getWell, getMeasurementsWithLookback, PARAM } from '@/db/vmap';
+import { getWell, getMeasurementsWithLookback, PARAM } from '@/db/wells-data';
 import { dailySeries, dayStart } from '@/domain/measurements';
 import { forecastTotal } from '@/domain/effect';
 import { control, fmtDur } from '@/domain/workhours';

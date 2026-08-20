@@ -66,13 +66,25 @@ const НАВИГАЦИЯ: NavSection[] = [
 ];
 
 export function AppChrome({
-  children, user, users,
+  children, user, users, ручнойИсточник,
 }: {
   children: React.ReactNode;
   user: SessionUser | null;
   users: SessionUser[];
+  /** DATA_SOURCE=manual — работа без стенда ВМАП (см. src/db/wells-data.ts). */
+  ручнойИсточник: boolean;
 }) {
   const path = usePathname();
+
+  /* Ввод суточных данных нужен только когда замеров со стенда нет, и только
+     Исполнителю: факт по телеметрии — его зона ответственности. В остальных
+     случаях пункта в меню нет — он бы обещал работу, которой в этом режиме
+     не делают. */
+  const навигация = ручнойИсточник && user?.side === 'executor'
+    ? НАВИГАЦИЯ.map((секция) => (секция.title === 'Настройка'
+        ? { ...секция, items: [{ href: '/manual-data', label: 'Суточные данные' }, ...секция.items] }
+        : секция))
+    : НАВИГАЦИЯ;
 
   return (
     <>
@@ -98,7 +110,7 @@ export function AppChrome({
 
       <div className="layout">
         <nav className="sidenav">
-          {НАВИГАЦИЯ.map((секция) => (
+          {навигация.map((секция) => (
             <div key={секция.title}>
               <div className="sidenav__section">{секция.title}</div>
               {секция.items.map((пункт) => {

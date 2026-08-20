@@ -13,7 +13,7 @@
 
 import { dailySeries } from '@/domain/measurements';
 import { baselineFromSeries, BASELINE_DAYS, type MeasuredBaseline } from '@/domain/baseline';
-import { getMeasurementsWithLookback, getWell, PARAM } from '@/db/vmap';
+import { getMeasurementsWithLookback, getWell, PARAM } from '@/db/wells-data';
 
 export async function measuredBaseline(params: {
   wellId: number;
