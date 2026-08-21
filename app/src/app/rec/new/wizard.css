@@ -5,10 +5,14 @@
 .wz-underlay { min-height: calc(100vh - 48px); }
 .wz-access { padding: var(--section-padding-default); color: var(--text-secondary); }
 
+/* Ширина и высота — решение 99: «Ширина 960, высота фиксированная». Более
+   широкое окно было экспериментом, но на шагах с малым числом полей (2,
+   «Проблема») оставляло пустую правую половину — контент, перенесённый из
+   макета, рассчитан именно на 960. */
 .wz-dialog {
-  width: min(1180px, calc(100vw - 72px));
+  width: min(960px, calc(100vw - 72px));
   max-width: none;
-  height: min(780px, calc(100vh - 64px));
+  height: min(640px, calc(100vh - 64px));
   max-height: none;
   gap: 0;
   padding: 0;
@@ -66,8 +70,8 @@
 
 .wz-pane { min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .wz-pane__motion { min-height: 100%; padding: var(--section-padding-default); }
-.wz-pane__kicker { margin-bottom: var(--group-gap-m); color: var(--text-quaternary); font-size: var(--font-size-text-caption); letter-spacing: var(--letter-spacing-text-caption); text-transform: uppercase; }
 .wz-fields { max-width: 760px; display: flex; flex-direction: column; gap: var(--section-gap-default); }
+.wz-fields__title { font-size: var(--font-size-text-medium); }
 
 .wz-baserate {
   display: flex; align-items: center; gap: var(--item-gap-horizontal-m);
@@ -108,29 +112,9 @@
 .wz-number-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--block-gap-default); }
 .wz-baseline { border: 1px solid var(--border-divider-light); border-radius: var(--corner-radius-l); overflow: hidden; }
 .wz-baseline__head { display: flex; align-items: center; justify-content: space-between; gap: var(--group-gap-m); padding: var(--group-padding-m); background: var(--bg-secondary); }
-.wz-baseline__values { display: grid; grid-template-columns: repeat(3, 1fr); padding: var(--group-padding-m); }
+.wz-baseline__values { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--block-gap-default); padding: var(--group-padding-m); }
 .wz-baseline__loading { display: flex; align-items: center; gap: var(--item-gap-horizontal-m); padding: var(--group-padding-m); color: var(--text-tertiary); }
 .wz-baseline__period { padding: 0 var(--group-padding-m) var(--group-padding-m); color: var(--text-quaternary); font-size: var(--font-size-text-caption); }
-
-/* Значение базы — кликабельная ячейка, редактирование начинается прямо по
-   клику на число: расчёт по замерам остаётся рекомендацией, а не фактом,
-   которую пользователь волен переопределить без отдельного режима формы. */
-.wz-baseline__stat {
-  display: flex; flex-direction: column; gap: 3px;
-  padding-inline: var(--group-padding-m); border-left: 1px solid var(--border-divider-light);
-  border-top: 0; background: transparent; text-align: left; cursor: default;
-}
-.wz-baseline__stat:first-child { padding-left: 0; border-left: 0; }
-.wz-baseline__stat > span { color: var(--text-quaternary); font-size: var(--font-size-text-caption); }
-.wz-baseline__stat--edit { cursor: pointer; border-radius: var(--corner-radius-s); transition: background-color .14s ease; }
-.wz-baseline__stat--edit:hover { background: var(--state-hover); }
-.wz-baseline__stat--edit b {
-  display: flex; align-items: center; gap: 6px;
-  color: var(--text-primary); font-size: var(--font-size-text-medium); font-weight: var(--font-weight-subtitle);
-}
-.wz-baseline__stat--edit b svg { width: 13px; color: var(--icon-light); opacity: 0; transition: opacity .14s ease; }
-.wz-baseline__stat--edit:hover b svg { opacity: 1; }
-.wz-baseline__stat input { width: 100%; }
 
 .wz-manual { display: flex; flex-direction: column; align-items: flex-start; gap: var(--group-gap-m); padding: var(--group-padding-m); border-top: 1px solid var(--border-divider-light); background: var(--bg-secondary); animation: wz-reveal .18s cubic-bezier(.22,1,.36,1); }
 .wz-manual .field { width: 100%; }

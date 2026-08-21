@@ -1,16 +1,25 @@
 /* Реестр рекомендаций.
  *
  * Колонки, их порядок, ширины и разметка ячеек — из макета (app.js + index.html)
- * без отступлений. Данные приходят из базы, фильтрация и пагинация считаются
- * на сервере.
+ * без отступлений. Данные приходят из базы, фильтрация, сортировка и
+ * пагинация считаются на сервере — состояние отбора целиком в адресе, как и
+ * плитка раньше, так ссылка на отфильтрованный/отсортированный реестр
+ * остаётся рабочей сама по себе.
  */
 
 import Link from 'next/link';
-import { listRecommendations, statusCounts } from '@/db/recommendations';
+import {
+  listRecommendations, statusCounts,
+  type FilterColumn, type SortColumn, type Period,
+} from '@/db/recommendations';
 import type { RecommendationRow } from '@/db/recommendations';
 import { control, fmtDur, toWindow } from '@/domain/workhours';
 import { Icon } from '@/components/Icons';
 import { Hint } from '@/components/ui/Hint';
+import { CountingNumber } from '@/components/animate-ui/primitives/animate/counting-number';
+import { КОЛОНКИ } from './registry-columns';
+import { RegistryHead } from './registry-head';
+import { RegistrationLauncher } from './registration-launcher';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,20 +33,9 @@ const ПЛИТКИ = [
   { key: 'cancelled', label: 'Отменено', statuses: ['cancelled'] },
 ];
 
-/* Ширины и признаки — те же, что в COLS макета. sort у всех, search у номера
-   и текстовых, funnel у фильтруемых, period у даты регистрации. */
-const КОЛОНКИ = [
-  { key: 'number', label: '№', w: 100, search: true },
-  { key: 'regDate', label: 'Дата регистрации', w: 136, period: true },
-  { key: 'field', label: 'Месторождение', w: 172, filter: true },
-  { key: 'direction', label: 'Направление', w: 152, filter: true },
-  { key: 'well', label: 'Скважина', w: 110, filter: true },
-  { key: 'problem', label: 'Проблема / отклонение', w: 230, text: true },
-  { key: 'priority', label: 'Приоритет', w: 114, filter: true },
-  { key: 'executor', label: 'Ответственный Исполнителя', w: 94, filter: true },
-  { key: 'status', label: 'Текущий статус', w: 150, filter: true },
-  { key: 'control', label: 'Контроль ответа', w: 148, filter: true },
-  { key: 'decision', label: 'Решение Заказчика', w: 130, filter: true },
+/* Колонки-справочники, по которым в заголовке живёт чек-лист значений. */
+const КОЛОНКИ_ФИЛЬТРА: FilterColumn[] = [
+  'field', 'direction', 'well', 'priority', 'executor', 'status', 'control', 'decision',
 ];
 
 const РЕШЕНИЕ: Record<string, { label: string; kind: string }> = {
@@ -58,25 +56,31 @@ function Ячейка({ r, col }: { r: RecommendationRow; col: typeof КОЛОН
     case 'number':
       return r.status === 'draft'
         ? <span className="mark">черновик</span>
-        : <Link href={`/rec/${r.id}`} title="Открыть карточку рекомендации">{r.number}</Link>;
+        : <Hint text="Открыть карточку рекомендации"><Link href={`/rec/${r.id}/summary`}>{r.number}</Link></Hint>;
 
     case 'regDate':
       return <span className="cell-date">{дт(r.registeredAt)}</span>;
 
     case 'field':
-      return <div className="clip1" title={r.fieldName}>{r.fieldName}</div>;
+      return <Hint text={r.fieldName}><div className="clip1">{r.fieldName}</div></Hint>;
 
     case 'direction':
-      return <div className="clip1" title={r.direction}>{r.direction}</div>;
+      return <Hint text={r.direction}><div className="clip1">{r.direction}</div></Hint>;
 
     case 'well':
       return <>{r.wellNumber}</>;
 
     case 'problem':
       return (
-        <div className="clip" title={r.problem}>
-          {r.problem}
-          {r.hasOpenDispute && <span className="note-flag" title="Есть незакрытый спор: расчёт эффекта предварительный">*</span>}
+        <div className="clip">
+          {/* Подсказка только на тексте: если завести её и на всю ячейку целиком,
+             наведение на звёздочку показывает сразу два тултипа друг над другом. */}
+          <Hint text={r.problem}><span>{r.problem}</span></Hint>
+          {r.hasOpenDispute && (
+            <Hint text="Есть незакрытый спор: расчёт эффекта предварительный">
+              <span className="note-flag">*</span>
+            </Hint>
+          )}
         </div>
       );
 
@@ -85,9 +89,11 @@ function Ячейка({ r, col }: { r: RecommendationRow; col: typeof КОЛОН
     case 'priority':
       if (!r.showsSla || !r.priority) return <span className="mark">—</span>;
       return (
-        <span className={`prio prio--${r.priority}`} title={`Приоритет ${r.priority}`}>
-          {r.priority}<i>{r.slaHours} ч</i>
-        </span>
+        <Hint text={`Приоритет ${r.priority}`}>
+          <span className={`prio prio--${r.priority}`}>
+            {r.priority}<i>{r.slaHours} ч</i>
+          </span>
+        </Hint>
       );
 
     case 'executor':
@@ -113,9 +119,11 @@ function Ячейка({ r, col }: { r: RecommendationRow; col: typeof КОЛОН
            иначе непонятно, чего ждать. */
         const уйдёт = r.sentAt ?? (r.registeredAt ? toWindow(new Date(r.registeredAt)) : null);
         return (
-          <span className="tag tag--pending" title="Заказчику уйдёт с началом рабочего дня">
-            передача {уйдёт ? дт(уйдёт).slice(0, 5) + ' ' + дт(уйдёт).slice(11) : '—'}
-          </span>
+          <Hint text="Заказчику уйдёт с началом рабочего дня">
+            <span className="tag tag--pending">
+              передача {уйдёт ? дт(уйдёт).slice(0, 5) + ' ' + дт(уйдёт).slice(11) : '—'}
+            </span>
+          </Hint>
         );
       }
       const подпись = { ok: 'в срок', late: 'с опозданием', overdue: 'просрочено', waiting: 'осталось' }[c.kind];
@@ -145,34 +153,53 @@ export default async function Page({
 }) {
   const sp = await searchParams;
   const плитка = sp.tile;
-  const поиск = sp.q ?? '';
   const страница = Math.max(1, Number(sp.page ?? 1));
   const наСтранице = Number(sp.size ?? 50);
   const выбранная = ПЛИТКИ.find((t) => t.key === плитка);
 
+  const colFilters: Partial<Record<FilterColumn, string[]>> = {};
+  for (const key of КОЛОНКИ_ФИЛЬТРА) {
+    const raw = sp[key];
+    if (raw) colFilters[key] = raw.split('|').filter(Boolean);
+  }
+
+  const text: { number?: string; problem?: string } = {
+    number: sp.number || undefined,
+    problem: sp.problem || undefined,
+  };
+
+  const period: Period | undefined = sp.period === '7' || sp.period === '30' || sp.period === 'month'
+    ? sp.period : undefined;
+
+  let sort: { key: SortColumn; dir: 'asc' | 'desc' } | undefined;
+  if (sp.sort) {
+    const [key, dir] = sp.sort.split(':');
+    if (key && (dir === 'asc' || dir === 'desc')) sort = { key: key as SortColumn, dir };
+  }
+
   const [{ rows, total }, счётчики] = await Promise.all([
     listRecommendations({
       statuses: выбранная?.statuses,
-      search: поиск || undefined,
+      colFilters, text, period, sort,
       limit: наСтранице,
       offset: (страница - 1) * наСтранице,
     }),
     statusCounts(),
   ]);
 
-  const всего = Object.values(счётчики).reduce((a, b) => a + b, 0);
-  const фильтрВключён = Boolean(плитка || поиск);
+  const фильтрВключён = Boolean(
+    плитка || period || text.number || text.problem
+    || Object.values(colFilters).some((v) => v?.length),
+  );
   const страниц = Math.max(1, Math.ceil(total / наСтранице));
 
+  /* Ссылка сохраняет весь текущий отбор (фильтры, сортировку, период) и
+     переопределяет только то, что явно передано, — иначе переход по
+     странице пагинации или клик по плитке сбрасывал бы фильтры колонок. */
   const ссылка = (изм: Record<string, string | undefined>) => {
     const p = new URLSearchParams();
-    const т: Record<string, string | undefined> = {
-      tile: плитка, q: поиск || undefined,
-      page: страница > 1 ? String(страница) : undefined,
-      size: наСтранице !== 50 ? String(наСтранице) : undefined,
-      ...изм,
-    };
-    for (const [k, v] of Object.entries(т)) if (v) p.set(k, v);
+    for (const [k, v] of Object.entries(sp)) if (v) p.set(k, v);
+    for (const [k, v] of Object.entries(изм)) { if (v) p.set(k, v); else p.delete(k); }
     const s = p.toString();
     return s ? `/?${s}` : '/';
   };
@@ -181,11 +208,8 @@ export default async function Page({
     <main className="content">
       <div className="pagehead">
         <h1>Реестр рекомендаций</h1>
-        <span className="pagehead__zone">
-          {фильтрВключён ? `показано ${total} из ${всего}` : `всего ${всего}`}
-        </span>
         <div className="pagehead__actions">
-          <Link className="btn btn--accent" href="/rec/new"><Icon id="plus" />Создать рекомендацию</Link>
+          <RegistrationLauncher />
           <Hint text="Настройка колонок">
             <button className="iconbtn iconbtn--lg" type="button" aria-label="Настройка колонок"><Icon id="cols" size={20} /></button>
           </Hint>
@@ -202,7 +226,7 @@ export default async function Page({
           return (
             <Link key={t.key} className={`tile ${включена ? 'is-on' : ''}`}
                   href={ссылка({ tile: включена ? undefined : t.key, page: undefined })}>
-              <span className="tile__n">{n}</span>
+              <span className="tile__n"><CountingNumber value={n} /></span>
               <span className="tile__l">{t.label}</span>
             </Link>
           );
@@ -218,43 +242,13 @@ export default async function Page({
             <colgroup>
               {КОЛОНКИ.map((c) => <col key={c.key} style={{ width: c.w }} />)}
             </colgroup>
-            <thead>
-              <tr>
-                {КОЛОНКИ.map((c) => (
-                  <th key={c.key} data-col={c.key}>
-                    <span className="th">
-                      <Hint text={`${c.label} — сортировать`}>
-                        <span className="th__t">
-                          <span className="th__label">{c.label}</span>
-                        </span>
-                      </Hint>
-                      {(c.search || c.text) && (
-                        <Hint text={c.search ? 'Поиск по номеру' : 'Поиск по тексту'}>
-                          <span className="th__i">
-                            <svg className="ic-th"><use href="#i-search" /></svg>
-                          </span>
-                        </Hint>
-                      )}
-                      {c.filter && (
-                        <Hint text="Фильтр">
-                          <span className="th__i">
-                            <svg className="ic-th"><use href="#i-funnel" /></svg>
-                          </span>
-                        </Hint>
-                      )}
-                      {c.period && (
-                        <Hint text="Выбрать период">
-                          <span className="th__i">
-                            <svg className="ic-th"><use href="#i-funnel" /></svg>
-                          </span>
-                        </Hint>
-                      )}
-                    </span>
-                    <span className="resizer" />
-                  </th>
-                ))}
-              </tr>
-            </thead>
+            <RegistryHead state={{
+              sort: sort ?? null,
+              period: period ?? '',
+              colFilters: Object.fromEntries(КОЛОНКИ_ФИЛЬТРА.map((k) => [k, colFilters[k] ?? []])),
+              text: { number: text.number ?? '', problem: text.problem ?? '' },
+            }}
+            />
             <tbody>
               {rows.length === 0 && (
                 <tr>

@@ -15,7 +15,6 @@
 
 import * as React from 'react';
 import { startOfToday, subYears } from 'date-fns';
-import { motion } from 'motion/react';
 import { Paperclip, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { SubmitButton } from '@/components/ui/SubmitButton';
@@ -23,6 +22,7 @@ import { DialogClose, DialogFooter } from '@/components/ui/dialog';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Textarea } from '@/components/ui/Textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Collapsible, CollapsibleContent } from '@/components/ui/Collapsible';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, Required } from '@/components/ui/field';
 import {
   Attachment, AttachmentAction, AttachmentActions, AttachmentContent,
@@ -121,29 +121,25 @@ export function ФормаФиксации({ action, ошибка, полнот�
           </Field>
         </Field>
 
-        {/* Не через AnimatePresence: она убирает узел из DOM по завершении
-            анимации, а зазор `gap` у FieldGroup стоит по обе стороны узла
-            независимо от его высоты — в момент удаления он схлопывался разом,
-            и в конце анимации был заметный рывок. Поле остаётся смонтированным
-            всегда, схлопывается высотой до нуля — зазор при этом не meняется
-            и рывка нет. */}
-        <motion.div
-          initial={false}
-          animate={{ height: полнота === 'partial' ? 'auto' : 0, opacity: полнота === 'partial' ? 1 : 0 }}
-          transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-          className="overflow-hidden"
-          aria-hidden={полнота !== 'partial'}
-        >
-          <Field data-invalid={заметкаНевалидна}>
-            <FieldLabel htmlFor="compl-note">
-              Что не выполнено <Required />
-            </FieldLabel>
-            <Textarea id="compl-note" name="completeness_note" rows={3} aria-invalid={заметкаНевалидна}
-                      tabIndex={полнота === 'partial' ? undefined : -1}
-                      onChange={() => setЗаметкаНевалидна(false)}
-                      placeholder="Например: частота выведена не до рекомендованной, ревизия устьевой арматуры не проводилась." />
-          </Field>
-        </motion.div>
+        {/* Collapsible, а не AnimatePresence: она убирает узел из DOM по
+            завершении анимации, а зазор `gap` у FieldGroup стоит по обе
+            стороны узла независимо от его высоты — в момент удаления он
+            схлопывался разом, и в конце анимации был заметный рывок.
+            Collapsible держит поле смонтированным всегда и схлопывает его
+            высотой до нуля — зазор при этом не меняется и рывка нет. */}
+        <Collapsible open={полнота === 'partial'}>
+          <CollapsibleContent>
+            <Field data-invalid={заметкаНевалидна}>
+              <FieldLabel htmlFor="compl-note">
+                Что не выполнено <Required />
+              </FieldLabel>
+              <Textarea id="compl-note" name="completeness_note" rows={3} aria-invalid={заметкаНевалидна}
+                        tabIndex={полнота === 'partial' ? undefined : -1}
+                        onChange={() => setЗаметкаНевалидна(false)}
+                        placeholder="Например: частота выведена не до рекомендованной, ревизия устьевой арматуры не проводилась." />
+            </Field>
+          </CollapsibleContent>
+        </Collapsible>
 
         <Field>
           <FieldLabel>Вложения</FieldLabel>

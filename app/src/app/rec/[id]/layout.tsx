@@ -24,6 +24,7 @@ import { дата, число, прирост, рубли } from '@/lib/format';
 import { currentUser } from '@/lib/session';
 import { Tabs } from './tabs';
 import { CardActionsMenu } from './card-actions-menu';
+import { Спарклайн } from './spark';
 import '../../card.css';
 import '../../card-extra.css';
 
@@ -89,9 +90,17 @@ export default async function CardLayout({
 
           {card.showsSla && card.priority && (
             <>
-              <span className={`prio prio--${card.priority} prio--pill`} title={card.priorityName ?? ''}>
-                <Icon id="clock" />{card.slaHours} ч
-              </span>
+              {card.priorityName ? (
+                <Hint text={card.priorityName}>
+                  <span className={`prio prio--${card.priority} prio--pill`}>
+                    <Icon id="clock" />{card.slaHours} ч
+                  </span>
+                </Hint>
+              ) : (
+                <span className={`prio prio--${card.priority} prio--pill`}>
+                  <Icon id="clock" />{card.slaHours} ч
+                </span>
+              )}
               <КонтрольОтвета kind={c.kind} hours={c.hours} sentAt={card.sentAt} />
             </>
           )}
@@ -106,15 +115,15 @@ export default async function CardLayout({
             <div className="pager">
               <Hint text="Предыдущая рекомендация">
                 {соседи.prevId
-                  ? <Link className="cnbtn" href={`/rec/${соседи.prevId}`} aria-label="Предыдущая рекомендация"><Icon id="prev" /></Link>
+                  ? <Link className="cnbtn" href={`/rec/${соседи.prevId}/summary`} aria-label="Предыдущая рекомендация"><Icon id="prev" /></Link>
                   : <span className="cnbtn is-off" aria-label="Предыдущей рекомендации нет"><Icon id="prev" /></span>}
               </Hint>
-              <span className="pager__pos" title="Позиция в реестре">
-                {соседи.pos} из {соседи.total}
-              </span>
+              <Hint text="Позиция в реестре">
+                <span className="pager__pos">{соседи.pos} из {соседи.total}</span>
+              </Hint>
               <Hint text="Следующая рекомендация">
                 {соседи.nextId
-                  ? <Link className="cnbtn" href={`/rec/${соседи.nextId}`} aria-label="Следующая рекомендация"><Icon id="next" /></Link>
+                  ? <Link className="cnbtn" href={`/rec/${соседи.nextId}/summary`} aria-label="Следующая рекомендация"><Icon id="next" /></Link>
                   : <span className="cnbtn is-off" aria-label="Следующей рекомендации нет"><Icon id="next" /></span>}
               </Hint>
             </div>
@@ -172,7 +181,7 @@ export default async function CardLayout({
             {история.items.length ? (
               <div className="prev">
                 {история.items.map((p) => (
-                  <Link key={p.id} className="prev__i" href={`/rec/${p.id}`}>
+                  <Link key={p.id} className="prev__i" href={`/rec/${p.id}/summary`}>
                     <div className="prev__t">
                       <b>{p.number}</b> · {дата(p.registeredAt)} · {p.statusName}
                     </div>
@@ -320,42 +329,9 @@ function КарточкаСкважины({
       {значения.length > 1 && (
         <div className="card">
           <div className="card__h">Дебит жидкости, 30 суток</div>
-          <Спарклайн ряд={ряд} мин={мин} макс={макс} />
-          <div className="spark__cap">
-            <span>{число(мин, 0)}</span><span>{число(макс, 0)} м³/сут</span>
-          </div>
+          <Спарклайн ряд={ряд} мин={мин - 5} макс={макс + 5} />
         </div>
       )}
     </>
-  );
-}
-
-/* Разрывы в ряду не сглаживаются: сутки без замеров рисуются разрывом линии,
-   а не прямой между соседями — протянутое значение и измеренное на графике
-   должны различаться. */
-function Спарклайн({
-  ряд, мин, макс,
-}: {
-  ряд: { value: number | null }[]; мин: number; макс: number;
-}) {
-  const размах = макс - мин || 1;
-  const отрезки: string[][] = [];
-  let текущий: string[] = [];
-  ряд.forEach((d, i) => {
-    if (d.value === null) { if (текущий.length) отрезки.push(текущий); текущий = []; return; }
-    const x = (i / Math.max(1, ряд.length - 1)) * 320;
-    const y = 58 - ((d.value - мин) / размах) * 50;
-    текущий.push(`${x.toFixed(1)},${y.toFixed(1)}`);
-  });
-  if (текущий.length) отрезки.push(текущий);
-
-  return (
-    <svg className="spark" viewBox="0 0 320 64" preserveAspectRatio="none">
-      {отрезки.map((points, i) => (
-        <polyline key={i} points={points.join(' ')} fill="none"
-                  stroke="var(--infografic-accent)" strokeWidth="1.6"
-                  strokeLinejoin="round" strokeLinecap="round" />
-      ))}
-    </svg>
   );
 }

@@ -49,6 +49,50 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .ic16 { width: var(--sizing-icon-icon-only); height: var(--sizing-icon-icon-only); }
 .ic20 { width: var(--sizing-icon-large); height: var(--sizing-icon-large); }
 
+/* Иконка, собранная из нескольких <use>: части лежат стопкой, размер держит
+   обёртка. Нужно там, где анимируется часть иконки, — внутрь <symbol> селектор
+   не проходит, теневое дерево <use> закрыто для классов. */
+.icstack { position: relative; display: block; }
+.icstack > svg { position: absolute; inset: 0; }
+
+/* Колокол качается от точки подвеса, язычок идёт следом с отставанием —
+   без него купол и язычок движутся как одна наклейка. Затухающие амплитуды
+   вместо равномерного маятника: так это читается как удар, а не как метроном.
+   transform-box: view-box — иначе началом отсчёта станет bbox самого пути,
+   и колокол закрутится вокруг своей середины. */
+.bell__dome, .bell__clap { transform-box: view-box; }
+.bell__dome { transform-origin: 8px 2px; }
+.bell__clap { transform-origin: 8px 12px; }
+.iconbtn:hover .bell__dome { animation: bellRing 600ms var(--ease-out); }
+.iconbtn:hover .bell__clap { animation: bellClap 600ms var(--ease-out) 60ms; }
+
+@keyframes bellRing {
+  0%, 100% { transform: rotate(0); }
+  20% { transform: rotate(-11deg); }
+  45% { transform: rotate(9deg); }
+  70% { transform: rotate(-5deg); }
+}
+@keyframes bellClap {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-1.1px); }
+  55% { transform: translateX(0.9px); }
+}
+
+/* Метка непрочитанного расходится кольцом того же цвета — сам кружок не
+   двигается: он маркер, а не элемент управления. */
+.iconbtn:hover .dot { animation: dotPulse 900ms var(--ease-out); }
+@keyframes dotPulse {
+  from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--status-error) 55%, transparent); }
+  to { box-shadow: 0 0 0 7px color-mix(in srgb, var(--status-error) 0%, transparent); }
+}
+
+/* Анимации иконок — украшение; тем, кто просил меньше движения, они не нужны. */
+@media (prefers-reduced-motion: reduce) {
+  .iconbtn:hover .bell__dome,
+  .iconbtn:hover .bell__clap,
+  .iconbtn:hover .dot { animation: none; }
+}
+
 .dot {
   position: absolute; top: 6px; right: 6px;
   width: var(--sizing-element-xs); height: var(--sizing-element-xs);
@@ -82,6 +126,9 @@ body.is-resizing { cursor: col-resize; user-select: none; }
   border-right: 1px solid var(--border-divider-light);
   padding: var(--group-padding-s);
   overflow-y: auto;
+  /* Колонкой — чтобы нижний пункт («Сообщить о проблеме») прижимался ко дну
+     меню при любом числе разделов, а не висел сразу под последним. */
+  display: flex; flex-direction: column;
 }
 
 /* Заголовок группы меню — это заголовок, а не подпись: он делит пункты на
@@ -121,6 +168,19 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .navitem--muted:hover { background: transparent; }
 .navitem__label { flex: 1 1 auto; }
 
+/* Отбитый вниз пункт меню: своё дело, не продолжение списка экранов.
+   Кнопкой, а не ссылкой, поэтому сбрасываем рамку и выравнивание текста —
+   .navitem рассчитан на <a>. */
+.navitem--foot {
+  margin-top: auto;
+  border: 0; border-top: 1px solid var(--border-divider); border-radius: 0;
+  background: transparent; text-align: left; width: 100%;
+  padding-top: var(--group-padding-s);
+  color: var(--text-tertiary);
+}
+.navitem--foot:hover { color: var(--text-secondary); background: transparent; }
+
+
 /* «Справочники» раскрываются прямо в основном меню: это второй уровень
    раздела, а не ещё одна колонка внутри рабочей области. Нативный details
    сохраняет управление мышью и клавиатурой на всех статических страницах. */
@@ -152,7 +212,7 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 
 .badge {
   min-width: 18px; height: 16px; padding: 0 var(--item-padding-horizontal-xs);
-  border-radius: var(--corner-radius-component);
+  border-radius: 999px;  /* пилюля; такого радиуса в токенах ВМАП нет */
   display: grid; place-items: center;
   background: var(--component-inverse-secondary); color: var(--text-secondary);
   font: var(--font-weight-subtitle) var(--font-size-text-caption) / 1 var(--font-family-text);
@@ -210,6 +270,20 @@ body.is-resizing { cursor: col-resize; user-select: none; }
   color: var(--text-on-accent); font-weight: var(--font-weight-subtitle);
 }
 .btn--accent:hover { filter: brightness(1.06); background: var(--component-accent); }
+/* Слот под сменную иконку кнопки: обе иконки лежат стопкой, поэтому размер
+   задаётся самим слотом — без него inline-svg с position:absolute схлопнул бы
+   ширину кнопки в момент подмены. */
+.btn__morph { position: relative; width: 16px; height: 16px; flex: none; }
+.btn__morph-ic { position: absolute; inset: 0; }
+
+/* Главное действие экрана: углы мягче обычных 4 px и поля шире — кнопка
+   читается крупнее соседних, оставаясь прямоугольной. Только для неё:
+   на кнопках попап-подвалов эта же форма сбила бы их в один вес. */
+.btn--main {
+  border-radius: var(--corner-radius-large-component);
+  padding: 0 var(--item-padding-horizontal-m);
+}
+
 .btn--ghost { background: transparent; border-color: transparent; color: var(--text-accent); }
 .btn--small { height: 22px; padding: 0 var(--item-padding-horizontal-s);
   font-size: var(--font-size-text-small); }
@@ -269,6 +343,10 @@ body.is-resizing { cursor: col-resize; user-select: none; }
   color: var(--text-secondary);
 }
 .field:focus-within { box-shadow: var(--focus-component); }
+/* Фокус-кольцо рисует обёртка `.field`; без сброса тот же `box-shadow` от
+   глобального `:focus-visible` (tokens.css) ложится ещё раз на сам input —
+   получается прямоугольник в прямоугольнике. */
+.field input:focus-visible, .field select:focus-visible { box-shadow: none; }
 .field--compact { height: 24px; padding-right: var(--item-padding-horizontal-xs); }
 .field__icon { color: var(--icon-light); flex: 0 0 auto; }
 .field__suffix { color: var(--text-tertiary);
@@ -389,8 +467,8 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 
 .tag {
   display: inline-flex; align-items: center; gap: var(--item-gap-horizontal-xs);
-  height: 18px; padding: 0 var(--item-padding-horizontal-xs);
-  border-radius: var(--corner-radius-component);
+  height: 20px; padding: 0 var(--item-padding-horizontal-s);
+  border-radius: 999px;  /* пилюля, как в shadcn Badge; такого радиуса в токенах ВМАП нет */
   font: var(--font-weight-subtitle) var(--font-size-text-caption) / 1 var(--font-family-text);
   white-space: nowrap;
 }
@@ -483,8 +561,22 @@ body.is-resizing { cursor: col-resize; user-select: none; }
   cursor: pointer;
 }
 .popover__row:hover { background: var(--state-hover); }
-.popover__row input { accent-color: var(--component-accent); margin: 0; }
-.popover__row span { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Только прямой потомок, не любой вложенный span: у Checkbox своя разметка из
+ * span-обёрток для анимации галочки, и общий селектор `.popover__row span`
+ * резал их overflow'ом до размера коробки чекбокса независимо от размера
+ * иконки внутри. */
+.popover__row > span { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .popover__row small { color: var(--text-quaternary); }
+.popover__row--btn {
+  width: 100%; background: none; border: none; text-align: left; font: inherit; color: inherit;
+}
+
+/* Подсказки текстового поиска: список вставляется в DOM по мере набора,
+   а не скрывается display'ом — резкое появление читалось как выпрыгивание. */
+.popover__list--suggest { animation: popoverSuggestIn .28s cubic-bezier(.2, .8, .3, 1); }
+@keyframes popoverSuggestIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 .popover__foot { display: flex; gap: var(--item-gap-horizontal-m); }
 .popover__foot .btn { flex: 1 1 auto; justify-content: center; }

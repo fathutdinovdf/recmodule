@@ -6,6 +6,22 @@
  * реестра.
  */
 
+/* Скроллбар прокручиваемых панелей карточки (.tabpane — основная колонка
+   вкладок, .context — правая колонка из card.css) — толстый системный серый
+   спорит с лёгкой карточкой рядом. Свойство только косметическое, макетную
+   вёрстку класса не трогает, поэтому расширяю сами классы, а не завожу
+   отдельные поверх. */
+.tabpane, .context {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-divider-light) transparent;
+}
+.tabpane::-webkit-scrollbar, .context::-webkit-scrollbar { width: 6px; }
+.tabpane::-webkit-scrollbar-track, .context::-webkit-scrollbar-track { background: transparent; }
+.tabpane::-webkit-scrollbar-thumb, .context::-webkit-scrollbar-thumb {
+  background: var(--border-divider-light);
+  border-radius: 999px;
+}
+
 /* Вкладка, у которой ещё нет своей страницы. Тем же приёмом, что и не сделанные
    пункты левой навигации: видно, что она есть, но нажать нельзя. */
 .tab--off {
@@ -163,7 +179,14 @@
 /* ---------- график ---------- */
 
 .eff-charts { display: flex; gap: var(--block-gap-default); flex-wrap: wrap; }
-.eff-chart { flex: 1 1 320px; min-width: 0; }
+/* Своя рамка на график: рядом два графика без границы читались одним целым,
+   стык между ними был виден только по случайному совпадению осей. */
+.eff-chart {
+  flex: 1 1 320px; min-width: 0;
+  border: 1px solid var(--border-divider-light);
+  border-radius: var(--corner-radius-m);
+  padding: var(--group-padding-s) var(--group-padding-m);
+}
 .eff-chart__h {
   font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
   color: var(--text-tertiary);
@@ -171,7 +194,7 @@
 }
 .eff-chart svg { width: 100%; height: auto; display: block; }
 .eff-legend {
-  display: flex; gap: var(--group-gap-m); flex-wrap: wrap;
+  display: flex; justify-content: center; gap: var(--group-gap-m); flex-wrap: wrap;
   font: var(--font-weight-text) var(--font-size-text-caption) / 1.4 var(--font-family-text);
   color: var(--text-quaternary);
 }
@@ -219,24 +242,35 @@
 .eff-plus { color: var(--status-success-text); }
 .eff-minus { color: var(--status-error-text); }
 
-.eff-scroll { max-height: 420px; overflow: auto; }
+.eff-scroll {
+  max-height: 280px; overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-divider-light) transparent;
+}
+.eff-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.eff-scroll::-webkit-scrollbar-track { background: transparent; }
+.eff-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-divider-light);
+  border-radius: 999px;
+}
 
 /* Посуточная таблица свёрнута: из неё собирается Форма 5, но в обычном разговоре
-   о рекомендации девяносто строк не нужны. */
-.eff-details > summary {
-  cursor: pointer; list-style: none;
+   о рекомендации девяносто строк не нужны. Раскрытие — общий Collapsible
+   (components/ui/Collapsible.tsx), высота тянется анимацией, а не мгновенно
+   как у бывшего <details>. */
+.eff-collapsible__trigger {
+  cursor: pointer; border: 0; padding: 0; background: transparent;
   display: inline-flex; align-items: center; gap: var(--item-gap-horizontal-s);
   font: var(--font-weight-subtitle) var(--font-size-text-medium) / 1.3 var(--font-family-text);
   color: var(--text-accent);
 }
-.eff-details > summary::-webkit-details-marker { display: none; }
-.eff-details > summary::before {
+.eff-collapsible__trigger::before {
   content: ''; width: 0; height: 0;
   border: 4px solid transparent; border-left-color: currentColor;
   transition: transform 90ms linear;
 }
-.eff-details[open] > summary::before { transform: rotate(90deg) translateX(-1px); }
-.eff-details > div { margin-top: var(--group-gap-s); }
+.eff-collapsible__trigger[data-state="open"]::before { transform: rotate(90deg) translateX(-1px); }
+.eff-collapsible__body { margin-top: var(--group-gap-s); }
 
 /* ---------- качество данных ---------- */
 

@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   AlertTriangle, Check, ChevronLeft, ChevronRight,
-  LockKeyhole, Paperclip, Pencil, Save, X,
+  LockKeyhole, Paperclip, Save, X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Combobox } from '@/components/ui/Combobox';
@@ -116,6 +116,9 @@ export function RegistrationWizard({
   const [localNotice, setLocalNotice] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
+  /* Окно «Закрыть мастер?» живёт вне <form>, поэтому кнопку «Сохранить
+     черновик» оттуда нажимаем по ссылке — так путь сохранения ровно один. */
+  const draftButton = useRef<HTMLButtonElement>(null);
   const [baseline, setBaseline] = useState<BaselinePreview | null>(null);
   const [baselineStatus, setBaselineStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [wells, setWells] = useState<RegistrationWell[]>([]);
@@ -123,7 +126,11 @@ export function RegistrationWizard({
   const [draft, setDraft] = useState<Draft>({
     wellId: '', directionId: '', priority: '', problem: '', action: '', rationale: '',
     expectQzh: '', expectQn: '', expectEe: '', resultNote: '',
-    baselineSource: 'measured', baseQzh: '', baseQn: '', baseEe: '', baselineNote: '',
+    /* На деве расчёт базы идёт по замерам дев-стенда ВМАП — не тем данным,
+     * что будут на продуктивном ландшафте Заказчика. Пока не перенесли модуль
+     * туда, база вводится вручную всегда: 'measured' по умолчанию вернуть
+     * вместе с fetch-эффектом ниже, когда встанем на прод ВМАП. */
+    baselineSource: 'manual', baseQzh: '', baseQn: '', baseEe: '', baselineNote: '',
     executorId: currentExecutorId ? String(currentExecutorId) : '', comment: '',
   });
 
@@ -200,6 +207,12 @@ export function RegistrationWizard({
     }
   }, [actionState]);
 
+  /* Отключено до переноса модуля на продуктивный ландшафт Заказчика: замеры
+   * дев-стенда ВМАП не то же самое, что боевые данные, и предлагать по ним
+   * расчёт базы — вводить пользователя в заблуждение. baseline/baselineStatus
+   * остаются в разметке (ObjectStep, ResultStep) нетронутыми, просто вечно
+   * 'idle' — раскомментировать эффект и вернуть baselineSource по умолчанию
+   * в 'measured' одним движением, когда встанем на прод ВМАП.
   useEffect(() => {
     if (!draft.wellId) {
       setBaseline(null);
@@ -220,6 +233,7 @@ export function RegistrationWizard({
       });
     return () => controller.abort();
   }, [draft.wellId]);
+  */
 
   function update<K extends keyof Draft>(key: K, value: Draft[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -248,16 +262,25 @@ export function RegistrationWizard({
     go(missing[0].step);
   }
 
+  /* Черновик уходит записью в реестр только с минимумом полей; без них он
+     остаётся на рабочем месте в localStorage. Условие нужно и окну закрытия —
+     от него зависит, что там обещать пользователю. */
+  const черновикВБазу = Boolean(draft.wellId && draft.directionId && draft.problem.trim()
+    && draft.action.trim()
+    && (draft.baselineSource !== 'manual'
+      || (draft.baseQzh && draft.baseQn && draft.baselineNote.trim())));
+
   function saveDraft(event: React.MouseEvent<HTMLButtonElement>) {
-    const можноВБазу = draft.wellId && draft.directionId && draft.problem.trim() && draft.action.trim()
-      && (draft.baselineSource !== 'manual'
-        || (draft.baseQzh && draft.baseQn && draft.baselineNote.trim()));
-    if (можноВБазу) {
+    if (черновикВБазу) {
       localStorage.removeItem(LOCAL_DRAFT_KEY);
       setDirty(false);
       return;
     }
     event.preventDefault();
+    сохранитьЛокально();
+  }
+
+  function сохранитьЛокально() {
     localStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify({ draft, savedAt: new Date().toISOString() }));
     setDirty(false);
     setLocalNotice('Черновик сохранён на этом рабочем месте. После заполнения объекта, направления, проблемы и мероприятия он появится в реестре. Вложения локально не сохраняются.');
@@ -319,9 +342,6 @@ export function RegistrationWizard({
             <DialogHeader className="wz-head">
               <div className="wz-head__copy">
                 <DialogTitle className="wz-title">Регистрация рекомендации</DialogTitle>
-                <DialogDescription>
-                  Черновик · {missing.length ? `не заполнено ${missing.length}` : 'все обязательные поля заполнены'}
-                </DialogDescription>
               </div>
               <div className="wz-progress">
                 <span>Шаг {step + 1} из {STEPS.length}</span>
@@ -363,7 +383,6 @@ export function RegistrationWizard({
                       exit={{ opacity: 0, x: direction * -8, filter: 'blur(1px)' }}
                       transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
                       className="wz-pane__motion">
-                      <div className="wz-pane__kicker">Шаг {step + 1} · {STEPS[step].title}</div>
                       {step === 0 && (
                         <ObjectStep fieldOptions={fieldOptions} fieldId={fieldId} chooseField={chooseField}
                           wellOptions={wellOptions} draft={draft} update={update} selectedWell={selectedWell}
@@ -404,7 +423,8 @@ export function RegistrationWizard({
 
             <DialogFooter className="wz-foot">
               <div className="wz-foot__left">
-                <SubmitControl name="intent" value="draft" variant="outline" onClick={saveDraft}>
+                <SubmitControl ref={draftButton} name="intent" value="draft" variant="outline"
+                  onClick={saveDraft}>
                   <Save />Сохранить черновик
                 </SubmitControl>
                 <Button type="button" variant="ghost" onClick={() => dirty ? setCloseAsked(true) : onClose()}>Отмена</Button>
@@ -426,15 +446,45 @@ export function RegistrationWizard({
         </DialogContent>
       </Dialog>
 
+      {/* Крестика здесь нет намеренно: в окне-вопросе он двусмыслен — закрывает
+          он сам вопрос или мастер, — и повторяет «Продолжить заполнение». */}
       <Dialog open={closeAsked} onOpenChange={setCloseAsked}>
-        <DialogContent className="max-w-[420px]">
+        <DialogContent className="max-w-[600px]" showCloseButton={false}>
           <DialogHeader>
             <DialogTitle>Закрыть мастер?</DialogTitle>
-            <DialogDescription>Несохранённые изменения будут потеряны. Черновик создаётся только по кнопке.</DialogDescription>
+            <DialogDescription>
+              {черновикВБазу
+                ? 'Введённые данные не сохранятся. Черновик попадёт в реестр только по кнопке.'
+                : 'Введённые данные не сохранятся. Для записи в реестр не хватает обязательных полей — черновик сохранится на этом рабочем месте и вернётся при следующем открытии мастера.'}
+            </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="justify-end">
-            <Button type="button" variant="outline" onClick={() => setCloseAsked(false)}>Продолжить заполнение</Button>
-            <Button type="button" variant="destructive" onClick={() => onClose()}>Закрыть без сохранения</Button>
+          <DialogFooter>
+            {/* Разрушительное действие — слева и приглушённым: справа стоит то,
+                на что летят взгляд и Enter, а это должно быть возвращение. */}
+            <Button type="button" variant="ghost"
+              /* bg-transparent явно: у button в registry.css своя заливка, и без
+                 сброса приглушённая кнопка весит больше соседней outline. */
+              className="bg-transparent text-destructive-foreground hover:bg-destructive hover:text-destructive-foreground"
+              onClick={() => onClose()}>
+              {/* Коротко, потому что вопрос уже задан заголовком: три ответа
+                  читаются подряд — не сохранять / сохранить / продолжить. */}
+              Не сохранять
+            </Button>
+            {/* Пара основных действий — своей группой: иначе при переносе строки
+                flex-wrap отрывает от неё последнюю кнопку. */}
+            <div className="ml-auto flex items-center gap-[var(--item-gap-horizontal-m)]">
+            <Button type="button" variant="outline" onClick={() => {
+              setCloseAsked(false);
+              /* Путь в базу уводит редиректом на карточку — мастер закроется сам.
+                 Локальный путь закрываем руками: что произойдёт, сказано выше. */
+              if (черновикВБазу) { draftButton.current?.click(); return; }
+              сохранитьЛокально();
+              onClose();
+            }}>
+              <Save />Сохранить черновик
+            </Button>
+            <Button type="button" onClick={() => setCloseAsked(false)}>Продолжить заполнение</Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -463,18 +513,18 @@ function ObjectStep({ fieldOptions, fieldId, chooseField, wellOptions, draft, up
       <FieldLabel htmlFor="registration-field">Месторождение</FieldLabel>
       <Combobox name="fieldPicker" value={fieldId} onValueChange={chooseField}
         id="registration-field"
-        searchable searchPlaceholder="Найти месторождение…"
+        searchable
         options={fieldOptions.map(([id, field]) => ({ value: String(id), label: field.name, note: `${field.count} скв.` }))}
-        placeholder={wellsStatus === 'loading' ? 'Загружаем фонд ВМАП…' : 'Выберите месторождение'}
+        placeholder={wellsStatus === 'loading' ? 'Загружаем фонд ВМАП…' : 'Начните вводить название'}
         disabled={wellsStatus !== 'ready'} />
     </Field>
     <Field data-invalid={invalid}>
       <FieldLabel htmlFor="registration-well">Скважина</FieldLabel>
       <Combobox name="wellPicker" value={draft.wellId} onValueChange={(value) => update('wellId', value)}
         id="registration-well" ariaDescribedBy={invalid ? 'registration-well-error' : undefined}
-        searchable searchPlaceholder="Номер скважины…"
+        searchable
         options={wellOptions.map((well) => ({ value: String(well.wellId), label: well.number, note: `куст ${well.kust}` }))}
-        placeholder={wellsStatus === 'loading' ? 'Загружаем скважины…' : 'Найдите скважину'}
+        placeholder={wellsStatus === 'loading' ? 'Загружаем скважины…' : 'Номер скважины'}
         disabled={wellsStatus !== 'ready'} invalid={invalid}
         emptyText="В выбранном месторождении скважина не найдена" />
       {wellsStatus === 'error' && (
@@ -482,6 +532,9 @@ function ObjectStep({ fieldOptions, fieldId, chooseField, wellOptions, draft, up
       )}
       {invalid && <FieldError id="registration-well-error">Выберите скважину.</FieldError>}
     </Field>
+    {/* Пока fetch-эффект базы выключен (см. RegistrationWizard), baseline
+       всегда пуст — превью только сбивало бы с толку постоянным «нет
+       расчёта». Вернуть вместе с эффектом.
     {selectedWell && (
       <div className="wz-baserate">
         <span>Базовый дебит жидкости по замерам</span>
@@ -491,6 +544,7 @@ function ObjectStep({ fieldOptions, fieldId, chooseField, wellOptions, draft, up
             : <b className="wz-baserate__empty">нет расчёта</b>}
       </div>
     )}
+    */}
   </div>;
 }
 
@@ -569,18 +623,14 @@ function ResultStep({ draft, update, invalid, baseline, baselineStatus }: {
   draft: Draft; update: <K extends keyof Draft>(key: K, value: Draft[K]) => void;
   invalid: Set<keyof Draft>; baseline: BaselinePreview | null; baselineStatus: string;
 }) {
-  const [editing, setEditing] = React.useState<null | 'baseQzh' | 'baseQn' | 'baseEe'>(null);
-
-  function editValue<K extends 'baseQzh' | 'baseQn' | 'baseEe'>(key: K, value: string) {
+  function editBaseline<K extends 'baseQzh' | 'baseQn' | 'baseEe'>(key: K, value: string) {
     update(key, value);
     update('baselineSource', 'manual');
-    setEditing(null);
   }
 
   function сброситьБазу() {
     update('baselineSource', 'measured');
     update('baseQzh', ''); update('baseQn', ''); update('baseEe', ''); update('baselineNote', '');
-    setEditing(null);
   }
 
   const computedQzh = baseline?.baseQzh != null
@@ -589,6 +639,7 @@ function ResultStep({ draft, update, invalid, baseline, baselineStatus }: {
     ? baseline.baseQn.toLocaleString('ru-RU', { maximumFractionDigits: 2 }) : null;
 
   return <div className="wz-fields">
+    <b className="wz-fields__title">Прогнозные значения</b>
     <div className="wz-number-grid">
       <NumberField label="Δ Qж, м³/сут" value={draft.expectQzh} onChange={(value) => update('expectQzh', value)} invalid={invalid.has('expectQzh')} step="0.1" />
       <NumberField label="Δ Qн, т/сут" value={draft.expectQn} onChange={(value) => update('expectQn', value)} invalid={invalid.has('expectQn')} step="0.01" />
@@ -603,21 +654,18 @@ function ResultStep({ draft, update, invalid, baseline, baselineStatus }: {
         <span className="tag tag--default">{draft.baselineSource === 'manual' ? 'вручную' : 'по замерам'}</span>
       </div>
       {baselineStatus === 'loading' ? <div className="wz-baseline__loading"><Spinner />Получаю замеры ВМАП…</div> : (
-        /* Расчёт по замерам — это рекомендация, а не факт: значения можно
-           переопределить кликом прямо по числу, без отдельного режима формы. */
+        /* Расчёт по замерам — это рекомендация, а не факт: пока расчёт
+           подставлен, поле остаётся редактируемым без отдельного режима. */
         <div className="wz-baseline__values">
-          <BaselineStat label="Жидкость, м³/сут" step="0.1"
-            value={draft.baseQzh} computed={computedQzh}
-            editing={editing === 'baseQzh'} onEdit={() => setEditing('baseQzh')}
-            onCommit={(value) => editValue('baseQzh', value)} />
-          <BaselineStat label="Нефть, т/сут" step="0.01"
-            value={draft.baseQn} computed={computedQn}
-            editing={editing === 'baseQn'} onEdit={() => setEditing('baseQn')}
-            onCommit={(value) => editValue('baseQn', value)} />
-          <BaselineStat label="ЭЭ, кВт·ч/сут" step="1"
-            value={draft.baseEe} computed={null}
-            editing={editing === 'baseEe'} onEdit={() => setEditing('baseEe')}
-            onCommit={(value) => editValue('baseEe', value)} />
+          <NumberField label="Жидкость, м³/сут" step="0.1"
+            value={draft.baseQzh} placeholder={computedQzh ?? undefined}
+            onChange={(value) => editBaseline('baseQzh', value)} />
+          <NumberField label="Нефть, т/сут" step="0.01"
+            value={draft.baseQn} placeholder={computedQn ?? undefined}
+            onChange={(value) => editBaseline('baseQn', value)} />
+          <NumberField label="ЭЭ, кВт·ч/сут" step="1"
+            value={draft.baseEe}
+            onChange={(value) => editBaseline('baseEe', value)} />
         </div>
       )}
       {baseline && (
@@ -630,32 +678,15 @@ function ResultStep({ draft, update, invalid, baseline, baselineStatus }: {
           <TextField label="Обоснование ручной базы" value={draft.baselineNote}
             onChange={(value) => update('baselineNote', value)} area rows={2}
             placeholder="Какие сутки или режим использованы и почему расчёт по замерам не подходит." />
+          {/* Пока fetch базы выключен, возвращаться не к чему — кнопка
+             оживёт вместе с эффектом.
           <Button type="button" variant="ghost" size="sm" onClick={сброситьБазу}>Вернуть расчёт по замерам</Button>
+          */}
         </div>
       )}
     </div>
     <div className="wz-fixed"><LockKeyhole /><div><b>Горизонт оценки эффекта — 90 суток</b><span>Отсчитывается от даты фактической реализации и не редактируется.</span></div></div>
   </div>;
-}
-
-function BaselineStat({ label, value, computed, editing, onEdit, onCommit, step }: {
-  label: string; value: string; computed: string | null; editing: boolean;
-  onEdit: () => void; onCommit: (value: string) => void; step: string;
-}) {
-  const shown = value || computed;
-  if (editing) {
-    return <div className="wz-baseline__stat">
-      <span>{label}</span>
-      <Input type="number" inputMode="decimal" step={step} defaultValue={value || computed || ''}
-        autoFocus className="text-right tabular-nums"
-        onBlur={(event) => onCommit(event.target.value)}
-        onKeyDown={(event) => { if (event.key === 'Enter') (event.target as HTMLInputElement).blur(); }} />
-    </div>;
-  }
-  return <button type="button" className="wz-baseline__stat wz-baseline__stat--edit" onClick={onEdit}>
-    <span>{label}</span>
-    <b>{shown || 'не задано'}<Pencil /></b>
-  </button>;
 }
 
 function HandoverStep({ draft, update, invalid, executors, summary, priorities, onGo }: {
@@ -720,14 +751,15 @@ function TextField({ label, value, onChange, invalid, area, rows, placeholder }:
   </Field>;
 }
 
-function NumberField({ label, value, onChange, invalid, step }: {
+function NumberField({ label, value, onChange, invalid, step, placeholder }: {
   label: string; value: string; onChange: (value: string) => void; invalid?: boolean; step: string;
+  placeholder?: string;
 }) {
   const id = React.useId();
   const errorId = `${id}-error`;
   return <Field data-invalid={invalid}><FieldLabel htmlFor={id}>{label}</FieldLabel>
     <Input id={id} type="number" inputMode="decimal" step={step} value={value} aria-invalid={invalid}
-      aria-describedby={invalid ? errorId : undefined}
+      aria-describedby={invalid ? errorId : undefined} placeholder={placeholder}
       className="text-right tabular-nums" onChange={(event) => onChange(event.target.value)} />
     {invalid && <FieldError id={errorId}>Введите число.</FieldError>}
   </Field>;

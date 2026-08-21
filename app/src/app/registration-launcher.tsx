@@ -9,13 +9,14 @@
  */
 
 import * as React from 'react';
-import { Icon } from '@/components/Icons';
+import { motion } from 'motion/react';
 import { RegistrationWizard } from './rec/new/wizard';
 import { справочникиМастера, type RegistrationReferencesResult } from './rec/new/actions';
 import './rec/new/wizard.css';
 
 export function RegistrationLauncher() {
   const [open, setOpen] = React.useState(false);
+  const [hover, setHover] = React.useState(false);
   const [references, setReferences] = React.useState<RegistrationReferencesResult | null>(null);
 
   function launch() {
@@ -30,8 +31,16 @@ export function RegistrationLauncher() {
 
   return (
     <>
-      <button type="button" className="btn btn--accent" onClick={launch}>
-        <Icon id="plus" />Создать рекомендацию
+      <button
+        type="button"
+        className="btn btn--accent btn--main"
+        onClick={launch}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        onFocus={() => setHover(true)}
+        onBlur={() => setHover(false)}
+      >
+        <MorphIcon on={hover} />Создать рекомендацию
       </button>
       {open && references?.allowed && (
         <RegistrationWizard
@@ -50,5 +59,29 @@ export function RegistrationLauncher() {
         </div>
       )}
     </>
+  );
+}
+
+/* Плюс сменяется листом с плюсом при наведении: жест «добавить» уступает
+ * предмету действия — новой рекомендации. Обе иконки лежат стопкой в
+ * квадрате 16×16, иначе на подмене кнопка дёргала бы ширину.
+ * Поворот в противоход (уходящая вправо, приходящая слева) читается как
+ * одно движение, а не как две независимые иконки. */
+function MorphIcon({ on }: { on: boolean }) {
+  const common = {
+    className: 'ic16 btn__morph-ic',
+    'aria-hidden': true,
+    initial: false,
+    transition: { type: 'spring' as const, stiffness: 420, damping: 30 },
+  };
+  return (
+    <span className="btn__morph">
+      <motion.svg {...common} animate={{ opacity: on ? 0 : 1, scale: on ? 0.6 : 1, rotate: on ? 40 : 0 }}>
+        <use href="#i-plus" />
+      </motion.svg>
+      <motion.svg {...common} animate={{ opacity: on ? 1 : 0, scale: on ? 1 : 0.6, rotate: on ? 0 : -40 }}>
+        <use href="#i-doc-plus" />
+      </motion.svg>
+    </span>
   );
 }

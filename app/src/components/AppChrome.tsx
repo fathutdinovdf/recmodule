@@ -83,7 +83,10 @@ export function AppChrome({
           <ПереключательТемы />
           <Hint text="Уведомления">
             <button className="iconbtn iconbtn--lg" type="button" aria-label="Уведомления">
-              <Icon id="bell" size={20} />
+              <span className="icstack ic20">
+                <svg className="ic20 bell__dome" aria-hidden="true"><use href="#i-bell-dome" /></svg>
+                <svg className="ic20 bell__clap" aria-hidden="true"><use href="#i-bell-clap" /></svg>
+              </span>
               <span className="dot" />
             </button>
           </Hint>
@@ -124,6 +127,15 @@ export function AppChrome({
               })}
             </div>
           ))}
+
+          {/* Низ меню — жалоба на модуль, а не пункт работы: отсюда отрыв
+              вниз и линия сверху, а не место в списке экранов. Адресат пока
+              не назначен, поэтому это кнопка без действия, а не ссылка в
+              никуда. */}
+          <button type="button" className="navitem navitem--foot">
+            <Icon id="bug" />
+            <span className="navitem__label">Сообщить о проблеме</span>
+          </button>
         </nav>
 
         {children}

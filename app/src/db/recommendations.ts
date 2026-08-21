@@ -1,6 +1,7 @@
 /* Чтение реестра рекомендаций. */
 
 import { query } from './pool';
+import { isTypoOf } from '@/domain/textSimilarity';
 
 export interface StatusRef {
   code: string;
@@ -104,65 +105,167 @@ export async function listStatuses(): Promise<StatusRef[]> {
   }));
 }
 
+/* ------------------------------ отбор и сортировка ------------------------------ *
+ *
+ * Отдельной строки фильтров в реестре нет — весь отбор живёт в заголовках
+ * колонок (перенесено из макета один в один, см. макет/app.js). Колонки-
+ * справочники (field, direction, well, priority, executor, status, control,
+ * decision) фильтруются чек-листом значений с их количеством, текстовые
+ * (number, problem) — подстрокой, дата регистрации — периодом.
+ *
+ * «Контроль ответа» — не колонка БД, а состояние, посчитанное из статуса и
+ * срока (см. domain/workhours.control). Здесь оно продублировано как CASE:
+ * бакет должен совпадать с тем, что рисует Ячейка(control) в реестре,
+ * поэтому и сортировка, и фильтр, и подписи держатся в одном месте (ниже).
+ */
+
+export type FilterColumn =
+  | 'field' | 'direction' | 'well' | 'priority' | 'executor'
+  | 'status' | 'control' | 'decision';
+
+export type SortColumn = FilterColumn | 'number' | 'regDate';
+
+export type Period = '7' | '30' | 'month';
+
 export interface ListFilter {
   statuses?: string[];
-  search?: string;
+  colFilters?: Partial<Record<FilterColumn, string[]>>;
+  text?: { number?: string; problem?: string };
+  period?: Period;
+  sort?: { key: SortColumn; dir: 'asc' | 'desc' };
   limit?: number;
   offset?: number;
 }
 
-export async function listRecommendations(filter: ListFilter = {}): Promise<{
-  rows: RecommendationRow[]; total: number;
-}> {
-  const условия: string[] = ['r.deleted_at IS NULL'];
+/* CTE с уже посчитанными control_kind/priority_disp и прочими производными
+   полями: и список, и счётчик, и фасеты фильтров должны видеть одни и те же
+   бакеты, поэтому выражение одно на файл. */
+const BASE_CTE = `
+  SELECT
+    r.id, r.number, r.status,
+    s.name AS status_name, s.tone, s.filled, s.shows_sla, s.sort_order AS status_order,
+    CASE WHEN s.shows_sla THEN r.priority END AS priority_disp,
+    CASE WHEN s.shows_sla THEN p.name END AS priority_name,
+    CASE WHEN s.shows_sla THEN p.sort_order END AS priority_order,
+    d.name AS direction, d.sort_order AS direction_order,
+    r.well_id, r.well_number, r.kust, r.field_id, r.field_name,
+    r.problem, r.action, r.completeness,
+    r.registered_at, r.sent_at, r.due_at,
+    u.full_name AS author_name,
+    ex.full_name AS executor_name,
+    p.response_hours AS sla_hours,
+    dec.kind AS decision_kind, dec.at AS replied_at,
+    (SELECT count(*) FROM rec.comments c WHERE c.rec_id = r.id AND c.deleted_at IS NULL) AS comments_count,
+    EXISTS (SELECT 1 FROM rec.disputes ds WHERE ds.rec_id = r.id AND ds.state = 'open') AS has_open_dispute,
+    i.window_open_at, i.window_close_at,
+    CASE
+      WHEN NOT s.shows_sla THEN 'hidden'
+      WHEN r.status = 'registered' THEN 'pending'
+      WHEN r.due_at IS NULL THEN 'none'
+      WHEN dec.at IS NOT NULL THEN CASE WHEN dec.at <= r.due_at THEN 'ok' ELSE 'late' END
+      WHEN now() > r.due_at THEN 'overdue'
+      ELSE 'waiting'
+    END AS control_kind
+  FROM rec.recommendations r
+  JOIN rec.statuses s   ON s.code = r.status
+  JOIN rec.directions d ON d.id = r.direction_id
+  JOIN rec.users u      ON u.id = r.author_id
+  LEFT JOIN rec.users ex ON ex.id = r.executor_id
+  LEFT JOIN rec.priorities p ON p.code = r.priority
+  LEFT JOIN rec.implementations i ON i.rec_id = r.id
+  LEFT JOIN LATERAL (
+    SELECT d2.kind, d2.at FROM rec.decisions d2
+    WHERE d2.rec_id = r.id ORDER BY d2.at DESC LIMIT 1
+  ) dec ON true
+  WHERE r.deleted_at IS NULL
+`;
+
+/* Порядок «контроля ответа» — просрочки и близкие к просрочке впереди,
+   тот же смысл, что CTRL_ORDER в макете. */
+const CONTROL_ORDER_SQL = `CASE control_kind
+  WHEN 'overdue' THEN 0 WHEN 'late' THEN 1 WHEN 'pending' THEN 2
+  WHEN 'waiting' THEN 3 WHEN 'ok' THEN 4 WHEN 'none' THEN 5 ELSE 6 END`;
+
+const SORT_EXPR: Record<SortColumn, string> = {
+  number: 'number',
+  regDate: 'registered_at',
+  field: 'field_name',
+  direction: 'direction',
+  well: 'well_number',
+  priority: 'priority_order',
+  executor: 'executor_name',
+  status: 'status_order',
+  control: CONTROL_ORDER_SQL,
+  decision: 'decision_kind',
+};
+
+function buildConditions(filter: ListFilter): { where: string; params: unknown[] } {
+  const условия: string[] = [];
   const параметры: unknown[] = [];
 
   if (filter.statuses?.length) {
     параметры.push(filter.statuses);
-    условия.push(`r.status = ANY($${параметры.length})`);
-  }
-  if (filter.search) {
-    параметры.push(`%${filter.search.trim()}%`);
-    const i = параметры.length;
-    /* Ищем по номеру, скважине и месторождению: именно этими тремя способами
-       рекомендацию называют в переписке и на планёрке. */
-    условия.push(`(r.number ILIKE $${i} OR r.well_number ILIKE $${i} OR r.field_name ILIKE $${i})`);
+    условия.push(`status = ANY($${параметры.length})`);
   }
 
-  const где = условия.join(' AND ');
+  const colExpr: Record<FilterColumn, string> = {
+    field: 'field_name',
+    direction: 'direction',
+    well: 'well_number',
+    priority: `COALESCE(priority_disp, '')`,
+    executor: `COALESCE(executor_name, '')`,
+    status: 'status',
+    control: 'control_kind',
+    decision: `COALESCE(decision_kind, '')`,
+  };
+  for (const [key, values] of Object.entries(filter.colFilters ?? {})) {
+    if (!values?.length) continue;
+    параметры.push(values);
+    условия.push(`${colExpr[key as FilterColumn]} = ANY($${параметры.length})`);
+  }
+
+  if (filter.text?.number) {
+    параметры.push(`%${filter.text.number.trim()}%`);
+    условия.push(`rec.ci(number) LIKE rec.ci($${параметры.length})`);
+  }
+  if (filter.text?.problem) {
+    параметры.push(`%${filter.text.problem.trim()}%`);
+    условия.push(`rec.ci(problem) LIKE rec.ci($${параметры.length})`);
+  }
+
+  if (filter.period === 'month') {
+    условия.push(`date_trunc('month', registered_at) = date_trunc('month', now())`);
+  } else if (filter.period === '7' || filter.period === '30') {
+    условия.push(`registered_at >= now() - interval '${filter.period === '7' ? 7 : 30} days'`);
+  }
+
+  return { where: условия.length ? condJoin(условия) : '', params: параметры };
+}
+
+const condJoin = (parts: string[]) => `WHERE ${parts.join(' AND ')}`;
+
+export async function listRecommendations(filter: ListFilter = {}): Promise<{
+  rows: RecommendationRow[]; total: number;
+}> {
+  const { where, params } = buildConditions(filter);
 
   const [{ count }] = await query<{ count: string }>(
-    `SELECT count(*)::text AS count FROM rec.recommendations r WHERE ${где}`, параметры);
+    `WITH base AS (${BASE_CTE}) SELECT count(*)::text AS count FROM base ${where}`, params);
 
+  const sort = filter.sort;
+  const orderBy = sort
+    ? `${SORT_EXPR[sort.key]} ${sort.dir === 'desc' ? 'DESC' : 'ASC'} NULLS LAST, id DESC`
+    : 'registered_at DESC NULLS FIRST, id DESC';
+
+  const параметры = [...params];
   параметры.push(filter.limit ?? 50);
   параметры.push(filter.offset ?? 0);
 
   const rows = await query<Record<string, unknown>>(`
-    SELECT r.id, r.number, r.status, s.name AS status_name, s.tone, s.filled,
-           s.shows_sla, r.priority, d.name AS direction,
-           r.well_id, r.well_number, r.kust, r.field_id, r.field_name,
-           r.problem, r.action, r.completeness,
-           r.registered_at, r.sent_at, r.due_at,
-           u.full_name AS author_name,
-           ex.full_name AS executor_name,
-           p.response_hours AS sla_hours,
-           dec.kind AS decision_kind, dec.at AS replied_at,
-           (SELECT count(*) FROM rec.comments c WHERE c.rec_id = r.id AND c.deleted_at IS NULL) AS comments_count,
-           EXISTS (SELECT 1 FROM rec.disputes ds WHERE ds.rec_id = r.id AND ds.state = 'open') AS has_open_dispute,
-           i.window_open_at, i.window_close_at
-    FROM rec.recommendations r
-    JOIN rec.statuses s   ON s.code = r.status
-    JOIN rec.directions d ON d.id = r.direction_id
-    JOIN rec.users u      ON u.id = r.author_id
-    LEFT JOIN rec.users ex ON ex.id = r.executor_id
-    LEFT JOIN rec.priorities p ON p.code = r.priority
-    LEFT JOIN rec.implementations i ON i.rec_id = r.id
-    LEFT JOIN LATERAL (
-      SELECT d2.kind, d2.at FROM rec.decisions d2
-      WHERE d2.rec_id = r.id ORDER BY d2.at DESC LIMIT 1
-    ) dec ON true
-    WHERE ${где}
-    ORDER BY r.registered_at DESC NULLS FIRST, r.id DESC
+    WITH base AS (${BASE_CTE})
+    SELECT * FROM base
+    ${where}
+    ORDER BY ${orderBy}
     LIMIT $${параметры.length - 1} OFFSET $${параметры.length}
   `, параметры);
 
@@ -176,7 +279,7 @@ export async function listRecommendations(filter: ListFilter = {}): Promise<{
       tone: r.tone as string,
       filled: r.filled as boolean,
       showsSla: r.shows_sla as boolean,
-      priority: r.priority as string | null,
+      priority: r.priority_disp as string | null,
       direction: r.direction as string,
       wellId: r.well_id === null ? null : Number(r.well_id),
       wellNumber: r.well_number as string,
@@ -209,4 +312,145 @@ export async function statusCounts(): Promise<Record<string, number>> {
     WHERE deleted_at IS NULL GROUP BY status
   `);
   return Object.fromEntries(rows.map((r) => [r.status, Number(r.n)]));
+}
+
+/* ------------------------------ фасеты фильтров ------------------------------ */
+
+export interface FacetOption {
+  value: string;
+  label: string;
+  count: number;
+}
+
+const РЕШЕНИЕ_МЕТКА: Record<string, string> = {
+  accept: 'Принята', reject: 'Отклонена', clarify: 'Требует уточнения',
+};
+
+const КОНТРОЛЬ_МЕТКА: Record<string, string> = {
+  hidden: '—', pending: 'ожидает передачи', none: 'нет срока',
+  ok: 'в срок', late: 'с опозданием', overdue: 'просрочено', waiting: 'осталось',
+};
+
+/** Список значений колонки со счётчиком — для чек-листа в поповере фильтра.
+ *  Считается по всему реестру (без учёта активных фильтров), как в макете:
+ *  иначе выбор в одной колонке молча менял бы счётчики в другой. */
+export async function columnFacet(col: FilterColumn, search?: string): Promise<FacetOption[]> {
+  const like = search ? `%${search.trim()}%` : null;
+
+  switch (col) {
+    case 'field':
+    case 'well': {
+      const expr = col === 'field' ? 'field_name' : 'well_number';
+      const rows = await query<{ v: string; n: string }>(`
+        WITH base AS (${BASE_CTE})
+        SELECT ${expr} AS v, count(*)::text AS n FROM base
+        ${like ? `WHERE rec.ci(${expr}) LIKE rec.ci($1)` : ''}
+        GROUP BY ${expr} ORDER BY ${expr}
+      `, like ? [like] : []);
+      return rows.map((r) => ({ value: r.v ?? '', label: r.v || '—', count: Number(r.n) }));
+    }
+
+    case 'direction': {
+      const rows = await query<{ v: string; n: string; ord: number }>(`
+        WITH base AS (${BASE_CTE})
+        SELECT direction AS v, direction_order AS ord, count(*)::text AS n FROM base
+        ${like ? `WHERE direction ILIKE $1` : ''}
+        GROUP BY direction, direction_order ORDER BY direction_order
+      `, like ? [like] : []);
+      return rows.map((r) => ({ value: r.v ?? '', label: r.v || '—', count: Number(r.n) }));
+    }
+
+    case 'executor': {
+      const rows = await query<{ v: string | null; n: string }>(`
+        WITH base AS (${BASE_CTE})
+        SELECT executor_name AS v, count(*)::text AS n FROM base
+        ${like ? `WHERE rec.ci(COALESCE(executor_name, '—')) LIKE rec.ci($1)` : ''}
+        GROUP BY executor_name ORDER BY executor_name NULLS FIRST
+      `, like ? [like] : []);
+      return rows.map((r) => ({ value: r.v ?? '', label: r.v ?? '—', count: Number(r.n) }));
+    }
+
+    case 'priority': {
+      const rows = await query<{ v: string | null; label: string | null; ord: number | null; n: string }>(`
+        WITH base AS (${BASE_CTE})
+        SELECT priority_disp AS v, priority_name AS label, priority_order AS ord, count(*)::text AS n FROM base
+        ${like ? `WHERE rec.ci(COALESCE(priority_name, '—')) LIKE rec.ci($1)` : ''}
+        GROUP BY priority_disp, priority_name, priority_order
+        ORDER BY priority_order NULLS LAST
+      `, like ? [like] : []);
+      return rows.map((r) => ({ value: r.v ?? '', label: r.label ?? '—', count: Number(r.n) }));
+    }
+
+    case 'status': {
+      const rows = await query<{ v: string; label: string; ord: number; n: string }>(`
+        WITH base AS (${BASE_CTE})
+        SELECT status AS v, status_name AS label, status_order AS ord, count(*)::text AS n FROM base
+        ${like ? `WHERE rec.ci(status_name) LIKE rec.ci($1)` : ''}
+        GROUP BY status, status_name, status_order ORDER BY status_order
+      `, like ? [like] : []);
+      return rows.map((r) => ({ value: r.v, label: r.label, count: Number(r.n) }));
+    }
+
+    case 'control': {
+      const rows = await query<{ v: string; n: string }>(`
+        WITH base AS (${BASE_CTE})
+        SELECT control_kind AS v, count(*)::text AS n FROM base
+        GROUP BY control_kind ORDER BY ${CONTROL_ORDER_SQL}
+      `, []);
+      return rows
+        .map((r) => ({ value: r.v, label: КОНТРОЛЬ_МЕТКА[r.v] ?? r.v, count: Number(r.n) }))
+        .filter((o) => !like || o.label.toLowerCase().includes(search!.trim().toLowerCase()));
+    }
+
+    case 'decision': {
+      const rows = await query<{ v: string | null; n: string }>(`
+        WITH base AS (${BASE_CTE})
+        SELECT decision_kind AS v, count(*)::text AS n FROM base
+        GROUP BY decision_kind ORDER BY decision_kind NULLS FIRST
+      `, []);
+      return rows
+        .map((r) => ({ value: r.v ?? '', label: r.v ? (РЕШЕНИЕ_МЕТКА[r.v] ?? r.v) : '—', count: Number(r.n) }))
+        .filter((o) => !like || o.label.toLowerCase().includes(search!.trim().toLowerCase()));
+    }
+
+    default:
+      return [];
+  }
+}
+
+export type TextFacetColumn = 'number' | 'problem';
+
+/** Подсказки для текстового поиска (номер, проблема/отклонение) — список
+ *  различных значений, содержащих введённую строку, только по запросу:
+ *  без него подсказывать нечего, а тянуть все проблемы реестра незачем. */
+export async function textFacet(col: TextFacetColumn, search: string): Promise<FacetOption[]> {
+  const q = search.trim();
+  if (!q) return [];
+  const like = `%${q}%`;
+  const expr = col === 'number' ? 'number' : 'problem';
+
+  const rows = await query<{ v: string; n: string }>(`
+    WITH base AS (${BASE_CTE})
+    SELECT ${expr} AS v, count(*)::text AS n FROM base
+    WHERE rec.ci(${expr}) LIKE rec.ci($1)
+    GROUP BY ${expr} ORDER BY ${expr}
+    LIMIT 8
+  `, [like]);
+  if (rows.length) return rows.map((r) => ({ value: r.v ?? '', label: r.v || '—', count: Number(r.n) }));
+
+  /* Точных подстрок нет — возможно, опечатка. Осмысленно только для
+     «Проблема / отклонение»: это свободный текст, а номер рекомендации —
+     код, где «похожий» не значит «тот же». */
+  if (col !== 'problem') return [];
+
+  const all = await query<{ v: string; n: string }>(`
+    WITH base AS (${BASE_CTE})
+    SELECT problem AS v, count(*)::text AS n FROM base
+    GROUP BY problem
+    LIMIT 500
+  `);
+  return all
+    .filter((r) => isTypoOf(q, r.v ?? ''))
+    .map((r) => ({ value: r.v ?? '', label: r.v || '—', count: Number(r.n) }))
+    .slice(0, 8);
 }

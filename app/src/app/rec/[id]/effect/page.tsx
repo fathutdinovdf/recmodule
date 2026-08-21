@@ -11,6 +11,7 @@
  */
 
 import { notFound } from 'next/navigation';
+import { Hint } from '@/components/ui/Hint';
 import { getCard, type Card } from '@/db/card';
 import { getEffect, WINDOW_DAYS, type EffectView } from '@/services/effect-store';
 import { forecastTotal } from '@/domain/effect';
@@ -19,6 +20,8 @@ import { currentUser, type SessionUser } from '@/lib/session';
 import type { EffectDay } from '@/services/effect-window';
 import { дата, рубли, сутки, число, прирост } from '@/lib/format';
 import { БлокБазы } from './baseline-block';
+import { СутРаскрытие } from './daily-collapsible';
+import { ГрафикФакт } from './fact-chart';
 
 export const dynamic = 'force-dynamic';
 
@@ -107,37 +110,26 @@ export default async function Page({ params, searchParams }: {
       <section>
         <div className="eff__h">Факт против базы</div>
         <div className="eff-charts">
-          <График days={eff.days} поле="factQzh" база={card.baseline?.baseQzh ?? null}
-                  заголовок="Дебит жидкости, м³/сут" />
-          <График days={eff.days} поле="factQn" база={card.baseline?.baseQn ?? null}
-                  заголовок="Дебит нефти, т/сут" />
-        </div>
-        <div className="eff-legend" style={{ marginTop: 'var(--item-gap-vertical-s)' }}>
-          <span><i className="is-fact" />факт по суткам</span>
-          <span><i className="is-base" />база</span>
-          <span>разрыв линии — суток без замеров и без чего протянуть</span>
+          <ГрафикФакт days={eff.days} поле="factQzh" база={card.baseline?.baseQzh ?? null}
+                      заголовок="Дебит жидкости, м³/сут" единица="м³/сут" />
+          <ГрафикФакт days={eff.days} поле="factQn" база={card.baseline?.baseQn ?? null}
+                      заголовок="Дебит нефти, т/сут" единица="т/сут" />
         </div>
       </section>
 
       {считалисьДеньги && eff.economy && (
         <section>
-          <div className="eff__h">Из чего сложились деньги</div>
+          <div className="eff__h">Статьи эффекта</div>
           <Статьи eff={eff} />
         </section>
       )}
 
       <section>
-        <details className="eff-details">
-          <summary>Посуточный расчёт — {сутки(eff.daysTotal)}</summary>
-          <div>
-            <div className="eff-scroll">
-              <ПосуточнаяТаблица days={eff.days} />
-            </div>
-            <div className="eff__note" style={{ marginTop: 'var(--item-gap-vertical-s)' }}>
-              Из этой таблицы собирается Форма 5 — расчёт технологического и экономического эффекта.
-            </div>
+        <СутРаскрытие summary={`Посуточный расчёт — ${сутки(eff.daysTotal)}`}>
+          <div className="eff-scroll">
+            <ПосуточнаяТаблица days={eff.days} />
           </div>
-        </details>
+        </СутРаскрытие>
       </section>
 
       <section>
@@ -149,14 +141,6 @@ export default async function Page({ params, searchParams }: {
           <ЯчейкаКачества
             v={`${число(среднееПокрытие(eff.days) * 100, 0)} %`}
             k="средняя опора суток на собственные замеры" />
-        </div>
-        <div className="eff__note" style={{ marginTop: 'var(--item-gap-vertical-s)' }}>
-          Суточное значение — интеграл по времени, а не среднее из замеров: замеры в 08:00 и в 22:00
-          описывают куски суток разной длины. Между замерами последнее значение протягивается,
-          разрывы бывают до полусотни суток.
-          {' '}Остановленную скважину от скважины без замеров модуль пока не отличает —
-          для этого нужен параметр «Состояние по ТМ», он в расчёт не заведён.
-          {eff.fromCache && ` Показан сохранённый расчёт от ${дата(eff.calculatedAt, true)}: окно закрыто, и цифра больше не пересчитывается.`}
         </div>
       </section>
     </div>
@@ -280,12 +264,13 @@ function ПрогрессОкна({ eff, прогноз, закрыто }: {
         <div className={`win__fill ${факт < 0 ? 'is-loss' : выполнение > 1 ? 'is-over' : ''}`}
              style={{ width: процент(факт < 0 ? 0.01 : выполнение) }} />
         {!закрыто && (
-          <div className="win__mark" style={{ left: `${позицияЗасечки}%` }}
-               title="Где накопленный факт должен быть сейчас, если прогноз сбывается ровно">
-            <span className="win__marklab" style={подпись}>
-              к этому дню ожидается {рубли(ожидается)} руб
-            </span>
-          </div>
+          <Hint text="Где накопленный факт должен быть сейчас, если прогноз сбывается ровно">
+            <div className="win__mark" style={{ left: `${позицияЗасечки}%` }}>
+              <span className="win__marklab" style={подпись}>
+                к этому дню ожидается {рубли(ожидается)} руб
+              </span>
+            </div>
+          </Hint>
         )}
       </div>
 
@@ -304,85 +289,6 @@ function ПрогрессОкна({ eff, прогноз, закрыто }: {
             ? ` Это на ${рубли(отставание)} руб больше, чем ожидалось к этому дню.`
             : ` Это на ${рубли(-отставание)} руб меньше, чем ожидалось к этому дню.`}
       </div>
-    </div>
-  );
-}
-
-/* ------------------------------ график ------------------------------ */
-
-/* Разрывы не сглаживаются: сутки без данных — это разрыв линии, а не прямая
-   между соседями. Прямая соврала бы, что в эти сутки что-то измеряли. */
-function График({ days, поле, база, заголовок }: {
-  days: EffectDay[];
-  поле: 'factQzh' | 'factQn';
-  база: number | null;
-  заголовок: string;
-}) {
-  const Ш = 640; const В = 170;
-  const поля = { верх: 12, низ: 22, лево: 46, право: 8 };
-  const значения = days.map((d) => d[поле]).filter((v): v is number => v !== null);
-
-  if (!значения.length) {
-    return (
-      <div className="eff-chart">
-        <div className="eff-chart__h">{заголовок}</div>
-        <div className="block__b">Нет данных за окно.</div>
-      </div>
-    );
-  }
-
-  const все = база === null ? значения : [...значения, база];
-  let мин = Math.min(...все); let макс = Math.max(...все);
-  const запас = (макс - мин) * 0.12 || Math.abs(макс) * 0.1 || 1;
-  мин -= запас; макс += запас;
-
-  const x = (i: number) => поля.лево + (i / Math.max(1, days.length - 1)) * (Ш - поля.лево - поля.право);
-  const y = (v: number) => поля.верх + (1 - (v - мин) / (макс - мин)) * (В - поля.верх - поля.низ);
-
-  const отрезки: string[][] = [];
-  let текущий: string[] = [];
-  days.forEach((d, i) => {
-    const v = d[поле];
-    if (v === null) { if (текущий.length > 1) отрезки.push(текущий); текущий = []; return; }
-    текущий.push(`${x(i).toFixed(1)},${y(v).toFixed(1)}`);
-  });
-  if (текущий.length > 1) отрезки.push(текущий);
-
-  return (
-    <div className="eff-chart">
-      <div className="eff-chart__h">{заголовок}</div>
-      <svg viewBox={`0 0 ${Ш} ${В}`} role="img" aria-label={заголовок}>
-        {[макс, (макс + мин) / 2, мин].map((v, i) => (
-          <g key={i}>
-            <line x1={поля.лево} x2={Ш - поля.право} y1={y(v)} y2={y(v)}
-                  stroke="var(--border-divider-light)" strokeWidth="1" />
-            <text x={поля.лево - 6} y={y(v) + 4} textAnchor="end"
-                  fill="var(--text-quaternary)" fontSize="11">{число(v, 1)}</text>
-          </g>
-        ))}
-
-        {база !== null && (
-          <>
-            <line x1={поля.лево} x2={Ш - поля.право} y1={y(база)} y2={y(база)}
-                  stroke="var(--text-tertiary)" strokeWidth="1.4" strokeDasharray="5 4" />
-            <text x={Ш - поля.право} y={y(база) - 5} textAnchor="end"
-                  fill="var(--text-tertiary)" fontSize="11">база {число(база, 1)}</text>
-          </>
-        )}
-
-        {отрезки.map((points, i) => (
-          <polyline key={i} points={points.join(' ')} fill="none"
-                    stroke="var(--infografic-accent)" strokeWidth="1.8"
-                    strokeLinejoin="round" strokeLinecap="round" />
-        ))}
-
-        <text x={поля.лево} y={В - 5} fill="var(--text-quaternary)" fontSize="11">
-          {дата(days[0]?.date)}
-        </text>
-        <text x={Ш - поля.право} y={В - 5} textAnchor="end" fill="var(--text-quaternary)" fontSize="11">
-          {дата(days[days.length - 1]?.date)}
-        </text>
-      </svg>
     </div>
   );
 }
@@ -438,18 +344,6 @@ function Статьи({ eff }: { eff: EffectView }) {
         </tbody>
       </table>
 
-      <div className="eff__note" style={{ marginTop: 'var(--item-gap-vertical-s)' }}>
-        Ставки взяты по паре «месторождение + номер скважины»: месторождение в модели Заказчика —
-        «{econ.sourceName}», налоговый пласт — «{econ.taxPlast}»
-        {econ.plast && `, пласт по ВМАП — «${econ.plast}»`}.
-        {' '}Жидкость входит в формулу в тоннах, как в шаблоне Заказчика, а ВМАП меряет её в
-        кубометрах: прирост переведён в массу по плотностям скважины
-        {eff.oilDensity && eff.waterDensity
-          ? ` — нефть ${число(eff.oilDensity, 0)}, вода ${число(eff.waterDensity, 0)} кг/м³`
-          : ''}.
-        {' '}Расчёт ведётся по фактическим суткам, поэтому коэффициента эксплуатации в формуле нет:
-        сутки простоя приходят нулевым приростом сами, и поправка задвоилась бы.
-      </div>
     </>
   );
 }

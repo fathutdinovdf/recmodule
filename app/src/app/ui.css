@@ -6,7 +6,11 @@
  *
  * Вид берётся у макета. Оформление здесь — это перенесённые `.combo*` из
  * `макет/wizard.css`: те же токены, те же радиусы, та же анимация раскрытия.
- * Класс `.inp` не дублируется, он приходит из card.css.
+ * Класс `.inp` (переключатель Select и Combobox) продублирован здесь из
+ * card.css: расчёт был на то, что card.css подключён везде, где есть
+ * Select/Combobox, но мастер регистрации (`rec/new`) грузит только
+ * wizard.css и card.css не тянет — без дублирования поле рисовалось голым
+ * системным инпутом браузера, без единого правила стиля.
  *
  * Единственное отличие от макета — состояния. В макете их ставил свой скрипт
  * классами (`.is-open`, `.is-active`), Radix ставит их атрибутами
@@ -15,6 +19,17 @@
  * наведение мышью — одно и то же состояние, два выделения на экране читаются
  * как два курсора.
  */
+
+.inp {
+  width: 100%;
+  background: var(--component-default);
+  border: 1px solid var(--border-component-default);
+  border-radius: var(--corner-radius-component);
+  padding: var(--item-padding-vertical-s) var(--item-padding-horizontal-m);
+  font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  color: var(--text-primary);
+}
+.inp:focus { outline: none; box-shadow: var(--focus-component); border-color: var(--component-accent); }
 
 .combo { position: relative; display: block; }
 

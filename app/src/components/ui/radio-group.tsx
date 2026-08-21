@@ -56,7 +56,7 @@ function RadioGroupItem({ className, value, ...props }: RadioGroupItemProps) {
       whileTap={{ scale: 0.9 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
       className={cn(
-        'aspect-square size-4 shrink-0 rounded-full border border-input shadow-xs outline-none',
+        'aspect-square size-4 shrink-0 rounded-full border border-input bg-background shadow-xs outline-none',
         'transition-colors duration-200',
         'data-[state=checked]:border-primary',
         'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35',

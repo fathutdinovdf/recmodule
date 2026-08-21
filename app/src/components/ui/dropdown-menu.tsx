@@ -1,15 +1,32 @@
 "use client"
 
+/* Открытие/закрытие меню — AnimatePresence поверх Radix (тот же приём, что у
+ * Dialog и Tooltip: animate-ui.com/docs/components/radix/dropdown-menu),
+ * вместо CSS-классов tw-animate-css: пружина вместо линейного зума. */
+
 import * as React from "react"
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react"
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui"
+import { AnimatePresence, motion, type Transition } from "motion/react"
 
 import { cn } from "@/lib/cn"
+import { useControlledState } from "@/hooks/use-controlled-state"
+import { getStrictContext } from "@/lib/get-strict-context"
 
-function DropdownMenu({
-  ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
-  return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />
+type DropdownMenuProps = React.ComponentProps<typeof DropdownMenuPrimitive.Root>
+type DropdownMenuContextType = { isOpen: boolean; setIsOpen: DropdownMenuProps['onOpenChange'] };
+const [DropdownMenuContextProvider, useDropdownMenu] =
+  getStrictContext<DropdownMenuContextType>('DropdownMenuContext');
+
+function DropdownMenu(props: DropdownMenuProps) {
+  const [isOpen, setIsOpen] = useControlledState({
+    value: props.open, defaultValue: props.defaultOpen, onChange: props.onOpenChange,
+  });
+  return (
+    <DropdownMenuContextProvider value={{ isOpen, setIsOpen }}>
+      <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} onOpenChange={setIsOpen} />
+    </DropdownMenuContextProvider>
+  )
 }
 
 function DropdownMenuPortal({
@@ -31,23 +48,43 @@ function DropdownMenuTrigger({
   )
 }
 
+type DropdownMenuContentProps = Omit<
+  React.ComponentProps<typeof DropdownMenuPrimitive.Content>, 'asChild' | 'forceMount'
+> & { transition?: Transition };
+
 function DropdownMenuContent({
   className,
   sideOffset = 4,
+  transition = { type: 'spring', stiffness: 300, damping: 25, bounce: 0 },
   ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
+}: DropdownMenuContentProps) {
+  const { isOpen } = useDropdownMenu();
   return (
-    <DropdownMenuPrimitive.Portal>
-      <DropdownMenuPrimitive.Content
-        data-slot="dropdown-menu-content"
-        sideOffset={sideOffset}
-        className={cn(
-          "z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
-          className
-        )}
-        {...props}
-      />
-    </DropdownMenuPrimitive.Portal>
+    <AnimatePresence>
+      {isOpen && (
+        <DropdownMenuPrimitive.Portal forceMount>
+          <DropdownMenuPrimitive.Content
+            data-slot="dropdown-menu-content"
+            asChild
+            forceMount
+            sideOffset={sideOffset}
+            {...props}
+          >
+            <motion.div
+              key="dropdown-menu-content"
+              initial={{ opacity: 0, scale: 0.94 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.94 }}
+              transition={transition}
+              className={cn(
+                "z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md",
+                className
+              )}
+            />
+          </DropdownMenuPrimitive.Content>
+        </DropdownMenuPrimitive.Portal>
+      )}
+    </AnimatePresence>
   )
 }
 

@@ -70,12 +70,12 @@ export function ScrollOverlay({ target }: { target?: HTMLElement | null }) {
   return (
     <div
       aria-hidden
-      className="pointer-events-none fixed z-50 w-1.5 rounded-full bg-[var(--text-quaternary)]"
+      className="pointer-events-none fixed z-50 w-[3px] rounded-full bg-[var(--text-quaternary)]"
       style={{
         top: `${ползунок.top}px`,
         left: `${ползунок.left}px`,
         height: `${ползунок.height}px`,
-        opacity: видно ? 0.5 : 0,
+        opacity: видно ? 0.25 : 0,
         /* Положение — без перехода: ползунок обязан идти ровно за пальцем.
            Гаснет медленнее, чем появляется, чтобы уход не читался как рывок. */
         transition: `opacity ${видно ? 'var(--motion-fast)' : '400ms'} var(--ease-out)`,
