@@ -61,16 +61,29 @@ export default async function Страница({ params }: { params: Promise<{ i
   const конецБазы = card.baseline?.periodTo ? днём(card.baseline.periodTo) : null;
   const началоОкна = card.implementation ? днём(card.implementation.windowOpenAt) : null;
 
+  /* Было ли до начала отрезка хоть одно внесённое значение: от этого зависит,
+     есть ли что протягивать на первые сутки. Тот же запас, что у выборки ряда
+     в db/manual.ts. */
+  const доНачала = await factsInRange(
+    card.wellId, new Date(начало.getTime() - 30 * СУТКИ), new Date(начало.getTime() - СУТКИ),
+  );
+  let былоЗначение = [...доНачала.values()].some((f) => f.qzh !== null);
+
   const дни: ДеньКалендаря[] = [];
   for (let t = начало.getTime(); t <= конец.getTime(); t += СУТКИ) {
     const д = new Date(t);
     const k = `${д.getFullYear()}-${д.getMonth() + 1}-${д.getDate()}`;
     const ф = факт.get(k);
+    /* Признак считается ДО обновления флага: протянуть можно только то, что
+       внесли раньше этих суток, а не в них самих. */
+    const естьПротяжка = былоЗначение;
+    if (ф?.qzh !== null && ф?.qzh !== undefined) былоЗначение = true;
     дни.push({
       iso: iso(д),
       qzh: ф?.qzh ?? null,
       watercut: ф?.watercut ?? null,
       ee: ф?.ee ?? null,
+      естьПротяжка,
       правок: правок.get(k) ?? 0,
       вБазе: !!(началоБазы && конецБазы && д >= началоБазы && д <= конецБазы),
       вОкне: !!(началоОкна && конецОкна && д >= началоОкна && д <= конецОкна),
