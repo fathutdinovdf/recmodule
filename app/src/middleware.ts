@@ -22,8 +22,13 @@ export function middleware(запрос: NextRequest) {
   const заголовки = new Headers(запрос.headers);
   заголовки.set('x-pathname', путь);
 
-  const естьВход = запрос.cookies.has(КУКА_СЕССИИ)
-    || (process.env.NODE_ENV !== 'production' && запрос.cookies.has(КУКА_ПОЛЬЗОВАТЕЛЯ));
+  /* Подмена входа в разработке — не только кука переключателя, но и
+     переменная DEMO_USER: под ней снимают экраны headless-браузером, где
+     профиль свежий и куки нет вовсе. Без этой половины условия такой запуск
+     уходил в круг «middleware → /login → форма видит пользователя → /». */
+  const подмена = process.env.NODE_ENV !== 'production'
+    && (запрос.cookies.has(КУКА_ПОЛЬЗОВАТЕЛЯ) || !!process.env.DEMO_USER);
+  const естьВход = запрос.cookies.has(КУКА_СЕССИИ) || подмена;
 
   if (!естьВход && путь !== '/login') {
     const на = запрос.nextUrl.clone();

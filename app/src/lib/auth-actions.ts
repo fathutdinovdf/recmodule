@@ -71,7 +71,7 @@ export async function войти(_: РезультатВхода, форма: Fo
 
 /* Стартовая страница роли (решение 82). Инбокса и экрана пользователей в
    приложении пока нет — обе роли до их появления приходят в реестр. */
-const СТАРТ: Record<string, string> = { inbox: '/', registry: '/', users: '/' };
+const СТАРТ: Record<string, string> = { inbox: '/', registry: '/', users: '/users' };
 
 export async function выйти(): Promise<void> {
   const куки = await cookies();

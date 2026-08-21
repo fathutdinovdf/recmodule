@@ -32,6 +32,9 @@ interface NavItem {
   /* Пункты, которых ещё нет: показываются приглушённо и не кликаются —
      так же, как в макете. Прятать их нельзя: по ним видно объём модуля. */
   muted?: boolean;
+  /* Пункт администратора модуля. Этот прячется по-настоящему: остальным он не
+     «пока недоступен», а не нужен вовсе — чужие полномочия не их работа. */
+  admin?: boolean;
 }
 
 interface NavSection {
@@ -60,7 +63,7 @@ const НАВИГАЦИЯ: NavSection[] = [
     items: [
       { href: '/economy', label: 'Экономическая модель' },
       { label: 'Справочники', muted: true },
-      { label: 'Пользователи и роли', muted: true },
+      { href: '/users', label: 'Пользователи и роли', admin: true },
       { label: 'Календарь и SLA', muted: true },
       { label: 'Отчёты и выгрузки', muted: true },
     ],
@@ -114,7 +117,7 @@ export function AppChrome({
           {НАВИГАЦИЯ.map((секция) => (
             <div key={секция.title}>
               <div className="sidenav__section">{секция.title}</div>
-              {секция.items.map((пункт) => {
+              {секция.items.filter((п) => !п.admin || user.role === 'admin').map((пункт) => {
                 const активен = пункт.href === path;
                 const классы = ['navitem', активен ? 'is-active' : '',
                   пункт.muted ? 'navitem--muted' : ''].filter(Boolean).join(' ');

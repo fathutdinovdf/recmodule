@@ -60,6 +60,10 @@ const ПОЛЬЗОВАТЕЛИ = [
   { login: 'gadayatov', full_name: 'Гадаятов Ф.Г.', position: 'Ведущий технолог ЦДНГ', role: 'engineer', can_decide: true, can_edit_economy: false },
   { login: 'safin', full_name: 'Сафин Р.М.', position: 'Начальник технологического отдела', role: 'customerLead', can_decide: true, can_edit_economy: false },
   { login: 'shakirov', full_name: 'Шакиров И.Р.', position: 'Технолог', role: 'viewer', can_decide: false, can_edit_economy: false },
+  /* Администратор модуля: рекомендаций у него не бывает (решение 82), но без
+     него не открыть экран «Пользователи и роли» — он там единственный, кому
+     этот экран показывают. */
+  { login: 'admin', full_name: 'Фатхутдинов Д.Ф.', position: 'Администратор модуля', role: 'admin', can_decide: false, can_edit_economy: false },
 ];
 
 /* Тот же формат хеша, что в src/lib/password.ts. Продублирован намеренно:

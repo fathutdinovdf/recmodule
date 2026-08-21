@@ -27,17 +27,22 @@ export interface SelectOption {
 
 export function Select({
   name, options, defaultValue, placeholder = 'Выберите значение', required, disabled, id,
+  onValueChange,
 }: {
-  name: string;
+  /* Необязательно: список бывает и вне формы — на экране прав он применяет
+     выбор серверным действием сразу, и скрытое поле там некому отправлять. */
+  name?: string;
   options: SelectOption[];
   defaultValue?: string;
   placeholder?: string;
   required?: boolean;
   disabled?: boolean;
   id?: string;
+  onValueChange?: (значение: string) => void;
 }) {
   return (
-    <RadixSelect.Root name={name} defaultValue={defaultValue} required={required} disabled={disabled}>
+    <RadixSelect.Root name={name} defaultValue={defaultValue} required={required}
+                      disabled={disabled} onValueChange={onValueChange}>
       <span className="combo">
         <RadixSelect.Trigger className="inp combo__inp" id={id} aria-label={placeholder}>
           <RadixSelect.Value placeholder={placeholder} />

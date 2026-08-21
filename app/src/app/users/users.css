@@ -1,0 +1,254 @@
+/* Экран «Пользователи и роли».
+ *
+ * Две колонки: список слева, карточка справа. Не таблица — экран не про
+ * «просмотреть тридцать строк», а про «настроить одного человека». Таблица
+ * заставила бы открывать окно ради каждого поля, а полей здесь четыре и все
+ * требуют пояснения, которое в ячейку не помещается.
+ *
+ * Собственные классы, общие не переопределяются: `.panel`, `.btn`, `.field`,
+ * `.avatar` берутся из registry.css как есть.
+ */
+
+.users {
+  flex: 1 1 auto; min-height: 0;
+  display: grid;
+  grid-template-columns: 264px minmax(0, 1fr);
+  gap: var(--block-gap-default);
+}
+
+/* ------------------------------ список ------------------------------ */
+
+.ulist { overflow: hidden; display: flex; flex-direction: column; }
+
+.ulist__search {
+  padding: var(--group-padding-s);
+  border-bottom: 1px solid var(--border-divider-light);
+}
+.ulist__search .field { width: 100%; }
+
+.ulist__scroll { overflow: auto; padding-bottom: var(--group-padding-s); }
+
+.ulist__group {
+  padding: var(--group-padding-m) var(--group-padding-m) var(--item-padding-vertical-xs);
+  font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-caption) var(--font-family-text);
+  letter-spacing: var(--letter-spacing-text-caption);
+  text-transform: uppercase;
+  color: var(--text-quaternary, var(--text-tertiary));
+}
+
+.uitem {
+  position: relative;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--item-gap-horizontal-m);
+  padding: var(--item-padding-vertical-s) var(--group-padding-m);
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+.uitem:hover { background: var(--state-hover); }
+.uitem.is-active { background: var(--state-selected-light); }
+/* Полоса слева, а не рамка вокруг: выбранная строка должна читаться краем
+   глаза при прокрутке списка, не сдвигая соседние на пиксель. */
+.uitem.is-active::before {
+  content: ''; position: absolute; left: 0; top: 4px; bottom: 4px; width: 2px;
+  border-radius: 0 var(--corner-radius-component) var(--corner-radius-component) 0;
+  background: var(--component-accent);
+}
+
+.uitem__name {
+  font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.uitem.is-active .uitem__name { font-weight: var(--font-weight-subtitle); }
+.uitem__role {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* Число рекомендаций в зоне. Приглушено до наведения и выбора: это справка,
+   а не показатель — на экране прав важнее имя и роль. */
+.uitem__n {
+  font: var(--font-weight-text) var(--font-size-text-small) / 1 var(--font-family-text);
+  color: var(--text-quaternary, var(--text-tertiary));
+  font-variant-numeric: tabular-nums;
+}
+.uitem--off { opacity: 0.55; }
+
+.uitem__ava {
+  width: 24px; height: 24px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--bg-secondary); color: var(--text-secondary);
+  font: var(--font-weight-subtitle) var(--font-size-text-caption) / 1 var(--font-family-text);
+}
+/* Сторона договора цветом кружка: Исполнитель и Заказчик перемешаны в одном
+   списке, и держать это в голове по фамилиям невозможно. Те же роли цвета,
+   что у кружка статуса в реестре, — своей семантики не заводим. */
+.uitem__ava--executor { background: var(--bg-accent-secondary, var(--bg-secondary)); color: var(--text-accent); }
+
+/* ------------------------------ карточка ------------------------------ */
+
+.ucard { overflow: auto; }
+
+.ucard__head {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--group-gap-m);
+  padding: var(--group-padding-l);
+  border-bottom: 1px solid var(--border-divider-light);
+}
+.ucard__ava {
+  width: 44px; height: 44px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--bg-secondary); color: var(--text-secondary);
+  font: var(--font-weight-subtitle) var(--font-size-text-medium) / 1 var(--font-family-text);
+}
+.ucard__name {
+  display: flex; align-items: center; gap: var(--item-gap-horizontal-m);
+  font: var(--font-weight-headline) var(--font-size-h5) / var(--line-height-h5) var(--font-family-headline);
+  color: var(--text-heading);
+}
+.ucard__sub {
+  margin-top: 2px;
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+.ucard__actions { display: flex; gap: var(--item-gap-horizontal-m); }
+
+.ucard__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 288px;
+  gap: var(--block-gap-default);
+  padding: var(--group-padding-l);
+  align-items: start;
+}
+/* Узкое окно: журнал и доступ уходят под настройки, а не жмутся в колонку
+   шириной в слово. */
+@media (max-width: 1100px) {
+  .ucard__body { grid-template-columns: minmax(0, 1fr); }
+}
+
+.ucol { display: flex; flex-direction: column; gap: var(--block-gap-default); min-width: 0; }
+
+.usec {
+  border: 1px solid var(--border-divider-light);
+  border-radius: var(--corner-radius-l);
+  padding: var(--group-padding-m);
+  display: flex; flex-direction: column; gap: var(--group-gap-s);
+}
+.usec__head { display: flex; align-items: baseline; gap: var(--item-gap-horizontal-m); }
+.usec__title {
+  font: var(--font-weight-subtitle) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  color: var(--text-primary);
+}
+.usec__aside { margin-left: auto; }
+.usec__hint {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+
+/* ------------------------------ полномочия ------------------------------ */
+
+.perm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--group-gap-m);
+  padding: var(--item-padding-vertical-s) 0;
+}
+.perm + .perm { border-top: 1px solid var(--border-divider-light); }
+.perm__title {
+  font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  color: var(--text-primary);
+}
+.perm__hint {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+/* Полномочие, к роли неприменимое, не прячется, а гаснет: пустое место
+   заставляет гадать, чего не хватает, а погашенная строка отвечает сама —
+   «фиксирует Исполнитель, а это Заказчик». */
+.perm--na { opacity: 0.5; }
+
+/* ------------------------------ зона ------------------------------ */
+
+.zone__chips { display: flex; flex-wrap: wrap; gap: var(--item-gap-horizontal-s); }
+
+.chip {
+  display: inline-flex; align-items: center; gap: var(--item-gap-horizontal-s);
+  height: 26px; padding: 0 var(--item-padding-horizontal-s);
+  border: 1px solid var(--border-component-default);
+  border-radius: var(--corner-radius-large-component);
+  background: var(--component-default);
+  color: var(--text-secondary);
+  font: var(--font-weight-text) var(--font-size-text-small) / 1 var(--font-family-text);
+  cursor: pointer;
+}
+.chip:hover { background: var(--state-hover); }
+.chip.is-on {
+  background: var(--component-accent); border-color: transparent;
+  color: var(--text-on-accent); font-weight: var(--font-weight-subtitle);
+}
+.chip__n { opacity: 0.7; font-variant-numeric: tabular-nums; }
+.chip:disabled { cursor: default; opacity: 0.6; }
+
+/* Пустая зона — не пустое место, а состояние «все объекты договора».
+   Без явной плашки экран выглядит незаполненным, и зону начинают задавать
+   там, где она не нужна. */
+.zone__all {
+  display: flex; align-items: center; gap: var(--item-gap-horizontal-m);
+  padding: var(--item-padding-vertical-s) var(--item-padding-horizontal-s);
+  border-radius: var(--corner-radius-component);
+  background: var(--bg-tertiary, var(--bg-secondary));
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-secondary);
+}
+
+.zone__count {
+  font: var(--font-weight-text) var(--font-size-text-small) / 1 var(--font-family-text);
+  color: var(--text-tertiary);
+}
+.zone__count b {
+  color: var(--text-secondary); font-weight: var(--font-weight-subtitle);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------ журнал ------------------------------ */
+
+.log { display: flex; flex-direction: column; gap: var(--group-gap-s); }
+.log__item {
+  display: flex; flex-direction: column; gap: 2px;
+  padding-left: var(--group-padding-s);
+  border-left: 2px solid var(--border-divider-light);
+}
+.log__when {
+  font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-caption) var(--font-family-text);
+  color: var(--text-quaternary, var(--text-tertiary));
+}
+.log__what {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-secondary);
+}
+
+/* ------------------------------ доступ ------------------------------ */
+
+.access__row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--group-gap-m);
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-secondary);
+}
+.access__val { color: var(--text-primary); }
+
+/* Ошибка действия. Одно место на карточку: действия применяются сразу, и
+   сообщать о неудаче нужно там, где человек смотрит, а не поверх экрана. */
+.uerror {
+  padding: var(--item-padding-vertical-s) var(--item-padding-horizontal-s);
+  border-radius: var(--corner-radius-component);
+  background: var(--status-error-light-bg);
+  color: var(--status-error-text);
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+}
