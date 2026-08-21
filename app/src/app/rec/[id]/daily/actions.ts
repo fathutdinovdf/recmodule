@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { currentUser } from '@/lib/session';
 import { saveDay, factHistory, type FactEvent } from '@/db/daily-facts';
 import { getCard } from '@/db/card';
+import { query } from '@/db/pool';
+import { recalcEffect } from '@/services/effect-store';
 
 export interface DayActionState {
   error?: string;
@@ -93,10 +95,30 @@ export async function сохранитьСутки(
     recId,
   });
 
-  /* Пересчёт эффекта не трогаем: он идёт своим ходом (см. scripts/dev.mjs и
-     /api/effect/recalc). Здесь только обновляем страницу карточки, чтобы
-     календарь и расчёт увидели новые сутки. */
-  if (changed) revalidatePath(`/rec/${recId}`, 'layout');
+  /* Пересчёт делается ЗДЕСЬ, сразу после правки.
+     Вкладка «Расчёт эффекта» не считает сама: она читает сохранённое из
+     rec.effect_daily и считает только на холодном старте (см.
+     services/effect-store.ts). Без пересчёта человек, внёсший замер, видел бы
+     на соседней вкладке прежние деньги и прежнее качество данных — и решил
+     бы, что ввод не сработал.
+
+     Пересчитываются ВСЕ затронутые рекомендации, а не только та, из которой
+     правили: факт принадлежит скважине, и эти сутки могут попадать в окно
+     соседней карточки по той же скважине. Закрытые окна не трогаются — у них
+     цифра зафиксирована, акт мог уйти Заказчику. */
+  if (changed) {
+    for (const id of await затронутыеКарточки(card.wellId, дата)) {
+      try {
+        const затронутая = await getCard(id);
+        if (затронутая) await recalcEffect(затронутая);
+      } catch {
+        /* Одна не пересчитавшаяся карточка не должна ронять сохранение
+           данных: они уже записаны и в журнале, а расчёт догонит фоновым
+           проходом /api/effect/recalc. */
+      }
+      revalidatePath(`/rec/${id}`, 'layout');
+    }
+  }
 
   const история = await factHistory(card.wellId, дата);
   return {
@@ -104,4 +126,22 @@ export async function сохранитьСутки(
     day: iso,
     history: история.map((e) => ({ ...e, at: e.at.toISOString() })),
   };
+}
+
+/* Рекомендации, чей расчёт зависит от этих суток: та же скважина, окно
+   открыто и накрывает дату. Дата сравнивается по суткам — окно хранится
+   отметками времени, и правка за день открытия иначе не попала бы. */
+async function затронутыеКарточки(wellId: number, дата: Date): Promise<number[]> {
+  const rows = await query<{ id: string }>(`
+    SELECT r.id::text
+      FROM rec.recommendations r
+      JOIN rec.implementations i ON i.rec_id = r.id
+     WHERE r.well_id = $1
+       AND r.deleted_at IS NULL
+       AND i.closed_at IS NULL
+       AND $2::date >= i.window_open_at::date
+       AND $2::date <= i.window_close_at::date
+     ORDER BY r.id
+  `, [wellId, дата]);
+  return rows.map((r) => Number(r.id));
 }
