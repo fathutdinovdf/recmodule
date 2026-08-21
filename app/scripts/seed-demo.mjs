@@ -21,6 +21,7 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { randomBytes, scryptSync } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import pg from 'pg';
@@ -45,14 +46,32 @@ const int = (a, b) => a + Math.floor(rnd() * (b - a + 1));
 
 const НАЧАЛО_ДОГОВОРА = new Date('2026-07-01T09:00:00');
 
+/* Роли демо-набора покрывают все ветки интерфейса: два эксперта (у них
+   рекомендации именные), руководитель АКЭ с правом на экономику, инженер
+   Заказчика с правом решения, руководитель Заказчика и технолог без права
+   решения. Сторону договора проставит триггер по роли — здесь она не задаётся.
+
+   Пароль у всех совпадает с логином. Это демонстрационный набор: он
+   пересоздаётся целиком и живёт только на стенде разработки. */
 const ПОЛЬЗОВАТЕЛИ = [
-  { login: 'matrosov', full_name: 'Матросов А.В.', position: 'Эксперт по механизированному фонду', side: 'executor', can_decide: false, can_edit_economy: false },
-  { login: 'aliverdiev', full_name: 'Аливердиев Э.А.', position: 'Руководитель проекта, АКЭ', side: 'executor', can_decide: false, can_edit_economy: true },
-  { login: 'tevs', full_name: 'Тевс И.О.', position: 'Эксперт по механизированному фонду', side: 'executor', can_decide: false, can_edit_economy: false },
-  { login: 'gadayatov', full_name: 'Гадаятов Ф.Г.', position: 'Ведущий технолог ЦДНГ', side: 'customer', can_decide: true, can_edit_economy: false },
-  { login: 'safin', full_name: 'Сафин Р.М.', position: 'Начальник технологического отдела', side: 'customer', can_decide: true, can_edit_economy: false },
-  { login: 'shakirov', full_name: 'Шакиров И.Р.', position: 'Технолог', side: 'customer', can_decide: false, can_edit_economy: false },
+  { login: 'matrosov', full_name: 'Матросов А.В.', position: 'Эксперт по механизированному фонду', role: 'expert', can_decide: false, can_edit_economy: false },
+  { login: 'aliverdiev', full_name: 'Аливердиев Э.А.', position: 'Руководитель проекта, АКЭ', role: 'expertLead', can_decide: false, can_edit_economy: true },
+  { login: 'tevs', full_name: 'Тевс И.О.', position: 'Эксперт по механизированному фонду', role: 'expert', can_decide: false, can_edit_economy: false },
+  { login: 'gadayatov', full_name: 'Гадаятов Ф.Г.', position: 'Ведущий технолог ЦДНГ', role: 'engineer', can_decide: true, can_edit_economy: false },
+  { login: 'safin', full_name: 'Сафин Р.М.', position: 'Начальник технологического отдела', role: 'customerLead', can_decide: true, can_edit_economy: false },
+  { login: 'shakirov', full_name: 'Шакиров И.Р.', position: 'Технолог', role: 'viewer', can_decide: false, can_edit_economy: false },
 ];
+
+/* Тот же формат хеша, что в src/lib/password.ts. Продублирован намеренно:
+   скрипты сборки демо на TypeScript не собираются, а тащить ради одной
+   функции сборщик — дороже пяти строк. Параметры облегчены (N=2^14): демо
+   пересоздаётся часто, и шесть паролей по 100 мс на каждом прогоне заметны. */
+function хешПароля(пароль) {
+  const соль = randomBytes(16);
+  const N = 2 ** 14, r = 8, p = 1;
+  const хеш = scryptSync(пароль.normalize('NFKC'), соль, 32, { N, r, p, maxmem: 256 * 1024 * 1024 });
+  return `scrypt$${N}$${r}$${p}$${соль.toString('base64')}$${хеш.toString('base64')}`;
+}
 
 const ПРОБЛЕМЫ = [
   'Снижение дебита жидкости', 'Рост обводнённости', 'Работа насоса вне рабочей зоны НРХ',
@@ -147,13 +166,16 @@ try {
   const userId = new Map();
   for (const u of ПОЛЬЗОВАТЕЛИ) {
     const { rows } = await client.query(`
-      INSERT INTO rec.users (login, full_name, position, side, can_decide, can_edit_economy)
-      VALUES ($1,$2,$3,$4,$5,$6)
+      INSERT INTO rec.users (login, full_name, position, role_key, can_decide, can_edit_economy,
+                             only_own, password_hash, side)
+      SELECT $1,$2,$3,$4,$5,$6, ro.only_own, $7, ro.side FROM rec.roles ro WHERE ro.key = $4
       ON CONFLICT (login) DO UPDATE SET full_name = EXCLUDED.full_name,
-        position = EXCLUDED.position, side = EXCLUDED.side,
-        can_decide = EXCLUDED.can_decide, can_edit_economy = EXCLUDED.can_edit_economy
+        position = EXCLUDED.position, role_key = EXCLUDED.role_key,
+        can_decide = EXCLUDED.can_decide, can_edit_economy = EXCLUDED.can_edit_economy,
+        only_own = EXCLUDED.only_own, password_hash = EXCLUDED.password_hash
       RETURNING id
-    `, [u.login, u.full_name, u.position, u.side, u.can_decide, u.can_edit_economy]);
+    `, [u.login, u.full_name, u.position, u.role, u.can_decide, u.can_edit_economy,
+      хешПароля(u.login)]);
     userId.set(u.login, rows[0].id);
   }
 

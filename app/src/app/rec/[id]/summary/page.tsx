@@ -25,6 +25,7 @@ import { notFound } from 'next/navigation';
 import { getCard, type Card } from '@/db/card';
 import { getRejectReasons } from '@/db/refs';
 import { currentUser, type SessionUser } from '@/lib/session';
+import { этоРешающий } from '@/lib/access';
 import { control, fmtDur } from '@/domain/workhours';
 import { дата } from '@/lib/format';
 import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
@@ -135,7 +136,7 @@ function БлокРешения({ card, user, форма, причины }: {
      рекомендации ему работать, — а решение принимает уполномоченный сотрудник
      (решение 89). Исполнитель видит то же самое: рекомендация у Заказчика, и
      ответить за него он не может. */
-  if (!user || user.side !== 'customer' || !user.canDecide) {
+  if (!user || !этоРешающий(user)) {
     return (
       <div className="decision decision--done">
         <div className="decision__h">Решение по рекомендации</div>

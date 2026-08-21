@@ -1,0 +1,39 @@
+import { NextResponse, type NextRequest } from 'next/server';
+import { КУКА_СЕССИИ, КУКА_ПОЛЬЗОВАТЕЛЯ } from '@/lib/session-cookies';
+
+/* Middleware делает две вещи, и обе — вспомогательные.
+ *
+ * Первая: кладёт путь в заголовок. Серверный компонент своего пути не знает, а
+ * оболочке он нужен — на форме входа ни шапки, ни навигации быть не должно.
+ *
+ * Вторая: отправляет на форму входа того, у кого нет куки сессии вообще. Это
+ * не проверка доступа, а срезание пути: настоящая проверка — в `currentUser`,
+ * потому что кука может быть от погашенной или истёкшей сессии, а базы здесь
+ * нет (middleware исполняется в edge-окружении, пула соединений в нём не
+ * бывает). Кто прошёл этот фильтр с негодной кукой, упрётся в проверку в
+ * оболочке.
+ *
+ * Маршруты `/api` намеренно не трогаем: они отвечают JSON и файлами, и HTML
+ * формы входа вместо вложения — худшее, что можно им ответить. Каждый из них
+ * проверяет пользователя сам.
+ */
+export function middleware(запрос: NextRequest) {
+  const путь = запрос.nextUrl.pathname;
+  const заголовки = new Headers(запрос.headers);
+  заголовки.set('x-pathname', путь);
+
+  const естьВход = запрос.cookies.has(КУКА_СЕССИИ)
+    || (process.env.NODE_ENV !== 'production' && запрос.cookies.has(КУКА_ПОЛЬЗОВАТЕЛЯ));
+
+  if (!естьВход && путь !== '/login') {
+    const на = запрос.nextUrl.clone();
+    на.pathname = '/login';
+    return NextResponse.redirect(на);
+  }
+
+  return NextResponse.next({ request: { headers: заголовки } });
+}
+
+export const config = {
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|ico|woff2?)$).*)'],
+};

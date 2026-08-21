@@ -11,7 +11,7 @@
 
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
-import { КУКА_ПОЛЬЗОВАТЕЛЯ } from './session';
+import { КУКА_ПОЛЬЗОВАТЕЛЯ } from './session-cookies';
 
 export async function switchUser(login: string): Promise<void> {
   (await cookies()).set(КУКА_ПОЛЬЗОВАТЕЛЯ, login, {

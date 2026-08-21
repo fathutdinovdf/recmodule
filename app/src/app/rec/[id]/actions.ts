@@ -20,6 +20,7 @@
 import { revalidatePath } from 'next/cache';
 import { transaction } from '@/db/pool';
 import { currentUser } from '@/lib/session';
+import { этоРешающий, НЕТ_ПРАВА } from '@/lib/access';
 import { workHoursBetween } from '@/domain/workhours';
 
 type Kind = 'accept' | 'reject' | 'clarify';
@@ -75,8 +76,8 @@ export async function решить(
   }
 
   const user = await currentUser();
-  if (!user || user.side !== 'customer' || !user.canDecide) {
-    return вернуться('Решение принимает уполномоченный сотрудник Заказчика; у вашей учётной записи права решения нет.');
+  if (!user || !этоРешающий(user)) {
+    return вернуться(НЕТ_ПРАВА.решение);
   }
 
   const ошибка = await transaction(async (client) => {

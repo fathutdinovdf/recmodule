@@ -2,6 +2,8 @@
 
 import { query } from './pool';
 import { isTypoOf } from '@/domain/textSimilarity';
+import { currentUser } from '@/lib/session';
+import { границаВидимости } from '@/lib/access';
 
 export interface StatusRef {
   code: string;
@@ -180,6 +182,18 @@ const BASE_CTE = `
   WHERE r.deleted_at IS NULL
 `;
 
+/* Реестр в границах видимости вошедшего.
+ *
+ * Пользователь читается здесь, а не приходит параметром, намеренно: зона
+ * ответственности — граница, а не фильтр (решение 87), и запрос в обход неё
+ * не должен быть возможен вообще. Параметр можно забыть передать из новой
+ * страницы, и никто этого не заметит, пока Заказчик не увидит чужой цех.
+ * currentUser закэширован на запрос, лишнего обращения к базе это не стоит.
+ */
+async function основа(): Promise<string> {
+  return `${BASE_CTE} AND ${границаВидимости(await currentUser(), 'r')}`;
+}
+
 /* Порядок «контроля ответа» — просрочки и близкие к просрочке впереди,
    тот же смысл, что CTRL_ORDER в макете. */
 const CONTROL_ORDER_SQL = `CASE control_kind
@@ -250,7 +264,7 @@ export async function listRecommendations(filter: ListFilter = {}): Promise<{
   const { where, params } = buildConditions(filter);
 
   const [{ count }] = await query<{ count: string }>(
-    `WITH base AS (${BASE_CTE}) SELECT count(*)::text AS count FROM base ${where}`, params);
+    `WITH base AS (${await основа()}) SELECT count(*)::text AS count FROM base ${where}`, params);
 
   const sort = filter.sort;
   const orderBy = sort
@@ -262,7 +276,7 @@ export async function listRecommendations(filter: ListFilter = {}): Promise<{
   параметры.push(filter.offset ?? 0);
 
   const rows = await query<Record<string, unknown>>(`
-    WITH base AS (${BASE_CTE})
+    WITH base AS (${await основа()})
     SELECT * FROM base
     ${where}
     ORDER BY ${orderBy}
@@ -308,8 +322,9 @@ export async function listRecommendations(filter: ListFilter = {}): Promise<{
 /** Счётчики для плиток над таблицей. */
 export async function statusCounts(): Promise<Record<string, number>> {
   const rows = await query<{ status: string; n: string }>(`
-    SELECT status, count(*)::text AS n FROM rec.recommendations
-    WHERE deleted_at IS NULL GROUP BY status
+    SELECT r.status, count(*)::text AS n FROM rec.recommendations r
+    WHERE r.deleted_at IS NULL AND ${границаВидимости(await currentUser(), 'r')}
+    GROUP BY r.status
   `);
   return Object.fromEntries(rows.map((r) => [r.status, Number(r.n)]));
 }
@@ -342,7 +357,7 @@ export async function columnFacet(col: FilterColumn, search?: string): Promise<F
     case 'well': {
       const expr = col === 'field' ? 'field_name' : 'well_number';
       const rows = await query<{ v: string; n: string }>(`
-        WITH base AS (${BASE_CTE})
+        WITH base AS (${await основа()})
         SELECT ${expr} AS v, count(*)::text AS n FROM base
         ${like ? `WHERE rec.ci(${expr}) LIKE rec.ci($1)` : ''}
         GROUP BY ${expr} ORDER BY ${expr}
@@ -352,7 +367,7 @@ export async function columnFacet(col: FilterColumn, search?: string): Promise<F
 
     case 'direction': {
       const rows = await query<{ v: string; n: string; ord: number }>(`
-        WITH base AS (${BASE_CTE})
+        WITH base AS (${await основа()})
         SELECT direction AS v, direction_order AS ord, count(*)::text AS n FROM base
         ${like ? `WHERE direction ILIKE $1` : ''}
         GROUP BY direction, direction_order ORDER BY direction_order
@@ -362,7 +377,7 @@ export async function columnFacet(col: FilterColumn, search?: string): Promise<F
 
     case 'executor': {
       const rows = await query<{ v: string | null; n: string }>(`
-        WITH base AS (${BASE_CTE})
+        WITH base AS (${await основа()})
         SELECT executor_name AS v, count(*)::text AS n FROM base
         ${like ? `WHERE rec.ci(COALESCE(executor_name, '—')) LIKE rec.ci($1)` : ''}
         GROUP BY executor_name ORDER BY executor_name NULLS FIRST
@@ -372,7 +387,7 @@ export async function columnFacet(col: FilterColumn, search?: string): Promise<F
 
     case 'priority': {
       const rows = await query<{ v: string | null; label: string | null; ord: number | null; n: string }>(`
-        WITH base AS (${BASE_CTE})
+        WITH base AS (${await основа()})
         SELECT priority_disp AS v, priority_name AS label, priority_order AS ord, count(*)::text AS n FROM base
         ${like ? `WHERE rec.ci(COALESCE(priority_name, '—')) LIKE rec.ci($1)` : ''}
         GROUP BY priority_disp, priority_name, priority_order
@@ -383,7 +398,7 @@ export async function columnFacet(col: FilterColumn, search?: string): Promise<F
 
     case 'status': {
       const rows = await query<{ v: string; label: string; ord: number; n: string }>(`
-        WITH base AS (${BASE_CTE})
+        WITH base AS (${await основа()})
         SELECT status AS v, status_name AS label, status_order AS ord, count(*)::text AS n FROM base
         ${like ? `WHERE rec.ci(status_name) LIKE rec.ci($1)` : ''}
         GROUP BY status, status_name, status_order ORDER BY status_order
@@ -393,7 +408,7 @@ export async function columnFacet(col: FilterColumn, search?: string): Promise<F
 
     case 'control': {
       const rows = await query<{ v: string; n: string }>(`
-        WITH base AS (${BASE_CTE})
+        WITH base AS (${await основа()})
         SELECT control_kind AS v, count(*)::text AS n FROM base
         GROUP BY control_kind ORDER BY ${CONTROL_ORDER_SQL}
       `, []);
@@ -404,7 +419,7 @@ export async function columnFacet(col: FilterColumn, search?: string): Promise<F
 
     case 'decision': {
       const rows = await query<{ v: string | null; n: string }>(`
-        WITH base AS (${BASE_CTE})
+        WITH base AS (${await основа()})
         SELECT decision_kind AS v, count(*)::text AS n FROM base
         GROUP BY decision_kind ORDER BY decision_kind NULLS FIRST
       `, []);
@@ -430,7 +445,7 @@ export async function textFacet(col: TextFacetColumn, search: string): Promise<F
   const expr = col === 'number' ? 'number' : 'problem';
 
   const rows = await query<{ v: string; n: string }>(`
-    WITH base AS (${BASE_CTE})
+    WITH base AS (${await основа()})
     SELECT ${expr} AS v, count(*)::text AS n FROM base
     WHERE rec.ci(${expr}) LIKE rec.ci($1)
     GROUP BY ${expr} ORDER BY ${expr}
@@ -444,7 +459,7 @@ export async function textFacet(col: TextFacetColumn, search: string): Promise<F
   if (col !== 'problem') return [];
 
   const all = await query<{ v: string; n: string }>(`
-    WITH base AS (${BASE_CTE})
+    WITH base AS (${await основа()})
     SELECT problem AS v, count(*)::text AS n FROM base
     GROUP BY problem
     LIMIT 500
