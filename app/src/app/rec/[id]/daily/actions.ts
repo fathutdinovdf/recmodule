@@ -70,6 +70,7 @@ export async function сохранитьСутки(
 
   const qzh = значение(form, 'qzh');
   const watercut = значение(form, 'watercut');
+  const ee = значение(form, 'ee');
 
   if (qzh !== undefined && qzh !== null && qzh < 0) {
     return { error: 'Дебит не может быть отрицательным.' };
@@ -77,12 +78,16 @@ export async function сохранитьСутки(
   if (watercut !== undefined && watercut !== null && (watercut < 0 || watercut > 100)) {
     return { error: 'Обводнённость задаётся в процентах, от 0 до 100.' };
   }
+  if (ee !== undefined && ee !== null && ee < 0) {
+    return { error: 'Потребление электроэнергии не может быть отрицательным.' };
+  }
 
   const { changed } = await saveDay({
     wellId: card.wellId,
     date: дата,
     qzh,
     watercut,
+    ee,
     actorId: user.id,
     actorName: user.fullName,
     recId,

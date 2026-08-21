@@ -72,11 +72,6 @@ export async function сохранитьРекомендацию(
   const expectQzh = число(form, 'expectQzh');
   const expectQn = число(form, 'expectQn');
   const expectEe = число(form, 'expectEe');
-  const baselineSource = строка(form, 'baselineSource') === 'manual' ? 'manual' : 'measured';
-  const baseQzh = число(form, 'baseQzh');
-  const baseQn = число(form, 'baseQn');
-  const baseEe = число(form, 'baseEe');
-  const baselineNote = строка(form, 'baselineNote');
   const resultNote = строка(form, 'resultNote');
   const comment = строка(form, 'comment');
 
@@ -91,9 +86,6 @@ export async function сохранитьРекомендацию(
     if (expectQzh === null || expectQn === null || expectEe === null) {
       return { error: 'Для регистрации заполните все три показателя ожидаемого результата.' };
     }
-  }
-  if (baselineSource === 'manual' && (baseQzh === null || baseQn === null || !baselineNote)) {
-    return { error: 'Для ручной базы заполните дебиты жидкости и нефти и объясните замену расчёта по замерам.' };
   }
 
   let analogsSeen = 0;
@@ -144,15 +136,6 @@ export async function сохранитьРекомендацию(
       expectQzh, expectQn, expectEe, user.id,
       Number.isInteger(executorId) && executorId > 0 ? executorId : null]);
     const id = Number(result.rows[0].id);
-
-    if (baselineSource === 'manual') {
-      await client.query(`
-        INSERT INTO rec.baselines
-          (rec_id, base_qzh, base_qn, base_ee, source, status,
-           created_by, author_name, note)
-        VALUES ($1,$2,$3,$4,'manual','accepted',$5,$6,$7)
-      `, [id, baseQzh, baseQn, baseEe, user.id, user.fullName, baselineNote]);
-    }
 
     for (const text of [
       resultNote ? `Пояснение к ожидаемому результату: ${resultNote}` : '',

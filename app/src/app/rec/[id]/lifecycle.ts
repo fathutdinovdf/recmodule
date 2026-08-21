@@ -22,11 +22,9 @@
 
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { query, transaction } from '@/db/pool';
+import { transaction } from '@/db/pool';
 import { currentUser } from '@/lib/session';
 import { addWorkHours, toWindow } from '@/domain/workhours';
-import { measuredBaseline } from '@/services/baseline';
-import { BASELINE_DAYS } from '@/domain/baseline';
 
 /** Ответ формы. `null` — форму ещё не отправляли. */
 export type ОтветФормы = { ошибка: string } | { готово: true } | null;
@@ -91,38 +89,17 @@ export async function зарегистрировать(
   if (!user) return ошибкой(НЕТ_ПРАВА);
   const сейчас = new Date();
 
-  /* База по замерам привязана именно к регистрации. Черновик мог лежать
-     неделю, поэтому значение, показанное при создании, нельзя молча выпускать
-     как актуальное. Ручную базу сохраняем: её автор уже осознанно заменил и
-     обосновал договорный способ. Сеть вызываем до транзакции, чтобы не держать
-     блокировку рекомендации, пока отвечает чужой стенд. */
-  const подготовка = await query<{ well_id: string | null; baseline_source: string | null }>(`
-    SELECT r.well_id::text,
-           (SELECT b.source FROM rec.baselines b
-            WHERE b.rec_id = r.id AND b.status = 'accepted'
-            ORDER BY b.created_at DESC, b.id DESC LIMIT 1) AS baseline_source
-    FROM rec.recommendations r
-    WHERE r.id = $1 AND r.deleted_at IS NULL
-  `, [recId]);
-
-  let рассчитаннаяБаза: Awaited<ReturnType<typeof measuredBaseline>> | null = null;
-  let ошибкаБазы: string | null = null;
-  const дляБазы = подготовка[0];
-  if (дляБазы && дляБазы.baseline_source !== 'manual') {
-    if (дляБазы.well_id === null) {
-      ошибкаБазы = 'У черновика не выбрана скважина: базовые значения по замерам рассчитать нельзя.';
-    } else {
-      try {
-        рассчитаннаяБаза = await measuredBaseline({ wellId: Number(дляБазы.well_id), until: сейчас });
-        if (рассчитаннаяБаза.usedDays === 0
-          || рассчитаннаяБаза.baseQzh === null || рассчитаннаяБаза.baseQn === null) {
-          ошибкаБазы = 'По скважине недостаточно замеров для базы. Введите ручные значения и обоснование.';
-        }
-      } catch {
-        ошибкаБазы = 'Не удалось получить замеры ВМАП для базовых значений. Повторите регистрацию или введите базу вручную.';
-      }
-    }
-  }
+  /* Базу при регистрации НЕ считаем и не пишем.
+     Раньше здесь автоматически создавалась версия со source = 'measured' по
+     трём суткам до регистрации. От этого отказались: договор (Приложение № 2)
+     называет основным способом утверждённый технологический режим месяца
+     выдачи, а трёхсуточный ставит под условие и прямо помечает как
+     применяемый «по согласованию с Заказчиком» — односторонне и молча он не
+     применяется. Плюс расчёт лез на чужой стенд в транзакции регистрации и мог
+     её завалить, а на первом этапе (ручной ввод факта) замеров за период базы
+     к моменту регистрации не существует вовсе.
+     Базу вносит человек на вкладке «Расчёт эффекта», указывая договорный
+     способ и прикладывая документ; до фиксации реализации это обязательно. */
 
   const ошибка = await transaction(async (client) => {
     const { rows } = await client.query(`
@@ -142,24 +119,6 @@ export async function зарегистрировать(
     if (!rec.problem?.trim() || !rec.action?.trim()) {
       return 'В черновике не заполнены проблема или рекомендуемое мероприятие.';
     }
-    if (ошибкаБазы) return ошибкаБазы;
-
-    if (рассчитаннаяБаза) {
-      await client.query(`
-        UPDATE rec.baselines SET status = 'superseded'
-        WHERE rec_id = $1 AND status = 'accepted'
-      `, [recId]);
-      await client.query(`
-        INSERT INTO rec.baselines
-          (rec_id, base_qzh, base_qn, base_ee, source, period_from, period_to,
-           status, created_by, author_name, note)
-        VALUES ($1,$2,$3,NULL,'measured',$4,$5,'accepted',$6,$7,$8)
-      `, [recId, рассчитаннаяБаза.baseQzh, рассчитаннаяБаза.baseQn,
-        рассчитаннаяБаза.periodFrom, рассчитаннаяБаза.periodTo,
-        user!.id, user!.fullName,
-        `По ${рассчитаннаяБаза.usedDays} из ${BASELINE_DAYS} суток до регистрации`]);
-    }
-
     const код = КОДЫ[rec.field_name] ?? 'XX';
     const год = сейчас.getFullYear();
 

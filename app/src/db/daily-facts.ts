@@ -21,6 +21,10 @@ export interface DayFact {
   date: Date;
   qzh: number | null;
   watercut: number | null;
+  /* Фактическое потребление электроэнергии, кВт·ч/сут. Договор называет её
+     третьим базовым показателем, и Форма 5 вводит её посуточно наравне с
+     дебитом. В расчёт денег пока не идёт — см. комментарий к PARAM.EE_FACT. */
+  ee: number | null;
 }
 
 const число = (v: string | null): number | null => {
@@ -48,9 +52,10 @@ export async function factsInRange(
   for (const r of rows) {
     const д = new Date(r.date);
     const k = ключ(д);
-    const строка = сетка.get(k) ?? { date: д, qzh: null, watercut: null };
+    const строка = сетка.get(k) ?? { date: д, qzh: null, watercut: null, ee: null };
     if (Number(r.parameter_id) === PARAM.QZH_MEASURED) строка.qzh = число(r.value);
     if (Number(r.parameter_id) === PARAM.WATERCUT) строка.watercut = число(r.value);
+    if (Number(r.parameter_id) === PARAM.EE_FACT) строка.ee = число(r.value);
     сетка.set(k, строка);
   }
   return сетка;
@@ -127,6 +132,7 @@ export async function saveDay(params: {
   date: Date;
   qzh?: number | null;
   watercut?: number | null;
+  ee?: number | null;
   actorId: number;
   actorName: string;
   recId: number | null;
@@ -136,6 +142,7 @@ export async function saveDay(params: {
   const пары: Array<[number, number | null | undefined]> = [
     [PARAM.QZH_MEASURED, params.qzh],
     [PARAM.WATERCUT, params.watercut],
+    [PARAM.EE_FACT, params.ee],
   ];
 
   return transaction(async (client) => {

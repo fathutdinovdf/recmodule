@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   AlertTriangle, Check, ChevronLeft, ChevronRight,
-  LockKeyhole, Paperclip, Pencil, Save, X,
+  LockKeyhole, Paperclip, Save, X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Combobox } from '@/components/ui/Combobox';
@@ -39,15 +39,6 @@ export interface RegistrationWell {
   fieldName: string;
 }
 
-interface BaselinePreview {
-  baseQzh: number | null;
-  baseQn: number | null;
-  periodFrom: string;
-  periodTo: string;
-  usedDays: number;
-  requestedDays: number;
-}
-
 interface Draft {
   wellId: string;
   directionId: string;
@@ -59,11 +50,6 @@ interface Draft {
   expectQn: string;
   expectEe: string;
   resultNote: string;
-  baselineSource: 'measured' | 'manual';
-  baseQzh: string;
-  baseQn: string;
-  baseEe: string;
-  baselineNote: string;
   executorId: string;
   comment: string;
 }
@@ -72,7 +58,7 @@ const STEPS = [
   { title: 'Объект', hint: 'Скважина и контекст ВМАП' },
   { title: 'Проблема', hint: 'Направление и приоритет' },
   { title: 'Рекомендация', hint: 'Мероприятие и обоснование' },
-  { title: 'Прогноз и база', hint: 'Ожидаемый результат' },
+  { title: 'Прогноз', hint: 'Ожидаемый результат' },
   { title: 'Передача', hint: 'Ответственный и проверка' },
 ];
 
@@ -116,14 +102,11 @@ export function RegistrationWizard({
   const [localNotice, setLocalNotice] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
-  const [baseline, setBaseline] = useState<BaselinePreview | null>(null);
-  const [baselineStatus, setBaselineStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [wells, setWells] = useState<RegistrationWell[]>([]);
   const [wellsStatus, setWellsStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [draft, setDraft] = useState<Draft>({
     wellId: '', directionId: '', priority: '', problem: '', action: '', rationale: '',
     expectQzh: '', expectQn: '', expectEe: '', resultNote: '',
-    baselineSource: 'measured', baseQzh: '', baseQn: '', baseEe: '', baselineNote: '',
     executorId: currentExecutorId ? String(currentExecutorId) : '', comment: '',
   });
 
@@ -200,26 +183,6 @@ export function RegistrationWizard({
     }
   }, [actionState]);
 
-  useEffect(() => {
-    if (!draft.wellId) {
-      setBaseline(null);
-      setBaselineStatus('idle');
-      return;
-    }
-    const controller = new AbortController();
-    setBaselineStatus('loading');
-    fetch(`/api/registration/baseline?wellId=${draft.wellId}`, { signal: controller.signal })
-      .then(async (response) => {
-        if (!response.ok) throw new Error();
-        return response.json() as Promise<BaselinePreview>;
-      })
-      .then((value) => { setBaseline(value); setBaselineStatus('ready'); })
-      .catch((error) => {
-        if (error instanceof DOMException && error.name === 'AbortError') return;
-        setBaseline(null); setBaselineStatus('error');
-      });
-    return () => controller.abort();
-  }, [draft.wellId]);
 
   function update<K extends keyof Draft>(key: K, value: Draft[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -249,9 +212,8 @@ export function RegistrationWizard({
   }
 
   function saveDraft(event: React.MouseEvent<HTMLButtonElement>) {
-    const можноВБазу = draft.wellId && draft.directionId && draft.problem.trim() && draft.action.trim()
-      && (draft.baselineSource !== 'manual'
-        || (draft.baseQzh && draft.baseQn && draft.baselineNote.trim()));
+    const можноВБазу = draft.wellId && draft.directionId
+      && draft.problem.trim() && draft.action.trim();
     if (можноВБазу) {
       localStorage.removeItem(LOCAL_DRAFT_KEY);
       setDirty(false);
@@ -367,8 +329,7 @@ export function RegistrationWizard({
                       {step === 0 && (
                         <ObjectStep fieldOptions={fieldOptions} fieldId={fieldId} chooseField={chooseField}
                           wellOptions={wellOptions} draft={draft} update={update} selectedWell={selectedWell}
-                          baseline={baseline} baselineStatus={baselineStatus} wellsStatus={wellsStatus}
-                          invalid={invalidKeys.has('wellId')} />
+                          wellsStatus={wellsStatus} invalid={invalidKeys.has('wellId')} />
                       )}
                       {step === 1 && (
                         <ProblemStep directions={directions} priorities={priorities} draft={draft}
@@ -380,8 +341,7 @@ export function RegistrationWizard({
                             syncFiles(files.filter((_, fileIndex) => fileIndex !== index))} />
                       )}
                       {step === 3 && (
-                        <ResultStep draft={draft} update={update} invalid={invalidKeys}
-                          baseline={baseline} baselineStatus={baselineStatus} />
+                        <ResultStep draft={draft} update={update} invalid={invalidKeys} />
                       )}
                       {step === 4 && (
                         <HandoverStep draft={draft} update={update} invalid={invalidKeys}
@@ -451,12 +411,12 @@ React.ComponentProps<typeof Button> & { name: string; value: string }) {
 }
 
 function ObjectStep({ fieldOptions, fieldId, chooseField, wellOptions, draft, update,
-  selectedWell, baseline, baselineStatus, wellsStatus, invalid }: {
+  selectedWell, wellsStatus, invalid }: {
   fieldOptions: Array<[number, { name: string; count: number }]>;
   fieldId: string; chooseField: (value: string) => void; wellOptions: RegistrationWell[];
   draft: Draft; update: <K extends keyof Draft>(key: K, value: Draft[K]) => void;
-  selectedWell: RegistrationWell | null; baseline: BaselinePreview | null;
-  baselineStatus: string; wellsStatus: 'loading' | 'ready' | 'error'; invalid: boolean;
+  selectedWell: RegistrationWell | null;
+  wellsStatus: 'loading' | 'ready' | 'error'; invalid: boolean;
 }) {
   return <div className="wz-fields">
     <Field>
@@ -482,15 +442,6 @@ function ObjectStep({ fieldOptions, fieldId, chooseField, wellOptions, draft, up
       )}
       {invalid && <FieldError id="registration-well-error">Выберите скважину.</FieldError>}
     </Field>
-    {selectedWell && (
-      <div className="wz-baserate">
-        <span>Базовый дебит жидкости по замерам</span>
-        {baselineStatus === 'loading' ? <Spinner />
-          : baseline?.baseQzh != null
-            ? <b>{baseline.baseQzh.toLocaleString('ru-RU', { maximumFractionDigits: 1 })} м³/сут</b>
-            : <b className="wz-baserate__empty">нет расчёта</b>}
-      </div>
-    )}
   </div>;
 }
 
@@ -565,29 +516,10 @@ function RecommendationStep({ draft, update, invalid, files, addFiles, removeFil
   </div>;
 }
 
-function ResultStep({ draft, update, invalid, baseline, baselineStatus }: {
+function ResultStep({ draft, update, invalid }: {
   draft: Draft; update: <K extends keyof Draft>(key: K, value: Draft[K]) => void;
-  invalid: Set<keyof Draft>; baseline: BaselinePreview | null; baselineStatus: string;
+  invalid: Set<keyof Draft>;
 }) {
-  const [editing, setEditing] = React.useState<null | 'baseQzh' | 'baseQn' | 'baseEe'>(null);
-
-  function editValue<K extends 'baseQzh' | 'baseQn' | 'baseEe'>(key: K, value: string) {
-    update(key, value);
-    update('baselineSource', 'manual');
-    setEditing(null);
-  }
-
-  function сброситьБазу() {
-    update('baselineSource', 'measured');
-    update('baseQzh', ''); update('baseQn', ''); update('baseEe', ''); update('baselineNote', '');
-    setEditing(null);
-  }
-
-  const computedQzh = baseline?.baseQzh != null
-    ? baseline.baseQzh.toLocaleString('ru-RU', { maximumFractionDigits: 1 }) : null;
-  const computedQn = baseline?.baseQn != null
-    ? baseline.baseQn.toLocaleString('ru-RU', { maximumFractionDigits: 2 }) : null;
-
   return <div className="wz-fields">
     <div className="wz-number-grid">
       <NumberField label="Δ Qж, м³/сут" value={draft.expectQzh} onChange={(value) => update('expectQzh', value)} invalid={invalid.has('expectQzh')} step="0.1" />
@@ -597,65 +529,8 @@ function ResultStep({ draft, update, invalid, baseline, baselineStatus }: {
     <TextField label="Пояснение к прогнозу" value={draft.resultNote}
       onChange={(value) => update('resultNote', value)} area rows={2}
       placeholder="Например: выход на режим ожидается на третьи сутки." />
-    <div className="wz-baseline">
-      <div className="wz-baseline__head">
-        <b>Базовые значения</b>
-        <span className="tag tag--default">{draft.baselineSource === 'manual' ? 'вручную' : 'по замерам'}</span>
-      </div>
-      {baselineStatus === 'loading' ? <div className="wz-baseline__loading"><Spinner />Получаю замеры ВМАП…</div> : (
-        /* Расчёт по замерам — это рекомендация, а не факт: значения можно
-           переопределить кликом прямо по числу, без отдельного режима формы. */
-        <div className="wz-baseline__values">
-          <BaselineStat label="Жидкость, м³/сут" step="0.1"
-            value={draft.baseQzh} computed={computedQzh}
-            editing={editing === 'baseQzh'} onEdit={() => setEditing('baseQzh')}
-            onCommit={(value) => editValue('baseQzh', value)} />
-          <BaselineStat label="Нефть, т/сут" step="0.01"
-            value={draft.baseQn} computed={computedQn}
-            editing={editing === 'baseQn'} onEdit={() => setEditing('baseQn')}
-            onCommit={(value) => editValue('baseQn', value)} />
-          <BaselineStat label="ЭЭ, кВт·ч/сут" step="1"
-            value={draft.baseEe} computed={null}
-            editing={editing === 'baseEe'} onEdit={() => setEditing('baseEe')}
-            onCommit={(value) => editValue('baseEe', value)} />
-        </div>
-      )}
-      {baseline && (
-        <div className="wz-baseline__period">
-          Период по замерам {дата(baseline.periodFrom)} — {дата(baseline.periodTo)} · {baseline.usedDays} из {baseline.requestedDays} суток
-        </div>
-      )}
-      {draft.baselineSource === 'manual' && (
-        <div className="wz-manual">
-          <TextField label="Обоснование ручной базы" value={draft.baselineNote}
-            onChange={(value) => update('baselineNote', value)} area rows={2}
-            placeholder="Какие сутки или режим использованы и почему расчёт по замерам не подходит." />
-          <Button type="button" variant="ghost" size="sm" onClick={сброситьБазу}>Вернуть расчёт по замерам</Button>
-        </div>
-      )}
-    </div>
     <div className="wz-fixed"><LockKeyhole /><div><b>Горизонт оценки эффекта — 90 суток</b><span>Отсчитывается от даты фактической реализации и не редактируется.</span></div></div>
   </div>;
-}
-
-function BaselineStat({ label, value, computed, editing, onEdit, onCommit, step }: {
-  label: string; value: string; computed: string | null; editing: boolean;
-  onEdit: () => void; onCommit: (value: string) => void; step: string;
-}) {
-  const shown = value || computed;
-  if (editing) {
-    return <div className="wz-baseline__stat">
-      <span>{label}</span>
-      <Input type="number" inputMode="decimal" step={step} defaultValue={value || computed || ''}
-        autoFocus className="text-right tabular-nums"
-        onBlur={(event) => onCommit(event.target.value)}
-        onKeyDown={(event) => { if (event.key === 'Enter') (event.target as HTMLInputElement).blur(); }} />
-    </div>;
-  }
-  return <button type="button" className="wz-baseline__stat wz-baseline__stat--edit" onClick={onEdit}>
-    <span>{label}</span>
-    <b>{shown || 'не задано'}<Pencil /></b>
-  </button>;
 }
 
 function HandoverStep({ draft, update, invalid, executors, summary, priorities, onGo }: {

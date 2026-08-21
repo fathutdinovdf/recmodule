@@ -70,6 +70,7 @@ export default async function Страница({ params }: { params: Promise<{ i
       iso: iso(д),
       qzh: ф?.qzh ?? null,
       watercut: ф?.watercut ?? null,
+      ee: ф?.ee ?? null,
       правок: правок.get(k) ?? 0,
       вБазе: !!(началоБазы && конецБазы && д >= началоБазы && д <= конецБазы),
       вОкне: !!(началоОкна && конецОкна && д >= началоОкна && д <= конецОкна),

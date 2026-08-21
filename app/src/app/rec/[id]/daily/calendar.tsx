@@ -33,6 +33,7 @@ export interface ДеньКалендаря {
   iso: string;
   qzh: number | null;
   watercut: number | null;
+  ee: number | null;
   правок: number;
   вБазе: boolean;
   вОкне: boolean;
@@ -46,7 +47,9 @@ const дата = (iso: string) => {
   return new Date(y, m - 1, d);
 };
 const число = (v: number | null) => (v === null ? '' : String(v).replace('.', ','));
-const ПАРАМЕТР: Record<number, string> = { 1: 'Дебит жидкости', 7: 'Обводнённость' };
+const ПАРАМЕТР: Record<number, string> = {
+  1: 'Дебит жидкости', 7: 'Обводнённость', 93: 'Электроэнергия',
+};
 
 export function КалендарьСуток({
   recId, wellNumber, дни, от, до, сегодня, можноПравить, окноЗакрыто,
@@ -325,6 +328,19 @@ function ОкноДня({ день, recId, можноПравить, закры�
             </FieldLabel>
             <Input id={`wc-${день.iso}`} name="watercut" inputMode="decimal"
                    className="text-right" defaultValue={число(день.watercut)}
+                   disabled={!можноПравить} placeholder="—" />
+          </Field>
+          {/* Энергопотребление вводится наравне с дебитом — так же, как в
+              Форме 5 Заказчика. В расчёт денег оно пока не идёт: модель АЛЬМА
+              списывает энергию удельными ставками от объёма добычи, а не по
+              замеру, и какая из двух моделей верна, ещё предстоит подтвердить.
+              Собирать данные это не мешает. */}
+          <Field orientation="horizontal">
+            <FieldLabel htmlFor={`ee-${день.iso}`} className="w-1/2 text-xs">
+              Электроэнергия, кВт·ч/сут
+            </FieldLabel>
+            <Input id={`ee-${день.iso}`} name="ee" inputMode="decimal"
+                   className="text-right" defaultValue={число(день.ee)}
                    disabled={!можноПравить} placeholder="—" />
           </Field>
         </FieldGroup>
