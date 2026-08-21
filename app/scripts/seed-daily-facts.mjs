@@ -48,6 +48,12 @@ const ЗАПАС_ДО_ОКНА = 4;
    заполнено всё, их просто не показывает. */
 const ДОЛЯ_ПРОПУСКОВ = 0.18;
 
+/* Доля суток, которые «переввели»: сначала внесли одно значение, потом
+   поправили. Нужна, чтобы на демо были видны точка правки на клетке и
+   история «было → стало» в окне дня — иначе журнал выглядит мёртвой
+   функцией. */
+const ДОЛЯ_ПРАВОК = 0.08;
+
 /* Свой генератор со seed: набор должен быть воспроизводимым, иначе каждый
    пересев даёт другие деньги и сравнивать «до/после» правки нечем. */
 let семя = 20260821;
@@ -68,6 +74,70 @@ const client = new pg.Client({
   password: пер('PGPASSWORD', 'recmodule'),
 });
 
+/* Запись суточного значения ВМЕСТЕ с журналом.
+ *
+ * Раздельно нельзя: в модуле факт и событие ложатся одной транзакцией
+ * (db/daily-facts.ts, saveDay), и значения без события не бывает. Демо,
+ * писавшее только значения, показывало «Значение ещё не вводили» рядом с
+ * заполненными полями — то есть врало про устройство модуля.
+ *
+ * `сПравкой` разыгрывает переввод: сначала внесли одно число, назавтра
+ * поправили. Так на демо видны точка правки на клетке и история «было →
+ * стало», иначе журнал выглядит функцией, которой никто не пользуется.
+ *
+ * Строки копятся в памяти и уходят пачками (см. `слить` ниже): по одному
+ * запросу на значение набора получалось около четырёх с половиной тысяч
+ * обращений, и пересев занимал две минуты вместо секунды.
+ */
+const фактыКЗаписи = [];
+const событияКЗаписи = [];
+
+function записать(карточка, параметр, дата, значение, знаков, сПравкой) {
+  const итог = +значение.toFixed(знаков);
+
+  /* Эксперт вносит факт наутро следующих суток — тогда сутки уже закрыты и
+     значение по ним окончательное. */
+  const внесено = new Date(дата);
+  внесено.setDate(внесено.getDate() + 1);
+  внесено.setHours(9, 10 + Math.floor(rnd() * 40), 0, 0);
+
+  фактыКЗаписи.push([карточка.well_id, параметр, iso(дата), итог, карточка.автор, внесено]);
+
+  const событие = (было, стало, когда) => событияКЗаписи.push([
+    карточка.well_id, параметр, iso(дата), было, стало,
+    карточка.автор, карточка.имя_автора, карточка.id, когда,
+  ]);
+
+  if (!сПравкой) {
+    событие(null, итог, внесено);
+    return;
+  }
+
+  /* Первое значение отличается на несколько процентов: так выглядит описка
+     или замер, уточнённый позже, а не другая скважина. */
+  const первое = +(итог * шум(0.06)).toFixed(знаков);
+  const исправлено = new Date(внесено);
+  исправлено.setDate(исправлено.getDate() + 1);
+  событие(null, первое, внесено);
+  событие(первое, итог, исправлено);
+}
+
+/** Многострочный INSERT пачками: один запрос вместо сотен. */
+async function слить(таблица, столбцы, строки, хвост = '') {
+  const ПАЧКА = 500;
+  for (let i = 0; i < строки.length; i += ПАЧКА) {
+    const кусок = строки.slice(i, i + ПАЧКА);
+    const n = столбцы.length;
+    const values = кусок
+      .map((_, k) => `(${столбцы.map((__, j) => `$${k * n + j + 1}`).join(',')},true)`)
+      .join(',');
+    await client.query(
+      `INSERT INTO ${таблица} (${столбцы.join(',')},is_demo) VALUES ${values} ${хвост}`,
+      кусок.flat(),
+    );
+  }
+}
+
 await client.connect();
 
 try {
@@ -76,6 +146,7 @@ try {
   /* Свои прежние строки убираем, чужие не трогаем: набор пересевается, а
      внесённое человеком остаётся. */
   const { rowCount: удалено } = await client.query('DELETE FROM rec.daily_facts WHERE is_demo');
+  await client.query('DELETE FROM rec.daily_fact_events WHERE is_demo');
 
   /* Берём только рекомендации с окном: до фиксации реализации считать нечего,
      и заполнять там сутки незачем. Плотность нефти нужна, чтобы из дебита
@@ -85,11 +156,15 @@ try {
            i.window_open_at::date AS открыто,
            LEAST(i.window_close_at::date, current_date) AS конец,
            b.base_qzh, b.base_qn, b.base_ee,
-           w.oil_density
+           w.oil_density,
+           COALESCE(r.executor_id, r.author_id) AS автор,
+           COALESCE(ue.full_name, ua.full_name)  AS имя_автора
       FROM rec.recommendations r
       JOIN rec.implementations i ON i.rec_id = r.id
       LEFT JOIN rec.baselines b ON b.rec_id = r.id AND b.status = 'accepted'
       LEFT JOIN rec.ref_wells w ON w.well_id = r.well_id
+      LEFT JOIN rec.users ue ON ue.id = r.executor_id
+      LEFT JOIN rec.users ua ON ua.id = r.author_id
      WHERE r.is_demo AND r.deleted_at IS NULL AND r.well_id IS NOT NULL
      ORDER BY r.id
   `);
@@ -154,23 +229,19 @@ try {
       const w = (1 - (qn * 1000) / (qzh * плотность)) * 100;
       const обводнённость = Math.min(99, Math.max(0, w));
 
-      await client.query(`
-        INSERT INTO rec.daily_facts (well_id, parameter_id, date, value, is_demo)
-        VALUES ($1,$2,$3,$4,true), ($1,$5,$3,$6,true)
-        ON CONFLICT (well_id, parameter_id, date) DO NOTHING
-      `, [c.well_id, PARAM.QZH, iso(д), qzh.toFixed(3),
-        PARAM.WATERCUT, обводнённость.toFixed(2)]);
+      /* Правку разыгрываем на сутки целиком, а не на каждый параметр: человек
+         открывает окно дня и правит то, что в нём не сошлось. */
+      const сПравкой = rnd() < ДОЛЯ_ПРАВОК;
+
+      записать(c, PARAM.QZH, д, qzh, 3, сПравкой);
+      записать(c, PARAM.WATERCUT, д, обводнённость, 2, false);
 
       /* Энергопотребление — только там, где база по нему заведена: в остальных
          случаях его неоткуда взять и на стенде (выносной прибор учёта стоит не
          везде). Пустое поле здесь честнее придуманной цифры. */
       if (базаЭЭ !== null) {
         const ee = (базаЭЭ + приростЭЭ * выход) * шум(0.03);
-        await client.query(`
-          INSERT INTO rec.daily_facts (well_id, parameter_id, date, value, is_demo)
-          VALUES ($1,$2,$3,$4,true)
-          ON CONFLICT (well_id, parameter_id, date) DO NOTHING
-        `, [c.well_id, PARAM.EE, iso(д), ee.toFixed(2)]);
+        записать(c, PARAM.EE, д, ee, 2, false);
       }
 
       сутокПоКарточке++;
@@ -179,6 +250,14 @@ try {
 
     if (сутокПоКарточке) карточекЗаполнено++;
   }
+
+  await слить('rec.daily_facts',
+    ['well_id', 'parameter_id', 'date', 'value', 'entered_by', 'entered_at'],
+    фактыКЗаписи, 'ON CONFLICT (well_id, parameter_id, date) DO NOTHING');
+  await слить('rec.daily_fact_events',
+    ['well_id', 'parameter_id', 'date', 'old_value', 'new_value',
+     'actor_id', 'actor_name', 'rec_id', 'at'],
+    событияКЗаписи);
 
   /* Сохранённый расчёт демо-карточек сбрасываем: он посчитан до появления
      этих суток и им противоречит. Пересоберётся сам при первом открытии
