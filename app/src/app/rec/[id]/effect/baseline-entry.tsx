@@ -178,7 +178,7 @@ export function ОкноБазы({
               проходит мимо глаз. */}
           <Collapsible open={способ === 'techregime'}>
             <CollapsibleContent>
-              <div className="rounded-md border border-border bg-[var(--surface-sunken)] px-3 py-2.5">
+              <div className="rounded-md border border-border bg-[var(--bg-tertiary)] px-3 py-2.5">
                 <label className="flex items-start gap-2.5 text-sm">
                   <Checkbox name="no_regime_changes" className="mt-0.5"
                             checked={безИзменений}

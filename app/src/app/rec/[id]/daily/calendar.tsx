@@ -139,7 +139,7 @@ export function КалендарьСуток({
 
       {окноЗакрыто && (
         <div className="flex items-start gap-3 rounded-md border border-[var(--border-divider)]
-                        bg-[var(--surface-sunken)] px-3 py-2 text-sm">
+                        bg-[var(--bg-tertiary)] px-3 py-2 text-sm">
           <TriangleAlert className="mt-0.5 size-4 shrink-0 text-[var(--status-warning)]" aria-hidden />
           <p className="text-[var(--text-secondary)]">
             Окно эффекта закрыто: сохранённый расчёт больше не пересчитывается,
@@ -151,7 +151,7 @@ export function КалендарьСуток({
 
       {пробелов > 0 && !окноЗакрыто && (
         <div className="flex items-start gap-3 rounded-md border border-[var(--border-divider)]
-                        bg-[var(--surface-sunken)] px-3 py-2 text-sm">
+                        bg-[var(--bg-tertiary)] px-3 py-2 text-sm">
           <TriangleAlert className="mt-0.5 size-4 shrink-0 text-[var(--status-warning)]" aria-hidden />
           <p className="text-[var(--text-secondary)]">
             Своего значения нет у <b>{пробелов}</b> суток — они посчитаны по
@@ -192,17 +192,20 @@ export function КалендарьСуток({
 }
 
 function Легенда() {
-  const точки = [
-    ['bg-[var(--accent-primary)]', 'своё внесённое значение'],
-    ['ring-2 ring-inset ring-[var(--accent-primary)]/45', 'значение протянуто с прошлых суток'],
-    ['border border-dashed border-[var(--status-warning)]', 'данных нет и тянуть нечего'],
-    ['border-b-2 border-[var(--text-tertiary)] rounded-none', 'сутки базы'],
+  /* Стили те же, что у клеток, и по той же причине инлайном: иначе легенда
+     обещает одно, а сетка показывает другое. */
+  const точки: Array<[React.CSSProperties, string]> = [
+    [{ background: 'var(--component-accent)' }, 'своё внесённое значение'],
+    [{ boxShadow: 'inset 0 0 0 2px color-mix(in srgb, var(--component-accent) 45%, transparent)' },
+      'значение протянуто с прошлых суток'],
+    [{ border: '1px dashed var(--status-warning)' }, 'данных нет и тянуть нечего'],
+    [{ borderBottom: '2px solid var(--text-tertiary)', borderRadius: 0 }, 'сутки базы'],
   ];
   return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-[var(--text-tertiary)]">
-      {точки.map(([cls, label]) => (
+    <div className="flex flex-wrap items-center gap-4 text-xs text-[var(--text-tertiary)]">
+      {точки.map(([стиль, label]) => (
         <span key={label} className="inline-flex items-center gap-1.5">
-          <i className={`inline-block size-3 rounded-sm ${cls}`} aria-hidden />
+          <i className="inline-block size-3 rounded-sm" style={стиль} aria-hidden />
           {label}
         </span>
       ))}
@@ -210,7 +213,9 @@ function Легенда() {
   );
 }
 
-function КлеткаДня({ день, сегодня, recId, можноПравить, выключен, className, ...props }: {
+/* className из DayPicker снимается со спреда и намеренно НЕ применяется —
+   почему, объяснено у сборки `вид` ниже. */
+function КлеткаДня({ день, сегодня, recId, можноПравить, выключен, className: _чужие, ...props }: {
   день: ДеньКалендаря | undefined;
   сегодня: string;
   recId: number;
@@ -230,21 +235,51 @@ function КлеткаДня({ день, сегодня, recId, можноПра�
   /* Кнопка остаётся кнопкой Radix-триггера, но своё оформление собирает
      сама: DayPicker раскрашивает клетки классами состояний, а нам нужен
      ещё один, независимый признак — полнота данных. */
+  /* Классы, которые DayPicker кладёт в day_button, СПЕЦИАЛЬНО не берутся: там
+     есть `bg-transparent` и `border border-transparent`, и они перебивали
+     заливку клетки — «своё значение» отрисовывалось прозрачным, а протянутые
+     сутки получали рамку currentColor вместо приглушённого акцента. Клетка
+     собирает свой вид целиком, включая фокус. */
   const вид = [
     'relative inline-flex size-8 items-center justify-center rounded-md text-sm outline-none',
     'focus-visible:shadow-[var(--focus-component)]',
-    полон ? 'bg-[var(--accent-primary)] text-[var(--text-on-accent)] font-medium' : '',
-    протянуто ? 'ring-2 ring-inset ring-[var(--accent-primary)]/45 text-[var(--text-tertiary)]' : '',
-    пробел ? 'border border-dashed border-[var(--status-warning)]' : '',
     !полон && !протянуто && !пробел ? 'hover:bg-accent' : '',
     день?.вБазе ? 'underline decoration-2 underline-offset-4' : '',
-    день?.iso === сегодня ? 'ring-1 ring-[var(--border-strong)]' : '',
     выключен || !день ? 'cursor-not-allowed opacity-35' : '',
-    className ?? '',
   ].filter(Boolean).join(' ');
 
+  /* Цвет и рамка — инлайном, а не утилитами Tailwind, и это вынужденно.
+     В этой сборке произвольные `ring-*` с токеном и `text-[var(--…)]` не
+     генерируются: заливка вставала, а белый текст на ней и кольцо протянутых
+     суток молча пропадали — получался чёрный текст на синем и клетка без
+     признака. Инлайн от генерации утилит не зависит и токены не нарушает. */
+  /* Фон и рамка задаются ВСЕГДА, в том числе «никакие». В проекте выключен
+     preflight Tailwind, а собственные классы DayPicker мы не берём — без явного
+     сброса кнопка получает серый фон и рамку от браузера. */
+  const сброс: React.CSSProperties = { background: 'transparent', border: 'none' };
+  const краски: React.CSSProperties = {
+    ...сброс,
+    ...(полон
+      ? { background: 'var(--component-accent)', color: 'var(--text-on-accent)', fontWeight: 500 }
+      : протянуто
+        ? { boxShadow: 'inset 0 0 0 2px color-mix(in srgb, var(--component-accent) 45%, transparent)',
+            color: 'var(--text-tertiary)' }
+        : пробел
+          ? { border: '1px dashed var(--status-warning)' }
+          : {}),
+  };
+
+  /* Сегодняшний день обводится всегда, поверх любого из трёх видов. */
+  if (день?.iso === сегодня && !полон) {
+    краски.outline = '1px solid var(--border-divider)';
+    краски.outlineOffset = '0px';
+  }
+
   if (!день || выключен) {
-    return <button type="button" disabled className={вид} {...props} />;
+    /* style — ПОСЛЕ спреда: DayPicker передаёт собственный `style`
+       (в том числе undefined), и поставленный раньше он стирался вместе с
+       заливкой. Тот же порядок, что и у onClick ниже. */
+    return <button type="button" disabled className={вид} {...props} style={краски} />;
   }
 
   return (
@@ -255,7 +290,7 @@ function КлеткаДня({ день, сегодня, recId, можноПра�
             открывает окно на событии с отменённым действием — окно молча не
             появлялось. Выбор дня средствами DayPicker нам и не нужен, вся
             работа идёт через это окно. */}
-        <button type="button" className={вид} {...props}
+        <button type="button" className={вид} {...props} style={краски}
                 onClick={() => setОткрыт((o) => !o)}>
           {props.children}
           {день.правок > 0 && (
