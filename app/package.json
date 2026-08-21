@@ -14,6 +14,7 @@
     "db:dump-wells-ref": "node scripts/dump-wells-ref.mjs",
     "db:load-wells-ref": "node scripts/load-wells-ref.mjs",
     "db:seed": "node scripts/seed-demo.mjs",
+    "db:seed-daily": "node scripts/seed-daily-facts.mjs",
     "db:rebase": "node scripts/rebase-demo.mjs",
     "db:refresh": "node scripts/refresh-demo.mjs"
   },

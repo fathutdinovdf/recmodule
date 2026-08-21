@@ -15,8 +15,7 @@ import { Icon } from '@/components/Icons';
 import { Hint } from '@/components/ui/Hint';
 import { getCard, getNeighbours, getWellHistory } from '@/db/card';
 import { getWellEconomy } from '@/db/economy';
-import { getWell, dailySeriesFor, PARAM, РУЧНОЙ_ИСТОЧНИК } from '@/db/wells-data';
-import { вкладкиДля } from './tabs-def';
+import { getWell, dailySeriesFor, PARAM } from '@/db/wells-data';
 import { dayStart } from '@/domain/measurements';
 import { forecastTotal } from '@/domain/effect';
 import { control, fmtDur } from '@/domain/workhours';
@@ -156,7 +155,7 @@ export default async function CardLayout({
 
       <div className="cardbody">
         <section className="panel panel--main">
-          <Tabs recId={card.id} вкладки={вкладкиДля(РУЧНОЙ_ИСТОЧНИК)} counts={{
+          <Tabs recId={card.id} counts={{
             files: card.attachmentsCount,
             log: card.commentsCount,
           }} />

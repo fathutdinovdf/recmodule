@@ -1,7 +1,10 @@
 /* Вкладка «Суточные данные» — ручной ввод факта по календарю.
  *
- * Появляется только при DATA_SOURCE=manual (см. tabs-def.ts): когда замеры
- * приходят со стенда, вводить их руками нечего.
+ * Показывается всегда, а не только в ручном режиме. После переезда на
+ * ландшафт Заказчика внесённые сутки никуда не деваются: по ним посчитаны
+ * деньги за прошедшую часть окна, и смотреть их — и править с журналом —
+ * нужно и там. Какие сутки берутся из ручного ввода, а какие из телеметрии,
+ * решает дата перехода (см. db/wells-data.ts).
  *
  * Почему календарь, а не таблица месяца. Вопрос, с которым сюда приходят, —
  * «где в окне дырки»: расчёт эффекта считает по фактическим суткам, и одна
@@ -17,7 +20,7 @@
 import { notFound } from 'next/navigation';
 import { getCard } from '@/db/card';
 import { currentUser } from '@/lib/session';
-import { РУЧНОЙ_ИСТОЧНИК } from '@/db/wells-data';
+import { РУЧНОЙ_ИСТОЧНИК, датаПерехода } from '@/db/wells-data';
 import { factsInRange, editCounts } from '@/db/daily-facts';
 import { КалендарьСуток, type ДеньКалендаря } from './calendar';
 
@@ -29,8 +32,6 @@ const iso = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 export default async function Страница({ params }: { params: Promise<{ id: string }> }) {
-  if (!РУЧНОЙ_ИСТОЧНИК) notFound();
-
   const { id } = await params;
   const card = await getCard(Number(id));
   if (!card || card.wellId === null) notFound();
@@ -60,6 +61,12 @@ export default async function Страница({ params }: { params: Promise<{ i
 
   const конецБазы = card.baseline?.periodTo ? днём(card.baseline.periodTo) : null;
   const началоОкна = card.implementation ? днём(card.implementation.windowOpenAt) : null;
+
+  /* Граница источников. В ручном режиме ручные все сутки; после переезда на
+     ландшафт Заказчика — только те, что раньше даты перехода (см.
+     db/wells-data.ts). Календарь раскрашивает лишь ручные: обещать влияние
+     там, где считает телеметрия, нельзя. */
+  const переход = РУЧНОЙ_ИСТОЧНИК ? null : днём((await датаПерехода()) ?? new Date(0));
 
   /* Откуда возьмётся протянутое значение на сутки без собственного. Запас
      назад тот же, что у выборки ряда в db/manual.ts, — иначе экран и расчёт
@@ -92,6 +99,7 @@ export default async function Страница({ params }: { params: Promise<{ i
       ee: ф?.ee ?? null,
       протянутоС: источник?.iso ?? null,
       протянутоеЗначение: источник?.value ?? null,
+      ручные: переход === null || д < переход,
       правок: правок.get(k) ?? 0,
       вБазе: !!(началоБазы && конецБазы && д >= началоБазы && д <= конецБазы),
       вОкне: !!(началоОкна && конецОкна && д >= началоОкна && д <= конецОкна),
@@ -109,6 +117,8 @@ export default async function Страница({ params }: { params: Promise<{ i
       сегодня={iso(сегодня)}
       можноПравить={можноПравить}
       окноЗакрыто={!!card.implementation?.closedAt}
+      переходС={переход && переход.getTime() > 0 ? iso(переход) : null}
+      всёРучное={РУЧНОЙ_ИСТОЧНИК}
     />
   );
 }
