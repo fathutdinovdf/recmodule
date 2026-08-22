@@ -14,7 +14,7 @@ import { redirect } from 'next/navigation';
 import { currentUser } from '@/lib/session';
 import { пользователи, ролиСправочник, месторождения, журналДоступа } from '@/db/users';
 import {
-  ПоискПоСписку, ВыборРоли, Полномочия, Зона, ВЗоне, Доступ, ДобавитьПользователя,
+  ПоискПоСписку, КарточкаПрав, Доступ, ДобавитьПользователя,
 } from './controls';
 import './users.css';
 
@@ -121,33 +121,7 @@ export default async function UsersPage({
 
               <div className="ucard__body">
                 <div className="ucol">
-                  <section className="usec">
-                    <div className="usec__head">
-                      <span className="usec__title">Роль</span>
-                    </div>
-                    <ВыборРоли user={выбран} роли={роли} />
-                  </section>
-
-                  <section className="usec">
-                    <div className="usec__head">
-                      <span className="usec__title">Полномочия</span>
-                    </div>
-                    <Полномочия user={выбран} />
-                  </section>
-
-                  {/* Зоны у администратора нет: рекомендаций у него не бывает,
-                      и граница видимости ему нечего ограничивать. */}
-                  {выбран.hasRecs && (
-                    <section className="usec">
-                      <div className="usec__head">
-                        <span className="usec__title">Зона ответственности</span>
-                        <span className="usec__aside">
-                          <ВЗоне n={выбран.recCount} всё={выбран.fields.length === 0} />
-                        </span>
-                      </div>
-                      <Зона user={выбран} поля={поля} />
-                    </section>
-                  )}
+                  <КарточкаПрав user={выбран} роли={роли} поля={поля} />
                 </div>
 
                 <div className="ucol">

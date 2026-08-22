@@ -2,15 +2,14 @@
 
 /* Изменение прав.
  *
- * Каждое изменение применяется сразу и отдельной строкой ложится в
- * `rec.user_access_log`. Черновика и кнопки «Сохранить» здесь нет намеренно —
- * в отличие от экономической модели (решение 95), где пакет правок публикуется
- * с общей причиной. Там правятся деньги по договору, и связная причина у
- * пакета есть; здесь одно поле — одно понятное событие «кому что выдали», и
- * копить их в черновике значит только оттягивать вопрос «а кто это включил».
+ * Роль, полномочия и зона сохраняются пакетом по кнопке (см. `сохранитьПрава`).
+ * Операции доступа — пароль и включение-отключение — наоборот, выполняются
+ * сразу: это не поля формы, а действия, и держать «снять пароль» в черновике
+ * значило бы, что доступ снят на экране и не снят на деле.
  *
- * Журнал нужен не ради аудита ради аудита: когда рекомендация не дошла до
- * исполнителя, первый вопрос — была ли скважина в его зоне на тот момент.
+ * Журнал в обоих случаях построчный: одно поле — одно событие. Он нужен не
+ * ради аудита ради аудита — когда рекомендация не дошла до исполнителя,
+ * первый вопрос, была ли скважина в его зоне на тот момент.
  */
 
 import { revalidatePath } from 'next/cache';
@@ -36,103 +35,103 @@ async function записать(userId: number, actor: string, action: string, d
     [userId, actor, action, details]);
 }
 
-export async function сменитьРоль(userId: number, roleKey: string): Promise<Ответ> {
+/* Сохранение прав одним пакетом.
+ *
+ * Роль, полномочия и зона правятся в карточке как черновик и уходят сюда
+ * вместе, по кнопке. Так сделано потому, что права — связный набор, а не
+ * независимые галочки: смена роли тянет за собой умолчания полномочий, а зона
+ * осмысленна только вместе с ними. Применять каждое поле по отдельности значило
+ * бы проводить человека через состояния, которых он не хотел, — например,
+ * через «инженер с правом решения», когда роль уже сменили, а право ещё нет.
+ *
+ * Транзакция одна на пакет: наполовину выданные права хуже невыданных.
+ * Журнал при этом остаётся построчным — одно поле, одно событие: в разборе
+ * «почему рекомендация не дошла» ищут конкретное изменение, а не пакет.
+ */
+export interface Права {
+  role: string;
+  canDecide: boolean;
+  onlyOwn: boolean;
+  canEditEconomy: boolean;
+  fields: number[];
+}
+
+export async function сохранитьПрава(userId: number, права: Права): Promise<Ответ> {
   const я = await администратор();
   if (!я) return { ошибка: НЕ_АДМИН };
 
   const ошибка = await transaction(async (client) => {
     const { rows: [роль] } = await client.query(
-      'SELECT label, can_decide, only_own FROM rec.roles WHERE key = $1', [roleKey]);
+      'SELECT key, label, side, has_recs FROM rec.roles WHERE key = $1', [права.role]);
     if (!роль) return 'Такой роли нет.';
 
-    const { rows: [было] } = await client.query(
-      'SELECT r.label FROM rec.users u JOIN rec.roles r ON r.key = u.role_key WHERE u.id = $1',
+    const { rows: [было] } = await client.query(`
+      SELECT u.role_key, r.label AS role_label, u.can_decide, u.can_edit_economy, u.only_own
+        FROM rec.users u JOIN rec.roles r ON r.key = u.role_key
+       WHERE u.id = $1 FOR UPDATE OF u`, [userId]);
+    if (!было) return 'Пользователь не найден.';
+
+    /* Нормализация на сервере, а не только в интерфейсе: полномочие, к стороне
+       договора неприменимое, не должно доезжать до базы даже если форму
+       подменили. Решение принимает Заказчик, рекомендации ведёт Исполнитель. */
+    const canDecide = роль.side === 'customer' && права.canDecide;
+    const onlyOwn = роль.side === 'executor' && роль.has_recs && права.onlyOwn;
+    const fields = роль.has_recs ? [...new Set(права.fields.map(Number))].filter(Number.isInteger) : [];
+
+    await client.query(`
+      UPDATE rec.users SET role_key = $2, can_decide = $3, only_own = $4, can_edit_economy = $5
+       WHERE id = $1`, [userId, права.role, canDecide, onlyOwn, права.canEditEconomy]);
+
+    const события: [string, string][] = [];
+    if (было.role_key !== права.role) {
+      события.push(['role', `Роль: ${было.role_label} → ${роль.label}.`]);
+    }
+    if (было.can_decide !== canDecide) {
+      события.push(['permission',
+        `${canDecide ? 'Выдано' : 'Снято'}: право решения по рекомендациям.`]);
+    }
+    if (было.only_own !== onlyOwn) {
+      события.push(['permission', `${onlyOwn ? 'Выдан' : 'Снят'}: отбор по ответственному.`]);
+    }
+    if (было.can_edit_economy !== права.canEditEconomy) {
+      события.push(['permission',
+        `${права.canEditEconomy ? 'Выдана' : 'Снята'}: правка экономической модели.`]);
+    }
+
+    const { rows: зонаБыло } = await client.query(
+      'SELECT field_id, field_name FROM rec.user_fields WHERE user_id = $1 ORDER BY field_name',
       [userId]);
+    const списком = (r: { field_name: string }[]) =>
+      (r.length ? r.map((x) => x.field_name).join(', ') : 'все объекты договора');
 
-    /* Полномочия возвращаются к умолчаниям роли. Иначе право решения,
-       выданное инженеру, тихо переезжает на технолога, которым его сделали, —
-       а роль меняют как раз тогда, когда человек сменил обязанности. Сторону
-       договора проставит триггер по роли. */
-    await client.query(
-      'UPDATE rec.users SET role_key = $2, can_decide = $3, only_own = $4 WHERE id = $1',
-      [userId, roleKey, роль.can_decide, роль.only_own]);
+    const менялась = зонаБыло.length !== fields.length
+      || зонаБыло.some((f: { field_id: string }) => !fields.includes(Number(f.field_id)));
 
-    await client.query(
-      'INSERT INTO rec.user_access_log (user_id, actor, action, details) VALUES ($1,$2,$3,$4)',
-      [userId, я.fullName, 'role',
-        `Роль: ${было?.label ?? '—'} → ${роль.label}. Полномочия приведены к умолчаниям роли.`]);
+    if (менялась) {
+      await client.query('DELETE FROM rec.user_fields WHERE user_id = $1', [userId]);
+      /* Название кладётся рядом с идентификатором: справочник — реплика ВМАП,
+         и запись зоны должна читаться, даже если объект оттуда уехал. */
+      if (fields.length) {
+        await client.query(`
+          INSERT INTO rec.user_fields (user_id, field_id, field_name)
+          SELECT $1, w.field_id, min(w.field_name)
+            FROM rec.ref_wells w WHERE w.field_id = ANY($2::bigint[])
+           GROUP BY w.field_id`, [userId, fields]);
+      }
+      const { rows: зонаСтало } = await client.query(
+        'SELECT field_name FROM rec.user_fields WHERE user_id = $1 ORDER BY field_name', [userId]);
+      события.push(['zone', `Зона: ${списком(зонаБыло)} → ${списком(зонаСтало)}.`]);
+    }
+
+    for (const [вид, текст] of события) {
+      await client.query(
+        'INSERT INTO rec.user_access_log (user_id, actor, action, details) VALUES ($1,$2,$3,$4)',
+        [userId, я.fullName, вид, текст]);
+    }
     return null;
   });
 
   if (ошибка) return { ошибка };
-  revalidatePath('/users');
-  return {};
-}
-
-export type Полномочие = 'decide' | 'economy' | 'onlyOwn';
-
-const ПОЛЕ: Record<Полномочие, string> = {
-  decide: 'can_decide', economy: 'can_edit_economy', onlyOwn: 'only_own',
-};
-
-const ПОДПИСЬ: Record<Полномочие, string> = {
-  decide: 'право решения по рекомендациям',
-  economy: 'правка экономической модели',
-  onlyOwn: 'отбор по ответственному',
-};
-
-export async function переключитьПолномочие(
-  userId: number, что: Полномочие, включить: boolean,
-): Promise<Ответ> {
-  const я = await администратор();
-  if (!я) return { ошибка: НЕ_АДМИН };
-
-  /* Имя колонки подставляется из словаря, а не из аргумента: значение
-     приходит с клиента, и склеивать его с текстом запроса нельзя. */
-  const колонка = ПОЛЕ[что];
-  if (!колонка) return { ошибка: 'Неизвестное полномочие.' };
-
-  await query(`UPDATE rec.users SET ${колонка} = $2 WHERE id = $1`, [userId, включить]);
-  await записать(userId, я.fullName, 'permission',
-    `${включить ? 'Выдано' : 'Снято'}: ${ПОДПИСЬ[что]}.`);
-
-  revalidatePath('/users');
-  return {};
-}
-
-export async function задатьЗону(userId: number, fieldIds: number[]): Promise<Ответ> {
-  const я = await администратор();
-  if (!я) return { ошибка: НЕ_АДМИН };
-
-  await transaction(async (client) => {
-    const { rows: было } = await client.query(
-      'SELECT field_name FROM rec.user_fields WHERE user_id = $1 ORDER BY field_name', [userId]);
-
-    await client.query('DELETE FROM rec.user_fields WHERE user_id = $1', [userId]);
-
-    /* Название месторождения кладётся рядом с идентификатором: справочник —
-       реплика ВМАП, и запись зоны должна читаться, даже если объект оттуда
-       уехал. Идентификатор при этом остаётся главным — названия меняются. */
-    if (fieldIds.length) {
-      await client.query(
-        `INSERT INTO rec.user_fields (user_id, field_id, field_name)
-         SELECT $1, w.field_id, min(w.field_name)
-           FROM rec.ref_wells w WHERE w.field_id = ANY($2::bigint[])
-          GROUP BY w.field_id`, [userId, fieldIds]);
-    }
-
-    const { rows: стало } = await client.query(
-      'SELECT field_name FROM rec.user_fields WHERE user_id = $1 ORDER BY field_name', [userId]);
-
-    const текст = (r: { field_name: string }[]) =>
-      (r.length ? r.map((x) => x.field_name).join(', ') : 'все объекты договора');
-
-    await client.query(
-      'INSERT INTO rec.user_access_log (user_id, actor, action, details) VALUES ($1,$2,$3,$4)',
-      [userId, я.fullName, 'zone', `Зона: ${текст(было)} → ${текст(стало)}.`]);
-    return null;
-  });
-
   revalidatePath('/users');
   return {};
 }

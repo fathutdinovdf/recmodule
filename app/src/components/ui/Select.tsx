@@ -26,7 +26,7 @@ export interface SelectOption {
 }
 
 export function Select({
-  name, options, defaultValue, placeholder = 'Выберите значение', required, disabled, id,
+  name, options, defaultValue, value, placeholder = 'Выберите значение', required, disabled, id,
   onValueChange,
 }: {
   /* Необязательно: список бывает и вне формы — на экране прав он применяет
@@ -34,6 +34,10 @@ export function Select({
   name?: string;
   options: SelectOption[];
   defaultValue?: string;
+  /* Контролируемый режим: на экране прав список — часть черновика карточки, и
+     «Отменить» должно возвращать его к прежней роли, а не оставлять
+     показанной ту, которую выбрали и не сохранили. */
+  value?: string;
   placeholder?: string;
   required?: boolean;
   disabled?: boolean;
@@ -41,7 +45,7 @@ export function Select({
   onValueChange?: (значение: string) => void;
 }) {
   return (
-    <RadixSelect.Root name={name} defaultValue={defaultValue} required={required}
+    <RadixSelect.Root name={name} defaultValue={defaultValue} value={value} required={required}
                       disabled={disabled} onValueChange={onValueChange}>
       <span className="combo">
         <RadixSelect.Trigger className="inp combo__inp" id={id} aria-label={placeholder}>

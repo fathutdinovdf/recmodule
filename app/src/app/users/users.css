@@ -216,10 +216,35 @@
   font: var(--font-weight-text) var(--font-size-text-small) / 1 var(--font-family-text);
   color: var(--text-tertiary);
 }
+/* Счётчик, устаревший от несохранённой правки зоны: цифру пересчитать нечем —
+   граница видимости считается в базе, — поэтому вместо числа стоит слово. */
+.zone__count--stale { color: var(--text-quaternary, var(--text-tertiary)); font-style: italic; }
 .zone__count b {
   color: var(--text-secondary); font-weight: var(--font-weight-subtitle);
   font-variant-numeric: tabular-nums;
 }
+
+/* Полоса сохранения. Прилипает к низу карточки: список месторождений
+   длинный, и кнопка, уехавшая за нижний край, равносильна её отсутствию —
+   человек уходит к следующему пользователю, считая, что изменения применены.
+   Появляется только когда есть что сохранять. */
+.usave {
+  position: sticky; bottom: 0; z-index: 2;
+  display: flex; align-items: center; gap: var(--item-gap-horizontal-m);
+  margin-top: var(--block-gap-default);
+  padding: var(--group-padding-s) var(--group-padding-m);
+  border: 1px solid var(--border-divider);
+  border-radius: var(--corner-radius-l);
+  background: var(--bg-card);
+  box-shadow: var(--elevation-2);
+}
+.usave__what {
+  flex: 1 1 auto; min-width: 0;
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-secondary);
+}
+
+.access__btns { display: flex; gap: var(--item-gap-horizontal-m); flex-wrap: wrap; }
 
 /* ------------------------------ журнал ------------------------------ */
 
