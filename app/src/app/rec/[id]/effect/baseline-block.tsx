@@ -24,6 +24,7 @@ import { measuredBaseline } from '@/services/baseline';
 import { BASELINE_DAYS } from '@/domain/baseline';
 import { дата, число, прирост } from '@/lib/format';
 import { ОкноВозражения, ОкноПринятия, ОкноОтклонения } from './baseline-forms';
+import { ОкноБазы } from './baseline-entry';
 
 /* Статусы, на которых базу можно оспорить. Дублируется с actions.ts намеренно:
    здесь список решает, показывать ли кнопку, там — пускать ли операцию, и
@@ -34,6 +35,21 @@ const ИСТОЧНИК_БАЗЫ: Record<string, string> = {
   manual: 'Внесена вручную',
   measured: 'Посчитана по замерам',
   disputed: 'Предложена Заказчиком в споре',
+};
+
+/* Короткие названия способов — для строки под значениями. Полные формулировки
+   договора стоят в самой форме внесения: там их читают, выбирая, здесь —
+   только опознают. */
+const СПОСОБ: Record<string, string> = {
+  techregime: 'утверждённый технологический режим',
+  threeDays: 'средневзвешенные за трое суток до регистрации',
+  agreedPeriod: 'иной репрезентативный период по соглашению Сторон',
+};
+
+const СПОСОБ_ЭЭ: Record<string, string> = {
+  factual: 'по фактическим данным информационных систем',
+  threeDays: 'средневзвешенное за тот же период',
+  design: 'расчётом в модуле Design',
 };
 
 export async function БлокБазы({ card, user, заголовок, форма }: {
@@ -50,6 +66,14 @@ export async function БлокБазы({ card, user, заголовок, фор�
   const заказчик = user?.side === 'customer';
   const исполнитель = user?.side === 'executor';
   const окноЗакрыто = Boolean(card.implementation?.closedAt);
+  const окноИдёт = Boolean(card.implementation) && !окноЗакрыто;
+
+  /* База вносится с регистрации и до открытия окна; при открытом окне договор
+     оставляет только исправление ошибки в исходных данных. После закрытия
+     нельзя вовсе: итог финализирован. Вносит Исполнитель — величину определяет
+     он, а принимать по ней эффект Заказчику. */
+  const можноВносить = исполнитель && !окноЗакрыто && card.status !== 'draft';
+  const б = card.baseline;
   /* Открытый спор — единственное, что мешает подать возражение снова: после
      разбора Заказчик вправе вернуться к базе, пока окно не закрыто. Тот же
      набор условий проверяется в actions.ts независимо. */
@@ -68,15 +92,42 @@ export async function БлокБазы({ card, user, заголовок, фор�
             <ЯчейкаБазы k="Энергопотребление" v={card.baseline.baseEe} ед="кВт·ч/сут" знаков={0} />
           </div>
           <div className="eff__note" style={{ marginTop: 'var(--item-gap-vertical-s)' }}>
-            {ИСТОЧНИК_БАЗЫ[card.baseline.source]}
+            {card.baseline.method
+              ? `Способ по договору: ${СПОСОБ[card.baseline.method] ?? card.baseline.method}`
+              : ИСТОЧНИК_БАЗЫ[card.baseline.source]}
             {card.baseline.periodFrom && ` за период ${дата(card.baseline.periodFrom)} — ${дата(card.baseline.periodTo)}`}
+            {card.baseline.methodEe && `; энергопотребление — ${СПОСОБ_ЭЭ[card.baseline.methodEe] ?? card.baseline.methodEe}`}
             {`; внесена ${card.baseline.authorName}, ${дата(card.baseline.createdAt, true)}.`}
             {card.baseline.note && ` ${card.baseline.note}`}
           </div>
+
+          <Основание база={card.baseline} />
         </>
       ) : (
         <div className="block__b">
-          База не задана. Прирост считать не от чего — вводится Исполнителем при регистрации.
+          Базовые значения не внесены. Прирост считать не от чего: их вносит
+          Исполнитель до фиксации реализации — от них считается весь эффект по
+          мероприятию.
+        </div>
+      )}
+
+      {можноВносить && !открытый && (
+        <div className="form__btns" style={{ marginTop: 'var(--group-gap-m)' }}>
+          <ОкноБазы
+            recId={card.id}
+            окноИдёт={окноИдёт}
+            естьФайлы={(б?.files.length ?? 0) > 0}
+            подпись={б ? 'Изменить базовые значения' : 'Внести базовые значения'}
+            значения={{
+              qzh: дляВвода(б?.baseQzh ?? null),
+              qn: дляВвода(б?.baseQn ?? null),
+              ee: дляВвода(б?.baseEe ?? null),
+              method: б?.method ?? '',
+              methodEe: б?.methodEe ?? '',
+              agreementRef: б?.agreementRef ?? '',
+            }}
+            стартОткрыто={форма === 'baseEnter' || форма === 'baseFix'} />
+          <span className="form__note">Действие Исполнителя</span>
         </div>
       )}
 
@@ -163,6 +214,48 @@ export async function БлокБазы({ card, user, заголовок, фор�
         </>
       )}
     </section>
+  );
+}
+
+/* ------------------------------ основание базы ------------------------------ */
+
+/**
+ * Согласование Заказчика и приложенные документы.
+ *
+ * Показывается ОТСУТСТВИЕ согласования, а не только его наличие: договор
+ * помечает трёхсуточный способ как применяемый «по согласованию с Заказчиком»,
+ * и база без него — не ошибка ввода, а известный риск, который должны видеть
+ * обе стороны до того, как по ней посчитают деньги.
+ */
+function Основание({ база }: { база: CardBaseline }) {
+  const нуженСогласие = база.method === 'threeDays' || база.method === 'agreedPeriod';
+  const согласовано = Boolean(база.customerAgreedAt);
+
+  if (!нуженСогласие && база.files.length === 0) return null;
+
+  return (
+    <div className="eff__note" style={{ marginTop: 'var(--item-gap-vertical-s)' }}>
+      {нуженСогласие && (
+        <div>
+          {согласовано
+            ? <>Согласование Заказчика: {база.agreementRef ?? 'зафиксировано'}
+                {база.customerAgreedByName && `, отметил ${база.customerAgreedByName}`}
+                {база.customerAgreedAt && `, ${дата(база.customerAgreedAt, true)}`}.</>
+            : <span className="tag tag--warning">согласование Заказчика не зафиксировано</span>}
+        </div>
+      )}
+      {база.files.length > 0 && (
+        <div style={{ marginTop: 'var(--item-gap-vertical-s)' }}>
+          Основание:{' '}
+          {база.files.map((f, i) => (
+            <span key={f.id}>
+              {i > 0 && ', '}
+              <a href={`/api/attachment/${f.id}`}>{f.fileName}</a>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

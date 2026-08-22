@@ -20,12 +20,33 @@ export interface CardImplementation {
   closedEarly: boolean;
 }
 
+export interface BaselineFile {
+  id: number;
+  fileName: string;
+  sizeBytes: number | null;
+  mimeType: string | null;
+}
+
 export interface CardBaseline {
   id: number;
   baseQzh: number | null;
   baseQn: number | null;
   baseEe: number | null;
+  /* Происхождение строки: кто её завёл. Не путать с `method` — тот про
+     договорный способ. Вопросы разные: базу, посчитанную трёхдневным способом,
+     может внести и Исполнитель, и Заказчик в споре. */
   source: 'manual' | 'measured' | 'disputed';
+  /** Договорный способ для дебитов (Приложение № 2). null у строк до миграции 011. */
+  method: 'techregime' | 'threeDays' | 'agreedPeriod' | null;
+  /** Способ для энергопотребления — отдельный: из техрежима её взять нельзя. */
+  methodEe: 'factual' | 'threeDays' | 'design' | null;
+  /** Эксперт подтвердил, что изменений режима до регистрации не было. */
+  noRegimeChanges: boolean;
+  customerAgreedAt: Date | null;
+  customerAgreedByName: string | null;
+  /** Реквизиты письма или протокола, которым согласование оформлено. */
+  agreementRef: string | null;
+  files: BaselineFile[];
   periodFrom: Date | null;
   periodTo: Date | null;
   status: 'accepted' | 'proposed' | 'rejected' | 'superseded';
@@ -161,9 +182,20 @@ export const getCard = cache(async (id: number): Promise<Card | null> => {
       FROM rec.implementations WHERE rec_id = $1
     `, [id]),
     query<Record<string, unknown>>(`
-      SELECT id, base_qzh, base_qn, base_ee, source, period_from, period_to,
-             status, created_at, author_name, note
-      FROM rec.baselines WHERE rec_id = $1 ORDER BY created_at DESC, id DESC
+      SELECT b.id, b.base_qzh, b.base_qn, b.base_ee, b.source, b.method, b.method_ee,
+             b.no_regime_changes, b.customer_agreed_at, b.agreement_ref,
+             u.full_name AS customer_agreed_by_name,
+             b.period_from, b.period_to, b.status, b.created_at, b.author_name, b.note,
+             COALESCE((
+               SELECT json_agg(json_build_object(
+                        'id', a.id, 'file_name', a.file_name,
+                        'size_bytes', a.size_bytes, 'mime_type', a.mime_type)
+                      ORDER BY a.uploaded_at)
+               FROM rec.attachments a WHERE a.baseline_id = b.id
+             ), '[]'::json) AS files
+      FROM rec.baselines b
+      LEFT JOIN rec.users u ON u.id = b.customer_agreed_by
+      WHERE b.rec_id = $1 ORDER BY b.created_at DESC, b.id DESC
     `, [id]),
     query<Record<string, unknown>>(`
       SELECT id, subject, opened_at, opened_by_name, reason, proposed_date,
@@ -255,6 +287,18 @@ function разобратьБазу(b: Record<string, unknown>): CardBaseline {
     baseQn: число(b.base_qn),
     baseEe: число(b.base_ee),
     source: b.source as CardBaseline['source'],
+    method: (b.method ?? null) as CardBaseline['method'],
+    methodEe: (b.method_ee ?? null) as CardBaseline['methodEe'],
+    noRegimeChanges: Boolean(b.no_regime_changes),
+    customerAgreedAt: (b.customer_agreed_at ?? null) as Date | null,
+    customerAgreedByName: (b.customer_agreed_by_name ?? null) as string | null,
+    agreementRef: (b.agreement_ref ?? null) as string | null,
+    files: ((b.files ?? []) as Array<Record<string, unknown>>).map((f) => ({
+      id: Number(f.id),
+      fileName: f.file_name as string,
+      sizeBytes: f.size_bytes === null || f.size_bytes === undefined ? null : Number(f.size_bytes),
+      mimeType: (f.mime_type ?? null) as string | null,
+    })),
     periodFrom: b.period_from as Date | null,
     periodTo: b.period_to as Date | null,
     status: b.status as CardBaseline['status'],
@@ -267,9 +311,20 @@ function разобратьБазу(b: Record<string, unknown>): CardBaseline {
 /** Одна версия базы по идентификатору — нужна, чтобы показать предложенную в споре. */
 export async function getBaseline(id: number): Promise<CardBaseline | null> {
   const rows = await query<Record<string, unknown>>(`
-    SELECT id, base_qzh, base_qn, base_ee, source, period_from, period_to,
-           status, created_at, author_name, note
-    FROM rec.baselines WHERE id = $1
+    SELECT b.id, b.base_qzh, b.base_qn, b.base_ee, b.source, b.method, b.method_ee,
+           b.no_regime_changes, b.customer_agreed_at, b.agreement_ref,
+           u.full_name AS customer_agreed_by_name,
+           b.period_from, b.period_to, b.status, b.created_at, b.author_name, b.note,
+           COALESCE((
+             SELECT json_agg(json_build_object(
+                      'id', a.id, 'file_name', a.file_name,
+                      'size_bytes', a.size_bytes, 'mime_type', a.mime_type)
+                    ORDER BY a.uploaded_at)
+             FROM rec.attachments a WHERE a.baseline_id = b.id
+           ), '[]'::json) AS files
+    FROM rec.baselines b
+    LEFT JOIN rec.users u ON u.id = b.customer_agreed_by
+    WHERE b.id = $1
   `, [id]);
   return rows[0] ? разобратьБазу(rows[0]) : null;
 }

@@ -16,6 +16,26 @@ export function PopoverAnchor(props: React.ComponentProps<typeof PopoverPrimitiv
   return <PopoverPrimitive.Anchor data-slot="popover-anchor" {...props} />;
 }
 
+/* Заголовочная тройка shadcn. У Radix её нет — там Popover без собственной
+ * структуры, — но окно с полями без заголовка не объясняет, что именно
+ * правишь. Title/Description связаны с содержимым через aria-* вручную:
+ * Radix, в отличие от Dialog, сам их не подхватывает. */
+export function PopoverHeader({ className, ...props }: React.ComponentProps<'div'>) {
+  return <div data-slot="popover-header"
+               className={cn('flex flex-col gap-1 border-b border-border px-4 py-3', className)}
+               {...props} />;
+}
+
+export function PopoverTitle({ className, ...props }: React.ComponentProps<'div'>) {
+  return <div data-slot="popover-title"
+               className={cn('text-sm font-medium text-foreground', className)} {...props} />;
+}
+
+export function PopoverDescription({ className, ...props }: React.ComponentProps<'p'>) {
+  return <p data-slot="popover-description"
+             className={cn('text-xs text-muted-foreground', className)} {...props} />;
+}
+
 export function PopoverContent({
   className, align = 'start', sideOffset = 6, container, ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content> & {

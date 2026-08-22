@@ -22,6 +22,7 @@
 import { notFound } from 'next/navigation';
 import { getCard, type Card, type CardDispute } from '@/db/card';
 import { currentUser, type SessionUser } from '@/lib/session';
+import { ЗаслонБазы } from './baseline-gate';
 import { WINDOW_DAYS } from '@/services/effect-store';
 import { дата, сутки } from '@/lib/format';
 import {
@@ -54,9 +55,16 @@ export default async function Page({ params, searchParams }: {
 
   const исполнитель = user?.side === 'executor';
 
+  /* База нужна ДО фиксации: она открывает окно, после чего база изменению не
+     подлежит (Приложение № 2). Проверяем те же два числа, что и серверный
+     шлагбаум в actions.ts, — на них стоит весь расчёт. */
+  const нетБазы = !card.baseline
+    || card.baseline.baseQzh === null || card.baseline.baseQn === null;
+
   if (card.status === 'approved') {
     return (
-      <ФактНеЗафиксирован card={card} исполнитель={исполнитель} стартОткрыто={form === 'fact'} />
+      <ФактНеЗафиксирован card={card} исполнитель={исполнитель} нетБазы={нетБазы}
+                          стартОткрыто={form === 'fact'} />
     );
   }
 
@@ -133,12 +141,15 @@ export default async function Page({ params, searchParams }: {
 
 /* ------------------------------ до фиксации ------------------------------ */
 
-function ФактНеЗафиксирован({ card, исполнитель, стартОткрыто }: {
+function ФактНеЗафиксирован({ card, исполнитель, нетБазы, стартОткрыто }: {
   card: Card;
   исполнитель: boolean;
+  нетБазы: boolean;
   стартОткрыто: boolean;
 }) {
   return (
+    <>
+    {исполнитель && нетБазы && <ЗаслонБазы recId={card.id} />}
     <div className="block">
       <div className="block__h">Факт реализации</div>
       <div className="block__b">
@@ -151,8 +162,10 @@ function ФактНеЗафиксирован({ card, исполнитель, с
 
       {исполнитель ? (
           <div className="form__btns" style={{ marginTop: 'var(--group-gap-m)' }}>
-            <ОкноФиксации card={card} стартОткрыто={стартОткрыто} />
-            <span className="form__note">Действие Исполнителя</span>
+            <ОкноФиксации card={card} нетБазы={нетБазы} стартОткрыто={стартОткрыто} />
+            <span className="form__note">
+              {нетБазы ? 'Недоступно, пока не внесены базовые значения' : 'Действие Исполнителя'}
+            </span>
           </div>
         ) : (
           <div className="form__hint" style={{ marginTop: 'var(--group-gap-m)' }}>
@@ -163,6 +176,7 @@ function ФактНеЗафиксирован({ card, исполнитель, с
           </div>
         )}
     </div>
+    </>
   );
 }
 

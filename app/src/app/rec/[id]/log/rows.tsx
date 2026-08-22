@@ -7,7 +7,7 @@
 
 import {
   BadgeCheck, Ban, CircleHelp, Eye, FileCheck, FilePlus2, Gavel, Link2,
-  Lock, MessageSquare, RotateCw, Scale, Send, Timer, Wrench, X,
+  Lock, MessageSquare, Ruler, RotateCw, Scale, Send, Timer, Wrench, X,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/Button';
@@ -42,6 +42,7 @@ const ПО_ВИДУ: Record<string, typeof Send> = {
   dispute: Scale,
   link: Link2,
   opened: Timer,
+  baseline: Ruler,
 };
 
 const иконка = (e: FeedItem) =>

@@ -102,7 +102,10 @@ export async function зафиксировать(
 
   const ошибка = await transaction(async (client) => {
     const { rows } = await client.query(`
-      SELECT r.status, r.registered_at
+      SELECT r.status, r.registered_at,
+             EXISTS (SELECT 1 FROM rec.baselines b
+                     WHERE b.rec_id = r.id AND b.status = 'accepted'
+                       AND b.base_qzh IS NOT NULL AND b.base_qn IS NOT NULL) AS есть_база
       FROM rec.recommendations r
       WHERE r.id = $1 AND r.deleted_at IS NULL
       FOR UPDATE OF r
@@ -110,6 +113,15 @@ export async function зафиксировать(
 
     const rec = rows[0];
     if (!rec) return 'Рекомендация не найдена.';
+    /* Шлагбаум по договору: «Базовые значения определяются ДО МОМЕНТА
+       РЕАЛИЗАЦИИ рекомендации Исполнителя и фиксируются в карточке
+       мероприятия. После открытия окна подтверждения эффекта базовые значения
+       изменению не подлежат». Фиксация открывает окно, значит это последний
+       момент, когда база ещё может появиться вовремя. Без неё эффект не с чем
+       сравнивать, и запускать девяностосуточный отсчёт бессмысленно. */
+    if (!rec.есть_база) {
+      return 'Сначала внесите базовые значения — вкладка «Расчёт эффекта». Договор требует определить их до момента реализации, а после открытия окна они изменению не подлежат.';
+    }
     if (rec.status !== 'approved') {
       return rec.status === 'windowOpen' || rec.status === 'windowClosed'
         ? 'Реализация по этой рекомендации уже зафиксирована. Обновите страницу.'

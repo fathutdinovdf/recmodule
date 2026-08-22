@@ -39,15 +39,6 @@ export interface RegistrationWell {
   fieldName: string;
 }
 
-interface BaselinePreview {
-  baseQzh: number | null;
-  baseQn: number | null;
-  periodFrom: string;
-  periodTo: string;
-  usedDays: number;
-  requestedDays: number;
-}
-
 interface Draft {
   wellId: string;
   directionId: string;
@@ -59,11 +50,6 @@ interface Draft {
   expectQn: string;
   expectEe: string;
   resultNote: string;
-  baselineSource: 'measured' | 'manual';
-  baseQzh: string;
-  baseQn: string;
-  baseEe: string;
-  baselineNote: string;
   executorId: string;
   comment: string;
 }
@@ -72,7 +58,7 @@ const STEPS = [
   { title: 'Объект', hint: 'Скважина и контекст ВМАП' },
   { title: 'Проблема', hint: 'Направление и приоритет' },
   { title: 'Рекомендация', hint: 'Мероприятие и обоснование' },
-  { title: 'Прогноз и база', hint: 'Ожидаемый результат' },
+  { title: 'Прогноз', hint: 'Ожидаемый результат' },
   { title: 'Передача', hint: 'Ответственный и проверка' },
 ];
 
@@ -119,18 +105,11 @@ export function RegistrationWizard({
   /* Окно «Закрыть мастер?» живёт вне <form>, поэтому кнопку «Сохранить
      черновик» оттуда нажимаем по ссылке — так путь сохранения ровно один. */
   const draftButton = useRef<HTMLButtonElement>(null);
-  const [baseline, setBaseline] = useState<BaselinePreview | null>(null);
-  const [baselineStatus, setBaselineStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [wells, setWells] = useState<RegistrationWell[]>([]);
   const [wellsStatus, setWellsStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [draft, setDraft] = useState<Draft>({
     wellId: '', directionId: '', priority: '', problem: '', action: '', rationale: '',
     expectQzh: '', expectQn: '', expectEe: '', resultNote: '',
-    /* На деве расчёт базы идёт по замерам дев-стенда ВМАП — не тем данным,
-     * что будут на продуктивном ландшафте Заказчика. Пока не перенесли модуль
-     * туда, база вводится вручную всегда: 'measured' по умолчанию вернуть
-     * вместе с fetch-эффектом ниже, когда встанем на прод ВМАП. */
-    baselineSource: 'manual', baseQzh: '', baseQn: '', baseEe: '', baselineNote: '',
     executorId: currentExecutorId ? String(currentExecutorId) : '', comment: '',
   });
 
@@ -207,33 +186,6 @@ export function RegistrationWizard({
     }
   }, [actionState]);
 
-  /* Отключено до переноса модуля на продуктивный ландшафт Заказчика: замеры
-   * дев-стенда ВМАП не то же самое, что боевые данные, и предлагать по ним
-   * расчёт базы — вводить пользователя в заблуждение. baseline/baselineStatus
-   * остаются в разметке (ObjectStep, ResultStep) нетронутыми, просто вечно
-   * 'idle' — раскомментировать эффект и вернуть baselineSource по умолчанию
-   * в 'measured' одним движением, когда встанем на прод ВМАП.
-  useEffect(() => {
-    if (!draft.wellId) {
-      setBaseline(null);
-      setBaselineStatus('idle');
-      return;
-    }
-    const controller = new AbortController();
-    setBaselineStatus('loading');
-    fetch(`/api/registration/baseline?wellId=${draft.wellId}`, { signal: controller.signal })
-      .then(async (response) => {
-        if (!response.ok) throw new Error();
-        return response.json() as Promise<BaselinePreview>;
-      })
-      .then((value) => { setBaseline(value); setBaselineStatus('ready'); })
-      .catch((error) => {
-        if (error instanceof DOMException && error.name === 'AbortError') return;
-        setBaseline(null); setBaselineStatus('error');
-      });
-    return () => controller.abort();
-  }, [draft.wellId]);
-  */
 
   function update<K extends keyof Draft>(key: K, value: Draft[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -265,10 +217,8 @@ export function RegistrationWizard({
   /* Черновик уходит записью в реестр только с минимумом полей; без них он
      остаётся на рабочем месте в localStorage. Условие нужно и окну закрытия —
      от него зависит, что там обещать пользователю. */
-  const черновикВБазу = Boolean(draft.wellId && draft.directionId && draft.problem.trim()
-    && draft.action.trim()
-    && (draft.baselineSource !== 'manual'
-      || (draft.baseQzh && draft.baseQn && draft.baselineNote.trim())));
+  const черновикВБазу = Boolean(draft.wellId && draft.directionId
+    && draft.problem.trim() && draft.action.trim());
 
   function saveDraft(event: React.MouseEvent<HTMLButtonElement>) {
     if (черновикВБазу) {
@@ -386,8 +336,7 @@ export function RegistrationWizard({
                       {step === 0 && (
                         <ObjectStep fieldOptions={fieldOptions} fieldId={fieldId} chooseField={chooseField}
                           wellOptions={wellOptions} draft={draft} update={update} selectedWell={selectedWell}
-                          baseline={baseline} baselineStatus={baselineStatus} wellsStatus={wellsStatus}
-                          invalid={invalidKeys.has('wellId')} />
+                          wellsStatus={wellsStatus} invalid={invalidKeys.has('wellId')} />
                       )}
                       {step === 1 && (
                         <ProblemStep directions={directions} priorities={priorities} draft={draft}
@@ -399,8 +348,7 @@ export function RegistrationWizard({
                             syncFiles(files.filter((_, fileIndex) => fileIndex !== index))} />
                       )}
                       {step === 3 && (
-                        <ResultStep draft={draft} update={update} invalid={invalidKeys}
-                          baseline={baseline} baselineStatus={baselineStatus} />
+                        <ResultStep draft={draft} update={update} invalid={invalidKeys} />
                       )}
                       {step === 4 && (
                         <HandoverStep draft={draft} update={update} invalid={invalidKeys}
@@ -501,12 +449,12 @@ React.ComponentProps<typeof Button> & { name: string; value: string }) {
 }
 
 function ObjectStep({ fieldOptions, fieldId, chooseField, wellOptions, draft, update,
-  selectedWell, baseline, baselineStatus, wellsStatus, invalid }: {
+  selectedWell, wellsStatus, invalid }: {
   fieldOptions: Array<[number, { name: string; count: number }]>;
   fieldId: string; chooseField: (value: string) => void; wellOptions: RegistrationWell[];
   draft: Draft; update: <K extends keyof Draft>(key: K, value: Draft[K]) => void;
-  selectedWell: RegistrationWell | null; baseline: BaselinePreview | null;
-  baselineStatus: string; wellsStatus: 'loading' | 'ready' | 'error'; invalid: boolean;
+  selectedWell: RegistrationWell | null;
+  wellsStatus: 'loading' | 'ready' | 'error'; invalid: boolean;
 }) {
   return <div className="wz-fields">
     <Field>
@@ -532,19 +480,6 @@ function ObjectStep({ fieldOptions, fieldId, chooseField, wellOptions, draft, up
       )}
       {invalid && <FieldError id="registration-well-error">Выберите скважину.</FieldError>}
     </Field>
-    {/* Пока fetch-эффект базы выключен (см. RegistrationWizard), baseline
-       всегда пуст — превью только сбивало бы с толку постоянным «нет
-       расчёта». Вернуть вместе с эффектом.
-    {selectedWell && (
-      <div className="wz-baserate">
-        <span>Базовый дебит жидкости по замерам</span>
-        {baselineStatus === 'loading' ? <Spinner />
-          : baseline?.baseQzh != null
-            ? <b>{baseline.baseQzh.toLocaleString('ru-RU', { maximumFractionDigits: 1 })} м³/сут</b>
-            : <b className="wz-baserate__empty">нет расчёта</b>}
-      </div>
-    )}
-    */}
   </div>;
 }
 
@@ -619,25 +554,10 @@ function RecommendationStep({ draft, update, invalid, files, addFiles, removeFil
   </div>;
 }
 
-function ResultStep({ draft, update, invalid, baseline, baselineStatus }: {
+function ResultStep({ draft, update, invalid }: {
   draft: Draft; update: <K extends keyof Draft>(key: K, value: Draft[K]) => void;
-  invalid: Set<keyof Draft>; baseline: BaselinePreview | null; baselineStatus: string;
+  invalid: Set<keyof Draft>;
 }) {
-  function editBaseline<K extends 'baseQzh' | 'baseQn' | 'baseEe'>(key: K, value: string) {
-    update(key, value);
-    update('baselineSource', 'manual');
-  }
-
-  function сброситьБазу() {
-    update('baselineSource', 'measured');
-    update('baseQzh', ''); update('baseQn', ''); update('baseEe', ''); update('baselineNote', '');
-  }
-
-  const computedQzh = baseline?.baseQzh != null
-    ? baseline.baseQzh.toLocaleString('ru-RU', { maximumFractionDigits: 1 }) : null;
-  const computedQn = baseline?.baseQn != null
-    ? baseline.baseQn.toLocaleString('ru-RU', { maximumFractionDigits: 2 }) : null;
-
   return <div className="wz-fields">
     <b className="wz-fields__title">Прогнозные значения</b>
     <div className="wz-number-grid">
@@ -648,43 +568,6 @@ function ResultStep({ draft, update, invalid, baseline, baselineStatus }: {
     <TextField label="Пояснение к прогнозу" value={draft.resultNote}
       onChange={(value) => update('resultNote', value)} area rows={2}
       placeholder="Например: выход на режим ожидается на третьи сутки." />
-    <div className="wz-baseline">
-      <div className="wz-baseline__head">
-        <b>Базовые значения</b>
-        <span className="tag tag--default">{draft.baselineSource === 'manual' ? 'вручную' : 'по замерам'}</span>
-      </div>
-      {baselineStatus === 'loading' ? <div className="wz-baseline__loading"><Spinner />Получаю замеры ВМАП…</div> : (
-        /* Расчёт по замерам — это рекомендация, а не факт: пока расчёт
-           подставлен, поле остаётся редактируемым без отдельного режима. */
-        <div className="wz-baseline__values">
-          <NumberField label="Жидкость, м³/сут" step="0.1"
-            value={draft.baseQzh} placeholder={computedQzh ?? undefined}
-            onChange={(value) => editBaseline('baseQzh', value)} />
-          <NumberField label="Нефть, т/сут" step="0.01"
-            value={draft.baseQn} placeholder={computedQn ?? undefined}
-            onChange={(value) => editBaseline('baseQn', value)} />
-          <NumberField label="ЭЭ, кВт·ч/сут" step="1"
-            value={draft.baseEe}
-            onChange={(value) => editBaseline('baseEe', value)} />
-        </div>
-      )}
-      {baseline && (
-        <div className="wz-baseline__period">
-          Период по замерам {дата(baseline.periodFrom)} — {дата(baseline.periodTo)} · {baseline.usedDays} из {baseline.requestedDays} суток
-        </div>
-      )}
-      {draft.baselineSource === 'manual' && (
-        <div className="wz-manual">
-          <TextField label="Обоснование ручной базы" value={draft.baselineNote}
-            onChange={(value) => update('baselineNote', value)} area rows={2}
-            placeholder="Какие сутки или режим использованы и почему расчёт по замерам не подходит." />
-          {/* Пока fetch базы выключен, возвращаться не к чему — кнопка
-             оживёт вместе с эффектом.
-          <Button type="button" variant="ghost" size="sm" onClick={сброситьБазу}>Вернуть расчёт по замерам</Button>
-          */}
-        </div>
-      )}
-    </div>
     <div className="wz-fixed"><LockKeyhole /><div><b>Горизонт оценки эффекта — 90 суток</b><span>Отсчитывается от даты фактической реализации и не редактируется.</span></div></div>
   </div>;
 }

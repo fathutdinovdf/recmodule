@@ -44,6 +44,10 @@ export const ОКНА = {
   acceptDispute: { title: 'Принять дату Заказчика', tone: 'danger', fields: 0 },
   declineDispute: { title: 'Отклонить возражение по дате', fields: 1 },
 
+  /* Базовые значения — вкладка «Расчёт эффекта». */
+  baseEnter: { title: 'Внести базовые значения', fields: 4, wide: true },
+  baseFix: { title: 'Исправить базовые значения', tone: 'danger', fields: 4, wide: true },
+
   /* Спор о базовых значениях — вкладка «Расчёт эффекта». */
   baseDispute: { title: 'Возражение по базовым значениям', fields: 2 },
   baseAccept: { title: 'Принять базу Заказчика', tone: 'danger', fields: 0 },

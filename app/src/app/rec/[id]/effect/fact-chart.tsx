@@ -126,6 +126,9 @@ export function ГрафикФакт({
       <div className="eff-legend" style={{ marginTop: 'var(--item-gap-vertical-s)' }}>
         <span><i className="is-fact" />факт по суткам</span>
         {база !== null && <span><i className="is-base" />база</span>}
+        {/* Про разрывы сказано словами: сама по себе дырка в линии читается как
+            «данных нет вовсе», а она значит ещё и «нечего протянуть». */}
+        <span>разрыв линии — суток без данных и без чего протянуть</span>
       </div>
     </div>
   );
