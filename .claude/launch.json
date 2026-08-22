@@ -6,6 +6,26 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--prefix", "app"],
       "port": 3100
+    },
+    {
+      "name": "recmodule-3101",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["next", "dev", "-p", "3101"],
+      "cwd": "app",
+      "port": 3101,
+      "autoPort": false
+    },
+    {
+      "name": "data-source-manual",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "./node_modules/next/dist/bin/next", "dev",
+        "C:/Работа/Оценка эффектов/wt/data-source-manual/app",
+        "-p", "3103"
+      ],
+      "cwd": "app",
+      "port": 3103,
+      "autoPort": false
     }
   ]
 }

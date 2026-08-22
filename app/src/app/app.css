@@ -38,9 +38,14 @@ body {
    фон и наследование шрифта. Стрелку списка оставляем: без неё никто не догадается,
    что имя переключается. */
 .userpick {
+  display: flex; align-items: center;
   font: inherit; color: inherit;
-  background: transparent; border: 0; padding: 0;
+  background: transparent; border: 0; padding: 0; padding-right: 22px;
   cursor: pointer; max-width: 260px;
 }
 .userpick:focus-visible { outline: none; box-shadow: var(--focus-component); border-radius: var(--corner-radius-component); }
 .userpick:disabled { opacity: .6; cursor: progress; }
+/* Дублирует правило .combo__inp[data-state="open"] + .combo__caret из ui.css:
+   у переключателя своя обёртка-надпись вместо стандартного поля, поэтому под
+   класс .userpick это правило само не попадает. */
+.userpick[data-state="open"] + .combo__caret { transform: rotate(180deg); color: var(--icon-accent); }

@@ -34,9 +34,10 @@ export default function Loading() {
         </div>
       </div>
 
-      {/* Восемь плиток-счётчиков: число и подпись. */}
+      {/* Плитки-счётчики: число и подпись. Число совпадает с ПЛИТКИ в page.tsx —
+          иначе скелетон переносится на вторую строку, а настоящий реестр нет. */}
       <section className="tiles" aria-hidden>
-        {Array.from({ length: 8 }, (_, i) => (
+        {Array.from({ length: 7 }, (_, i) => (
           <div key={i} className="tile">
             <Skeleton className="h-6 w-10" />
             <Skeleton className="mt-1.5 h-3.5 w-24" />

@@ -26,20 +26,27 @@ export interface SelectOption {
 }
 
 export function Select({
-  name, options, defaultValue, placeholder = 'Выберите значение', required, disabled, id,
+  name, options, value, defaultValue, onValueChange,
+  placeholder = 'Выберите значение', required, disabled, id, triggerClassName,
 }: {
-  name: string;
+  name?: string;
   options: SelectOption[];
+  value?: string;
   defaultValue?: string;
+  onValueChange?: (value: string) => void;
   placeholder?: string;
   required?: boolean;
   disabled?: boolean;
   id?: string;
+  /** Переопределяет вид переключателя — например, «прозрачная надпись» шапки
+      вместо обычного поля формы (см. ПереключательПользователя в AppChrome). */
+  triggerClassName?: string;
 }) {
   return (
-    <RadixSelect.Root name={name} defaultValue={defaultValue} required={required} disabled={disabled}>
+    <RadixSelect.Root name={name} value={value} defaultValue={defaultValue}
+                       onValueChange={onValueChange} required={required} disabled={disabled}>
       <span className="combo">
-        <RadixSelect.Trigger className="inp combo__inp" id={id} aria-label={placeholder}>
+        <RadixSelect.Trigger className={triggerClassName ?? 'inp combo__inp'} id={id} aria-label={placeholder}>
           <RadixSelect.Value placeholder={placeholder} />
         </RadixSelect.Trigger>
         <RadixSelect.Icon asChild>

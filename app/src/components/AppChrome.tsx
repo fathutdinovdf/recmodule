@@ -21,6 +21,7 @@ import { IconSprite, Icon } from './Icons';
 import { switchUser } from '@/lib/session-actions';
 import type { SessionUser } from '@/lib/session';
 import { Hint } from '@/components/ui/Hint';
+import { Select } from '@/components/ui/Select';
 import { ПереключательТемы } from './ThemeToggle';
 
 interface NavItem {
@@ -170,23 +171,19 @@ function ПереключательПользователя({
   return (
     <div className="user" title={`${user.position ?? ''} · ${РОЛЬ(user)}`}>
       <span className="avatar">{инициалы}</span>
-      <select
-        className="userpick"
+      <Select
+        triggerClassName="userpick"
         value={user.login}
         disabled={идёт}
+        options={users.map((u) => ({ value: u.login, label: `${u.fullName} · ${РОЛЬ(u)}` }))}
         /* router.refresh() обязателен: revalidatePath в server action чистит
            кэш, но текущий отрисованный экран сам по себе не пересобирается —
-           без него select возвращается к прежнему пользователю, и смена роли
+           без него список возвращается к прежнему пользователю, и смена роли
            выглядит как не сработавшая. */
-        onChange={(e) => {
-          const login = e.target.value;
+        onValueChange={(login) => {
           начать(async () => { await switchUser(login); router.refresh(); });
         }}
-      >
-        {users.map((u) => (
-          <option key={u.login} value={u.login}>{u.fullName} · {РОЛЬ(u)}</option>
-        ))}
-      </select>
+      />
     </div>
   );
 }

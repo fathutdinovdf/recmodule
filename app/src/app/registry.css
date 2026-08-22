@@ -307,8 +307,27 @@ body.is-resizing { cursor: col-resize; user-select: none; }
   text-align: left;
 }
 .tile { align-items: center; text-align: center; }
+
+/* Выделение и нажатие анимированы: отбор считает сервер, ответ идёт заметное
+   время, и без перехода плитка выглядит ненажатой до перерисовки таблицы.
+   Класс is-on ставится оптимистично в RegistryTiles. */
+.tile {
+  transition: background .18s ease, border-color .22s ease,
+              transform .18s cubic-bezier(.2, .8, .2, 1), box-shadow .18s ease;
+}
 .tile:hover { background: var(--state-hover); }
-.tile.is-on { border-color: var(--component-accent); background: var(--state-selected-light); }
+.tile:active { transform: scale(.97); }
+.tile.is-on {
+  border-color: var(--component-accent); background: var(--state-selected-light);
+  transform: translateY(-2px); box-shadow: var(--elevation-2);
+}
+
+/* Анимация тут — украшение, а не смысл: у кого движение отключено,
+   выделение просто появляется. */
+@media (prefers-reduced-motion: reduce) {
+  .tile { transition: none; }
+  .tile:active, .tile.is-on { transform: none; }
+}
 .tile__n {
   font: var(--font-weight-headline) var(--font-size-h3) / var(--line-height-h3) var(--font-family-headline);
   color: var(--text-heading);

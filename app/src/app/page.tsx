@@ -16,10 +16,10 @@ import type { RecommendationRow } from '@/db/recommendations';
 import { control, fmtDur, toWindow } from '@/domain/workhours';
 import { Icon } from '@/components/Icons';
 import { Hint } from '@/components/ui/Hint';
-import { CountingNumber } from '@/components/animate-ui/primitives/animate/counting-number';
 import { КОЛОНКИ } from './registry-columns';
 import { RegistryHead } from './registry-head';
 import { RegistrationLauncher } from './registration-launcher';
+import { RegistryTiles } from './registry-tiles';
 
 export const dynamic = 'force-dynamic';
 
@@ -219,19 +219,12 @@ export default async function Page({
         </div>
       </div>
 
-      <section className="tiles">
-        {ПЛИТКИ.map((t) => {
-          const n = t.statuses.reduce((a, s) => a + (счётчики[s] ?? 0), 0);
-          const включена = плитка === t.key;
-          return (
-            <Link key={t.key} className={`tile ${включена ? 'is-on' : ''}`}
-                  href={ссылка({ tile: включена ? undefined : t.key, page: undefined })}>
-              <span className="tile__n"><CountingNumber value={n} /></span>
-              <span className="tile__l">{t.label}</span>
-            </Link>
-          );
-        })}
-      </section>
+      <RegistryTiles active={плитка ?? null} items={ПЛИТКИ.map((t) => ({
+        key: t.key,
+        label: t.label,
+        n: t.statuses.reduce((a, s) => a + (счётчики[s] ?? 0), 0),
+        href: ссылка({ tile: плитка === t.key ? undefined : t.key, page: undefined }),
+      }))} />
 
       <section className="panel">
         <div className="tablewrap">
