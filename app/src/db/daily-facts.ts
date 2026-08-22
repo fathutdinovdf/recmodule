@@ -103,9 +103,13 @@ export async function factHistory(wellId: number, date: Date): Promise<FactEvent
 export async function editCounts(
   wellId: number, from: Date, to: Date,
 ): Promise<Map<string, number>> {
+  /* Первичный ввод (old_value IS NULL) правкой не считается. Журнал пишет и
+     его тоже, поэтому без этого условия точка в углу клетки стояла у любых
+     суток со значением и означала «в журнале что-то есть», а не «значение
+     меняли» — то есть не отличала ничего от ничего. */
   const rows = await query<{ date: Date; n: number }>(`
     SELECT date, count(*)::int AS n FROM rec.daily_fact_events
-    WHERE well_id = $1 AND date >= $2 AND date <= $3
+    WHERE well_id = $1 AND date >= $2 AND date <= $3 AND old_value IS NOT NULL
     GROUP BY date
   `, [wellId, from, to]);
   return new Map(rows.map((r) => [ключ(new Date(r.date)), Number(r.n)]));
