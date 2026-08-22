@@ -128,8 +128,13 @@
 .combo__opt[data-disabled="true"] { color: var(--text-quaternary); cursor: default; }
 
 .combo__txt { flex: 1 1 auto; min-width: 0; }
+/* Прижимается вправо своим полем, а не растяжкой соседа: текст пункта Radix
+   оборачивает в собственный span, и `flex: 1` на .combo__txt до строки не
+   доходит — подписи вставали сразу за названием и висели на разной высоте
+   колонки, каждая по длине своего названия. */
 .combo__note {
   flex: 0 0 auto;
+  margin-left: auto;
   font: var(--font-weight-text) var(--font-size-text-small) / 1 var(--font-family-text);
   color: var(--text-quaternary);
 }
