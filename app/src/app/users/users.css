@@ -31,6 +31,15 @@
 }
 .ulist__search .field { width: 100%; }
 
+/* Системные полосы прокрутки на этом экране скрыты: областей прокрутки три —
+   список, карточка и журнал, — и три серые полосы рядом читаются как решётка.
+   Вместо них накладной индикатор ScrollOverlay, как на карточке рекомендации:
+   виден во время прокрутки и гаснет. */
+.ulist__scroll, .ucard, .log { scrollbar-width: none; }
+.ulist__scroll::-webkit-scrollbar,
+.ucard::-webkit-scrollbar,
+.log::-webkit-scrollbar { width: 0; height: 0; }
+
 .ulist__scroll { overflow: auto; padding-bottom: var(--group-padding-s); }
 
 .ulist__group {
@@ -254,8 +263,6 @@
 .log {
   display: flex; flex-direction: column; gap: var(--group-gap-s);
   max-height: 320px; overflow: auto;
-  /* Место под полосу прокрутки, чтобы текст не прыгал при её появлении. */
-  padding-right: var(--item-padding-horizontal-xs);
 }
 .log__item {
   display: flex; flex-direction: column; gap: 2px;

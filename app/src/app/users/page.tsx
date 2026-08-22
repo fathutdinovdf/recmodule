@@ -14,7 +14,7 @@ import { redirect } from 'next/navigation';
 import { currentUser } from '@/lib/session';
 import { пользователи, ролиСправочник, месторождения, журналДоступа } from '@/db/users';
 import {
-  ПоискПоСписку, КарточкаПрав, Доступ, ДобавитьПользователя,
+  ПоискПоСписку, КарточкаПрав, Доступ, ДобавитьПользователя, СвойСкролл,
 } from './controls';
 import './users.css';
 
@@ -102,7 +102,7 @@ export default async function UsersPage({
           </ПоискПоСписку>
         </nav>
 
-        <section className="panel ucard">
+        <СвойСкролл className="panel ucard">
           {выбран && (
             <>
               <header className="ucard__head">
@@ -139,21 +139,21 @@ export default async function UsersPage({
                     {журнал.length === 0
                       ? <div className="usec__hint">Права этого человека ещё не меняли.</div>
                       : (
-                        <div className="log">
+                        <СвойСкролл className="log">
                           {журнал.map((с) => (
                             <div className="log__item" key={с.id}>
                               <div className="log__when">{дата(с.at)} · {с.actor}</div>
                               <div className="log__what">{с.details}</div>
                             </div>
                           ))}
-                        </div>
+                        </СвойСкролл>
                       )}
                   </section>
                 </div>
               </div>
             </>
           )}
-        </section>
+        </СвойСкролл>
       </div>
     </main>
   );

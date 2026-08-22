@@ -26,6 +26,7 @@ import { Switch } from '@/components/ui/Switch';
 import { Select } from '@/components/ui/Select';
 import { ActionDialog } from '@/components/ui/ActionDialog';
 import { CountingNumber } from '@/components/animate-ui/primitives/animate/counting-number';
+import { ScrollOverlay } from '@/components/ScrollOverlay';
 import { Icon } from '@/components/Icons';
 import type { КарточкаПользователя, РольСправочник, Месторождение } from '@/db/users';
 import {
@@ -43,6 +44,8 @@ export function ПоискПоСписку({ children }: { children: React.React
      data-search с именем, логином и ролью. Так поиск не требует второй копии
      данных на клиенте и не расходится с тем, что нарисовано. */
   const обёртка = React.useRef<HTMLDivElement>(null);
+  const [скроллер, setСкроллер] = React.useState<HTMLElement | null | undefined>(undefined);
+  React.useEffect(() => { setСкроллер(обёртка.current); }, []);
   React.useEffect(() => {
     const корень = обёртка.current;
     if (!корень) return;
@@ -78,7 +81,33 @@ export function ПоискПоСписку({ children }: { children: React.React
         </div>
       </div>
       <div className="ulist__scroll" ref={обёртка}>{children}</div>
+      <ScrollOverlay target={скроллер} />
     </>
+  );
+}
+
+/* Прокручиваемая область со своим индикатором вместо системной полосы — тот же
+   приём, что на карточке рекомендации: системная отъедает восемь пикселов у
+   содержимого и висит постоянно, а здесь таких областей на экране три сразу —
+   список, карточка и журнал, — и три серые полосы рядом читаются как решётка.
+   Индикатор появляется при прокрутке и гаснет.
+ *
+ * Обёртка клиентская, содержимое приходит с сервера пропсом children: ScrollOverlay
+ * нужен живой элемент, а не разметка. */
+export function СвойСкролл({
+  className, children,
+}: {
+  className: string; children: React.ReactNode;
+}) {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const [цель, setЦель] = React.useState<HTMLElement | null | undefined>(undefined);
+  React.useEffect(() => { setЦель(ref.current); }, []);
+
+  return (
+    <div className={className} ref={ref}>
+      {children}
+      <ScrollOverlay target={цель} />
+    </div>
   );
 }
 
