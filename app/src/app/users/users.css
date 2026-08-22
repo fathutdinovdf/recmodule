@@ -20,9 +20,14 @@
 
 .ulist { overflow: hidden; display: flex; flex-direction: column; }
 
+/* Границы контейнеров — на --border-divider, а не на его облегчённой
+   версии: в светлой теме «light» это восемь процентов непрозрачности, и
+   рамка секции на белой карточке пропадает вовсе. Облегчённый вариант
+   остаётся там, где линия и должна быть еле заметной, — между строками
+   внутри одной секции. */
 .ulist__search {
   padding: var(--group-padding-s);
-  border-bottom: 1px solid var(--border-divider-light);
+  border-bottom: 1px solid var(--border-divider);
 }
 .ulist__search .field { width: 100%; }
 
@@ -98,7 +103,7 @@
   align-items: center;
   gap: var(--group-gap-m);
   padding: var(--group-padding-l);
-  border-bottom: 1px solid var(--border-divider-light);
+  border-bottom: 1px solid var(--border-divider);
 }
 .ucard__ava {
   width: 44px; height: 44px; border-radius: 50%;
@@ -134,7 +139,7 @@
 .ucol { display: flex; flex-direction: column; gap: var(--block-gap-default); min-width: 0; }
 
 .usec {
-  border: 1px solid var(--border-divider-light);
+  border: 1px solid var(--border-divider);
   border-radius: var(--corner-radius-l);
   padding: var(--group-padding-m);
   display: flex; flex-direction: column; gap: var(--group-gap-s);
@@ -222,7 +227,7 @@
 .log__item {
   display: flex; flex-direction: column; gap: 2px;
   padding-left: var(--group-padding-s);
-  border-left: 2px solid var(--border-divider-light);
+  border-left: 2px solid var(--border-divider);
 }
 .log__when {
   font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-caption) var(--font-family-text);
