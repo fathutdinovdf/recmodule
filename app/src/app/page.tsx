@@ -9,7 +9,7 @@
 
 import Link from 'next/link';
 import {
-  listRecommendations, statusCounts,
+  listRecommendations, statusCounts, ПЛИТКИ_СТАТУСЫ,
   type FilterColumn, type SortColumn, type Period,
 } from '@/db/recommendations';
 import type { RecommendationRow } from '@/db/recommendations';
@@ -24,14 +24,14 @@ import { RegistryTiles } from './registry-tiles';
 export const dynamic = 'force-dynamic';
 
 const ПЛИТКИ = [
-  { key: 'executor', label: 'У Исполнителя', statuses: ['draft', 'registered', 'clarify'] },
-  { key: 'customer', label: 'У Заказчика', statuses: ['sent', 'review'] },
-  { key: 'approved', label: 'Согласовано', statuses: ['approved'] },
-  { key: 'window', label: 'Окно эффекта', statuses: ['windowOpen'] },
-  { key: 'confirmed', label: 'Окно закрыто', statuses: ['windowClosed'] },
-  { key: 'rejected', label: 'Отклонено', statuses: ['rejected'] },
-  { key: 'cancelled', label: 'Отменено', statuses: ['cancelled'] },
-];
+  { key: 'executor', label: 'У Исполнителя' },
+  { key: 'customer', label: 'У Заказчика' },
+  { key: 'approved', label: 'Согласовано' },
+  { key: 'window', label: 'Окно эффекта' },
+  { key: 'confirmed', label: 'Окно закрыто' },
+  { key: 'rejected', label: 'Отклонено' },
+  { key: 'cancelled', label: 'Отменено' },
+].map((t) => ({ ...t, statuses: ПЛИТКИ_СТАТУСЫ[t.key] }));
 
 /* Колонки-справочники, по которым в заголовке живёт чек-лист значений. */
 const КОЛОНКИ_ФИЛЬТРА: FilterColumn[] = [
@@ -51,12 +51,16 @@ const дт = (d: Date | null) => (d
     }).replace(',', '')
   : '—');
 
-function Ячейка({ r, col }: { r: RecommendationRow; col: typeof КОЛОНКИ[number] }) {
+function Ячейка({
+  r, col, ссылкаНаКарточку,
+}: {
+  r: RecommendationRow; col: typeof КОЛОНКИ[number]; ссылкаНаКарточку: string;
+}) {
   switch (col.key) {
     case 'number':
       return r.status === 'draft'
         ? <span className="mark">черновик</span>
-        : <Hint text="Открыть карточку рекомендации"><Link href={`/rec/${r.id}/summary`}>{r.number}</Link></Hint>;
+        : <Hint text="Открыть карточку рекомендации"><Link href={ссылкаНаКарточку}>{r.number}</Link></Hint>;
 
     case 'regDate':
       return <span className="cell-date">{дт(r.registeredAt)}</span>;
@@ -193,6 +197,16 @@ export default async function Page({
   );
   const страниц = Math.max(1, Math.ceil(total / наСтранице));
 
+  /* Querystring текущего отбора для листалки в шапке карточки: страница и
+     размер страницы туда не идут — позиция и «из скольки» у листалки не о
+     пагинации таблицы, а обо всём отфильтрованном списке целиком. */
+  const отбор = (() => {
+    const p = new URLSearchParams();
+    for (const [k, v] of Object.entries(sp)) if (v && k !== 'page' && k !== 'size') p.set(k, v);
+    return p.toString();
+  })();
+  const ссылкаНаКарточку = (id: number) => (фильтрВключён ? `/rec/${id}/summary?from=${encodeURIComponent(отбор)}` : `/rec/${id}/summary`);
+
   /* Ссылка сохраняет весь текущий отбор (фильтры, сортировку, период) и
      переопределяет только то, что явно передано, — иначе переход по
      странице пагинации или клик по плитке сбрасывал бы фильтры колонок. */
@@ -261,7 +275,7 @@ export default async function Page({
                   <tr key={r.id} className={c.kind === 'overdue' ? 'row-overdue' : ''}>
                     {КОЛОНКИ.map((col) => (
                       <td key={col.key} className={col.key === 'number' ? 'cell-num' : ''}>
-                        <Ячейка r={r} col={col} />
+                        <Ячейка r={r} col={col} ссылкаНаКарточку={ссылкаНаКарточку(r.id)} />
                       </td>
                     ))}
                   </tr>

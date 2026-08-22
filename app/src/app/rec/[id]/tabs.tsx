@@ -26,17 +26,28 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Tabs as Сегменты, TabsList, TabsTrigger } from '@/components/animate-ui/components/radix/tabs';
 import { ВКЛАДКИ } from './tabs-def';
 
-export function Tabs({ recId, counts }: { recId: number; counts: Record<string, number> }) {
+export function Tabs({ recId, counts, непрочитаноОбсуждение }: {
+  recId: number;
+  counts: Record<string, number>;
+  /** Персистентный остаток непрочитанного по этой рекомендации (rec.notifications). */
+  непрочитаноОбсуждение: number;
+}) {
   const path = usePathname();
   const router = useRouter();
   const текущая = ВКЛАДКИ.find((t) => path === `/rec/${recId}/${t.key}`)?.key ?? '';
 
+  /* Отбор реестра, из которого открыли карточку (?from=…), едет с ней по
+     вкладкам: иначе первый же клик по вкладке терял бы его, и листалка в
+     шапке (pager.tsx) снова считала бы соседей по всему реестру. */
+  const from = useSearchParams().get('from');
+  const сХвостом = (href: string) => (from ? `${href}?from=${encodeURIComponent(from)}` : href);
+
   ПрогревВкладок(recId, текущая, router);
-  const { приехало, новое } = ЖивойСчётчикОбсуждения(recId, текущая);
+  const { приехало, новое } = ЖивойСчётчикОбсуждения(recId, текущая, непрочитаноОбсуждение > 0);
 
   return (
     /* Вертикальный отступ — инлайном: `.tabs` из card.css задаёт `padding: 0
@@ -46,7 +57,7 @@ export function Tabs({ recId, counts }: { recId: number; counts: Record<string, 
       {/* Полоса шире карточки на узком экране: семь сегментов не сжимаются до
           нечитаемого, а уезжают за край с прокруткой. */}
       <Сегменты value={текущая} activationMode="manual"
-                onValueChange={(v) => { if (v !== текущая) router.push(`/rec/${recId}/${v}`); }}
+                onValueChange={(v) => { if (v !== текущая) router.push(сХвостом(`/rec/${recId}/${v}`)); }}
                 className="min-w-0 overflow-x-auto scrollbar-none">
         <TabsList>
           {ВКЛАДКИ.map((t) => {
@@ -85,7 +96,7 @@ export function Tabs({ recId, counts }: { recId: number; counts: Record<string, 
                     открытой вкладки — пять рендеров наперегонки за один сервер.
                     Вкладки за краем горизонтальной прокрутки он при этом не
                     трогает вовсе. */}
-                <Link href={`/rec/${recId}/${t.key}`} prefetch={false}>{внутри}</Link>
+                <Link href={сХвостом(`/rec/${recId}/${t.key}`)} prefetch={false}>{внутри}</Link>
               </TabsTrigger>
             );
           })}
@@ -207,32 +218,45 @@ const новыйКадр = (мс: number) => new Promise((r) => setTimeout(r, м
  *
  * Счётчик поверх серверного числа, а не вместо него: layout при переходах
  * между вкладками не перерисовывается, свежее число оттуда не придёт.
+ *
+ * Точка «есть новое» стартует не всегда с нуля: `естьНепрочитанное` приходит
+ * из персистентной таблицы (rec.notifications, миграция 018) и помнит о
+ * репликах, написанных, пока человек был не в сети, — раньше это состояние
+ * терялось при каждой перезагрузке страницы.
  */
-function ЖивойСчётчикОбсуждения(recId: number, текущая: string) {
+function ЖивойСчётчикОбсуждения(recId: number, текущая: string, естьНепрочитанное: boolean) {
   const [приехало, setПриехало] = useState(0);
-  const [новое, setНовое] = useState(false);
+  const [новое, setНовое] = useState(текущая !== 'log' && естьНепрочитанное);
 
   useEffect(() => {
-    /* Открыли обсуждение — пометка снята, а надбавка обнулена: чат при
-       открытии просит свежий рендер, и серверное число приезжает уже с этими
-       репликами. Не обнулить — они посчитались бы дважды. */
+    if (!текущая) return; // адрес ещё не сопоставлен со вкладкой
+
+    /* Открыли обсуждение — надбавка обнулена: чат при открытии просит свежий
+       рендер, и серверное число приезжает уже с этими репликами. Не обнулить —
+       они посчитались бы дважды. Канал при этом не закрываем и здесь: пока
+       вкладка открыта, реплики, отправленные тут же, больше никак не долетят
+       до счётчика на полосе вкладок — свежий рендер при открытии был
+       разовым, а лента после него живёт только каналом. */
     if (текущая === 'log') {
       setНовое(false);
       setПриехало(0);
-      return;
     }
-    if (!текущая) return; // адрес ещё не сопоставлен со вкладкой
 
     const канал = new EventSource(`/api/rec/${recId}/stream`);
     канал.addEventListener('comment', () => {
       setПриехало((n) => n + 1);
-      setНовое(true);
+      /* Точку «есть новое» на своей же открытой вкладке не зажигаем — сама
+         реплика уже видна в ленте под ней. */
+      if (текущая !== 'log') setНовое(true);
     });
     return () => канал.close();
   }, [recId, текущая]);
 
-  /* Соседняя рекомендация — свой счёт с нуля. */
-  useEffect(() => { setПриехало(0); setНовое(false); }, [recId]);
+  /* Соседняя рекомендация — свой счёт: приехавшее по каналу всегда с нуля, а
+     точка «есть новое» берёт персистентный остаток той рекомендации, на
+     которую перешли, а не гасится вслепую. */
+  useEffect(() => { setПриехало(0); setНовое(текущая !== 'log' && естьНепрочитанное); },
+    [recId, естьНепрочитанное]);
 
   return { приехало, новое };
 }

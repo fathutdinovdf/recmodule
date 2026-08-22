@@ -93,7 +93,13 @@ export function ScrollOverlay({ target }: { target?: HTMLElement | null }) {
 export function найтиСкроллер(от: HTMLElement | null): HTMLElement | null {
   for (let el = от?.parentElement ?? null; el; el = el.parentElement) {
     const { overflowY } = getComputedStyle(el);
-    if ((overflowY === 'auto' || overflowY === 'scroll') && el.scrollHeight > el.clientHeight) return el;
+    /* Отбор по текущему `scrollHeight > clientHeight` ловил контейнер только
+       если он уже переполнен в момент поиска. Пустой чат на входе не
+       переполнен, элемент терялся навсегда — эффект ищет один раз при
+       монтировании, — и более поздняя автопрокрутка к новой реплике молчала.
+       Достаточно структурного признака: это прокручиваемый предок, даже если
+       ему пока нечего прокручивать. */
+    if (overflowY === 'auto' || overflowY === 'scroll') return el;
   }
   return null;
 }

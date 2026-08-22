@@ -14,6 +14,9 @@ import type { SessionUser } from './session';
 
 export const этоИсполнитель = (u: SessionUser | null): boolean => u?.side === 'executor';
 
+/** Администратор модуля — ведёт пользователей и справочники, рекомендаций у него нет (решение 82). */
+export const этоАдминистратор = (u: SessionUser | null): boolean => u?.role === 'admin';
+
 /** Решение по рекомендации принимает Заказчик, и только с правом решения (решение 89). */
 export const этоРешающий = (u: SessionUser | null): boolean =>
   u?.side === 'customer' && u.canDecide;

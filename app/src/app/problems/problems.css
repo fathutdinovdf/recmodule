@@ -1,0 +1,55 @@
+/* Экран «Заявки о проблемах».
+ *
+ * Собственные классы, общие не переопределяются: `.panel`, `.pagehead`
+ * берутся из registry.css как есть.
+ */
+
+.preports {
+  display: flex; flex-direction: column; gap: var(--block-gap-default);
+  margin-top: var(--block-gap-default);
+}
+
+.preport {
+  padding: var(--group-padding-l);
+  display: flex; flex-direction: column; gap: var(--group-gap-m);
+}
+
+.preport__head {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--group-gap-m);
+}
+
+.preport__ava {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--bg-secondary); color: var(--text-secondary);
+  font: var(--font-weight-subtitle) var(--font-size-text-small) / 1 var(--font-family-text);
+}
+
+.preport__who { display: flex; flex-direction: column; min-width: 0; }
+.preport__name {
+  font: var(--font-weight-subtitle) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  color: var(--text-primary);
+}
+.preport__sub {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+
+/* Путь экрана — моноширинным: это адрес, а не название, и переменная ширина
+   букв здесь только мешала бы сверять его глазами со ссылкой в другой вкладке. */
+.preport__page {
+  font-family: var(--font-family-mono, monospace);
+  max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.preport__text {
+  margin: 0;
+  white-space: pre-wrap;
+  font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  color: var(--text-primary);
+}
+
+.preport__files { display: flex; flex-direction: column; gap: var(--item-gap-horizontal-s); }

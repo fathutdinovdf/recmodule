@@ -14,6 +14,7 @@ import { notFound } from 'next/navigation';
 import { Icon } from '@/components/Icons';
 import { Hint } from '@/components/ui/Hint';
 import { getCard, getNeighbours, getWellHistory } from '@/db/card';
+import { getUnreadCountForRec } from '@/db/notifications';
 import { getWellEconomy } from '@/db/economy';
 import { getWell, dailySeriesFor, PARAM } from '@/db/wells-data';
 import { dayStart } from '@/domain/measurements';
@@ -23,6 +24,7 @@ import { WINDOW_DAYS } from '@/services/effect-store';
 import { дата, число, прирост, рубли } from '@/lib/format';
 import { currentUser } from '@/lib/session';
 import { Tabs } from './tabs';
+import { Pager } from './pager';
 import { CardActionsMenu } from './card-actions-menu';
 import { Спарклайн } from './spark';
 import '../../card.css';
@@ -63,6 +65,8 @@ export default async function CardLayout({
        открывается. */
     читатьСкважину(card.wellId),
   ]);
+
+  const непрочитаноОбсуждение = пользователь ? await getUnreadCountForRec(пользователь.id, card.id) : 0;
 
   const прогноз = forecastTotal(econ, card.expectQzh, card.expectQn,
     скважина.well?.oilDensity ?? null, скважина.well?.waterDensity ?? null, WINDOW_DAYS);
@@ -112,21 +116,7 @@ export default async function CardLayout({
           {спорОБазе && <span className="tag tag--late">база оспорена</span>}
 
           <div className="cardhead__trailing">
-            <div className="pager">
-              <Hint text="Предыдущая рекомендация">
-                {соседи.prevId
-                  ? <Link className="cnbtn" href={`/rec/${соседи.prevId}/summary`} aria-label="Предыдущая рекомендация"><Icon id="prev" /></Link>
-                  : <span className="cnbtn is-off" aria-label="Предыдущей рекомендации нет"><Icon id="prev" /></span>}
-              </Hint>
-              <Hint text="Позиция в реестре">
-                <span className="pager__pos">{соседи.pos} из {соседи.total}</span>
-              </Hint>
-              <Hint text="Следующая рекомендация">
-                {соседи.nextId
-                  ? <Link className="cnbtn" href={`/rec/${соседи.nextId}/summary`} aria-label="Следующая рекомендация"><Icon id="next" /></Link>
-                  : <span className="cnbtn is-off" aria-label="Следующей рекомендации нет"><Icon id="next" /></span>}
-              </Hint>
-            </div>
+            <Pager recId={card.id} fallback={соседи} />
             <CardActionsMenu status={card.status} recId={card.id}
                              executor={пользователь?.side === 'executor'} />
           </div>
@@ -167,7 +157,7 @@ export default async function CardLayout({
           <Tabs recId={card.id} counts={{
             files: card.attachmentsCount,
             log: card.commentsCount,
-          }} />
+          }} непрочитаноОбсуждение={непрочитаноОбсуждение} />
           <div className="tabpane">{children}</div>
         </section>
 

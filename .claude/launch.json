@@ -16,6 +16,14 @@
       "autoPort": false
     },
     {
+      "name": "recmodule-3102",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["next", "dev", "-p", "3102"],
+      "cwd": "app",
+      "port": 3102,
+      "autoPort": false
+    },
+    {
       "name": "data-source-manual",
       "runtimeExecutable": "node",
       "runtimeArgs": [

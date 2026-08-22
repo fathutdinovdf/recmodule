@@ -213,6 +213,56 @@ const SORT_EXPR: Record<SortColumn, string> = {
   decision: 'decision_kind',
 };
 
+/* Плитки над таблицей — какие статусы за какой стоят. Источник истины один:
+   и сама таблица плиток в реестре (app/page.tsx), и разбор ?tile= для
+   листалки по карточке (getFilteredNeighbours) берут отсюда, иначе плитка и
+   декодированный из ссылки фильтр разошлись бы по составу статусов. */
+export const ПЛИТКИ_СТАТУСЫ: Record<string, string[]> = {
+  executor: ['draft', 'registered', 'clarify'],
+  customer: ['sent', 'review'],
+  approved: ['approved'],
+  window: ['windowOpen'],
+  confirmed: ['windowClosed'],
+  rejected: ['rejected'],
+  cancelled: ['cancelled'],
+};
+
+/* Разбор querystring реестра в ListFilter — один код для самого реестра и для
+   листалки по карточке (см. getFilteredNeighbours), чтобы «то же самое
+   отфильтровано» значило буквально то же самое, а не два похожих парсера. */
+export function parseListFilterFromSearchParams(
+  sp: Record<string, string | undefined>,
+): Omit<ListFilter, 'limit' | 'offset'> {
+  const КОЛОНКИ_ФИЛЬТРА: FilterColumn[] = [
+    'field', 'direction', 'well', 'priority', 'executor', 'status', 'control', 'decision',
+  ];
+
+  const colFilters: Partial<Record<FilterColumn, string[]>> = {};
+  for (const key of КОЛОНКИ_ФИЛЬТРА) {
+    const raw = sp[key];
+    if (raw) colFilters[key] = raw.split('|').filter(Boolean);
+  }
+
+  const text: { number?: string; problem?: string } = {
+    number: sp.number || undefined,
+    problem: sp.problem || undefined,
+  };
+
+  const period: Period | undefined = sp.period === '7' || sp.period === '30' || sp.period === 'month'
+    ? sp.period : undefined;
+
+  let sort: { key: SortColumn; dir: 'asc' | 'desc' } | undefined;
+  if (sp.sort) {
+    const [key, dir] = sp.sort.split(':');
+    if (key && (dir === 'asc' || dir === 'desc')) sort = { key: key as SortColumn, dir };
+  }
+
+  return {
+    statuses: sp.tile ? ПЛИТКИ_СТАТУСЫ[sp.tile] : undefined,
+    colFilters, text, period, sort,
+  };
+}
+
 function buildConditions(filter: ListFilter): { where: string; params: unknown[] } {
   const условия: string[] = [];
   const параметры: unknown[] = [];
@@ -316,6 +366,52 @@ export async function listRecommendations(filter: ListFilter = {}): Promise<{
       windowOpenAt: r.window_open_at as Date | null,
       windowCloseAt: r.window_close_at as Date | null,
     })),
+  };
+}
+
+export interface Neighbours {
+  prevId: number | null;
+  nextId: number | null;
+  pos: number;
+  total: number;
+}
+
+/** Соседи по карточке в границах текущего отбора реестра — листалка в шапке
+ *  карточки, открытой переходом из отфильтрованного/отсортированного
+ *  реестра. Условия и порядок — те же buildConditions/SORT_EXPR, что и в
+ *  listRecommendations, иначе позиция и «из скольки» разошлись бы с тем, что
+ *  человек только что видел в таблице. */
+export async function getFilteredNeighbours(
+  id: number, filter: Omit<ListFilter, 'limit' | 'offset'>,
+): Promise<Neighbours> {
+  const { where, params } = buildConditions(filter);
+  const sort = filter.sort;
+  const orderBy = sort
+    ? `${SORT_EXPR[sort.key]} ${sort.dir === 'desc' ? 'DESC' : 'ASC'} NULLS LAST, id DESC`
+    : 'registered_at DESC NULLS FIRST, id DESC';
+
+  const rows = await query<Record<string, unknown>>(`
+    WITH base AS (${await основа()}),
+    filtered AS (SELECT * FROM base ${where}),
+    ordered AS (
+      SELECT id,
+             lag(id)  OVER w AS prev_id,
+             lead(id) OVER w AS next_id,
+             row_number() OVER w AS pos,
+             count(*) OVER () AS total
+      FROM filtered
+      WINDOW w AS (ORDER BY ${orderBy})
+    )
+    SELECT prev_id, next_id, pos, total FROM ordered WHERE id = $${params.length + 1}
+  `, [...params, id]);
+
+  const r = rows[0];
+  if (!r) return { prevId: null, nextId: null, pos: 0, total: 0 };
+  return {
+    prevId: r.prev_id === null ? null : Number(r.prev_id),
+    nextId: r.next_id === null ? null : Number(r.next_id),
+    pos: Number(r.pos),
+    total: Number(r.total),
   };
 }
 

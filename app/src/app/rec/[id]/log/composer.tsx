@@ -203,7 +203,10 @@ export function Композер({ люди, отправить, ошибка }:
                onChange={(e) => добавитьФайлы(e.target.files)} />
 
         <Hint text="Прикрепить файл">
+          {/* Без preflight нативная кнопка несёт свой серый фон — снимаем
+              только его, рамка и цвет иконки остаются как в базовом ghost. */}
           <Button type="button" variant="ghost" size="icon" aria-label="Прикрепить файл"
+                  className="bg-transparent"
                   onClick={() => выбор.current?.click()}>
             <Paperclip className="size-4" />
           </Button>

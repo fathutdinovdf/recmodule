@@ -11,6 +11,7 @@
 import { notFound } from 'next/navigation';
 import { getCard } from '@/db/card';
 import { getLog } from '@/db/log';
+import { markRecRead } from '@/db/notifications';
 import { allUsers, currentUser } from '@/lib/session';
 import { вЛенту } from './format';
 import { Чат } from './chat';
@@ -29,6 +30,9 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const [записи, люди] = await Promise.all([
     getLog(card.id, user?.id ?? null),
     allUsers(),
+    /* Открыли вкладку — значит увидели ленту целиком: гасим непрочитанное по
+       этой рекомендации здесь же, а не отдельным запросом с клиента. */
+    user ? markRecRead(user.id, card.id) : Promise.resolve(),
   ]);
 
   const сейчас = new Date();

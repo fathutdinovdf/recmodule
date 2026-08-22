@@ -15,6 +15,7 @@
 
 import { transaction } from '@/db/pool';
 import { getComment } from '@/db/log';
+import { insertCommentNotifications } from '@/db/notifications';
 import { currentUser } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
@@ -78,6 +79,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         ON CONFLICT DO NOTHING
       `, [реплика.id, упомянуты]);
     }
+
+    await insertCommentNotifications(client, {
+      recId, commentId: Number(реплика.id), authorId: user.id, authorName: user.fullName,
+      text: текст, mentionedUserIds: упомянуты,
+    });
 
     for (const f of файлы) {
       const байты = Buffer.from(await f.arrayBuffer());

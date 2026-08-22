@@ -376,6 +376,11 @@
   flex: 0 0 var(--sizing-context-column-max);
   overflow-y: auto;
   display: flex; flex-direction: column; gap: var(--screen-gap-compact);
+  /* overflow-y: auto по спецификации переводит overflow-x тоже в auto —
+     тень карточек (.card, box-shadow вместо рамки) обрезается вплотную по
+     границе колонки и выглядит как отсутствующая рамка. Отступ даёт тени
+     место и решает это без своей рамки (решение 71). */
+  padding: 6px;
 }
 .card {
   background: var(--bg-card);
