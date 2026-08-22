@@ -135,6 +135,11 @@
 }
 .combo__opt[data-highlighted] .combo__note { color: var(--text-tertiary); }
 .combo__tick { flex: 0 0 auto; color: var(--icon-accent); }
+/* Постоянный слот под галочку: см. комментарий в Select.tsx. */
+.combo__tickslot {
+  flex: 0 0 16px; height: 16px;
+  display: flex; align-items: center; justify-content: center;
+}
 
 /* Кнопки прокрутки длинного списка. Radix показывает их сам, когда список
    не помещается; в макете список просто прокручивался колесом. */

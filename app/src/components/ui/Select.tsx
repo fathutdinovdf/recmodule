@@ -65,9 +65,17 @@ export function Select({
                   <span className="combo__txt">{o.label}</span>
                 </RadixSelect.ItemText>
                 {o.note && <span className="combo__note">{o.note}</span>}
-                <RadixSelect.ItemIndicator asChild>
-                  <span className="combo__tick"><Icon id="check" /></span>
-                </RadixSelect.ItemIndicator>
+                {/* Место под галочку занято всегда, даже когда её нет.
+                    Radix рисует индикатор только у выбранного пункта, и без
+                    постоянного слота пояснение справа съезжало ровно на
+                    ширину галочки — у выбранной строки оно стояло не там, где
+                    у соседних. Combobox решает то же самое иначе: там иконка
+                    всегда в разметке и прячется видимостью. */}
+                <span className="combo__tickslot">
+                  <RadixSelect.ItemIndicator asChild>
+                    <span className="combo__tick"><Icon id="check" /></span>
+                  </RadixSelect.ItemIndicator>
+                </span>
               </RadixSelect.Item>
             ))}
           </RadixSelect.Viewport>
