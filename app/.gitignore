@@ -1,6 +1,9 @@
 node_modules/
 .next/
 out/
+
+# Снимки самопроверки вёрстки (npm run shot)
+.shots/
 *.tsbuildinfo
 next-env.d.ts
 
