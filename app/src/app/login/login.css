@@ -1,0 +1,60 @@
+/* Экран входа. Единственный экран без шапки и левой навигации: до входа
+   показывать в них нечего.
+ *
+ * Собственные классы, ничего общего не переопределяют: `.field` и `.btn`
+ * берутся из registry.css как есть, здесь им задаётся только высота — на
+ * экране из двух полей штатные 28 px выглядят строкой фильтра, а не формой. */
+
+.login {
+  min-height: 100dvh;
+  display: grid; place-items: center;
+  padding: var(--group-padding-l);
+  background: var(--bg-secondary);
+}
+
+.login__card {
+  width: 320px;
+  display: flex; flex-direction: column; gap: var(--group-gap-m);
+  background: var(--bg-card);
+  border-radius: var(--corner-radius-section);
+  box-shadow: var(--elevation-2);
+  /* 24 px против штатных 16: карточка стоит одна посреди пустого экрана, и
+     на ней поля прижимались к краю (решение 71 — отступление с причиной). */
+  padding: 24px;
+}
+
+.login__title {
+  font: var(--font-weight-headline) var(--font-size-h5) / var(--line-height-h5) var(--font-family-headline);
+  color: var(--text-heading);
+}
+.login__sub {
+  margin-top: var(--item-gap-vertical-xs);
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+
+.login__form { display: flex; flex-direction: column; gap: var(--group-gap-xs); }
+.login__label {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-secondary);
+}
+.login__field { height: 32px; width: 100%; }
+.login__submit { height: 32px; justify-content: center; margin-top: var(--group-gap-s); }
+
+.login__error {
+  padding: var(--item-padding-vertical-s) var(--item-padding-horizontal-s);
+  border-radius: var(--corner-radius-component);
+  background: var(--status-error-light-bg);
+  color: var(--status-error-text);
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+}
+
+/* Подсказка с демонстрационными учётными записями. Видна только в разработке:
+   в рабочем контуре списка логинов на экране входа быть не может. */
+.login__hint {
+  border-top: 1px solid var(--border-divider-light);
+  padding-top: var(--group-gap-s);
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+.login__hint b { font-weight: var(--font-weight-subtitle); color: var(--text-secondary); }

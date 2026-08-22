@@ -29,10 +29,15 @@ export function Select({
   name, options, value, defaultValue, onValueChange,
   placeholder = 'Выберите значение', required, disabled, id, triggerClassName,
 }: {
+  /* Необязательно: список бывает и вне формы — на экране прав он применяет
+     выбор серверным действием сразу, и скрытое поле там некому отправлять. */
   name?: string;
   options: SelectOption[];
-  value?: string;
   defaultValue?: string;
+  /* Контролируемый режим: на экране прав список — часть черновика карточки, и
+     «Отменить» должно возвращать его к прежней роли, а не оставлять
+     показанной ту, которую выбрали и не сохранили. */
+  value?: string;
   onValueChange?: (value: string) => void;
   placeholder?: string;
   required?: boolean;
@@ -67,9 +72,17 @@ export function Select({
                   <span className="combo__txt">{o.label}</span>
                 </RadixSelect.ItemText>
                 {o.note && <span className="combo__note">{o.note}</span>}
-                <RadixSelect.ItemIndicator asChild>
-                  <span className="combo__tick"><Icon id="check" /></span>
-                </RadixSelect.ItemIndicator>
+                {/* Место под галочку занято всегда, даже когда её нет.
+                    Radix рисует индикатор только у выбранного пункта, и без
+                    постоянного слота пояснение справа съезжало ровно на
+                    ширину галочки — у выбранной строки оно стояло не там, где
+                    у соседних. Combobox решает то же самое иначе: там иконка
+                    всегда в разметке и прячется видимостью. */}
+                <span className="combo__tickslot">
+                  <RadixSelect.ItemIndicator asChild>
+                    <span className="combo__tick"><Icon id="check" /></span>
+                  </RadixSelect.ItemIndicator>
+                </span>
               </RadixSelect.Item>
             ))}
           </RadixSelect.Viewport>

@@ -17,8 +17,10 @@
 import { useTransition } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { LogOut } from 'lucide-react';
 import { IconSprite, Icon } from './Icons';
 import { switchUser } from '@/lib/session-actions';
+import { выйти } from '@/lib/auth-actions';
 import type { SessionUser } from '@/lib/session';
 import { Hint } from '@/components/ui/Hint';
 import { Select } from '@/components/ui/Select';
@@ -31,6 +33,9 @@ interface NavItem {
   /* Пункты, которых ещё нет: показываются приглушённо и не кликаются —
      так же, как в макете. Прятать их нельзя: по ним видно объём модуля. */
   muted?: boolean;
+  /* Пункт администратора модуля. Этот прячется по-настоящему: остальным он не
+     «пока недоступен», а не нужен вовсе — чужие полномочия не их работа. */
+  admin?: boolean;
 }
 
 interface NavSection {
@@ -59,7 +64,7 @@ const НАВИГАЦИЯ: NavSection[] = [
     items: [
       { href: '/economy', label: 'Экономическая модель' },
       { label: 'Справочники', muted: true },
-      { label: 'Пользователи и роли', muted: true },
+      { href: '/users', label: 'Пользователи и роли', admin: true },
       { label: 'Календарь и SLA', muted: true },
       { label: 'Отчёты и выгрузки', muted: true },
     ],
@@ -70,7 +75,8 @@ export function AppChrome({
   children, user, users,
 }: {
   children: React.ReactNode;
-  user: SessionUser | null;
+  /* Не `null`: до входа оболочка не рисуется вовсе — см. AppShell. */
+  user: SessionUser;
   users: SessionUser[];
 }) {
   const path = usePathname();
@@ -97,6 +103,13 @@ export function AppChrome({
             </button>
           </Hint>
           <ПереключательПользователя user={user} users={users} />
+          <Hint text="Выйти">
+            <form action={выйти}>
+              <button className="iconbtn iconbtn--lg" type="submit" aria-label="Выйти">
+                <LogOut size={20} />
+              </button>
+            </form>
+          </Hint>
         </div>
       </header>
 
@@ -105,7 +118,7 @@ export function AppChrome({
           {НАВИГАЦИЯ.map((секция) => (
             <div key={секция.title}>
               <div className="sidenav__section">{секция.title}</div>
-              {секция.items.map((пункт) => {
+              {секция.items.filter((п) => !п.admin || user.role === 'admin').map((пункт) => {
                 const активен = пункт.href === path;
                 const классы = ['navitem', активен ? 'is-active' : '',
                   пункт.muted ? 'navitem--muted' : ''].filter(Boolean).join(' ');
@@ -145,28 +158,38 @@ export function AppChrome({
   );
 }
 
-const РОЛЬ = (u: SessionUser) => (u.side === 'executor' ? 'Исполнитель'
-  : u.canDecide ? 'Заказчик, решает' : 'Заказчик, без права решения');
+/* Роль показывается названием из справочника, а право решения приписывается
+   к нему: наблюдателя Заказчика от инженера отличает именно оно, а роль у них
+   бывает одна и та же (решение 89). */
+const РОЛЬ = (u: SessionUser) => (u.side === 'customer' && !u.canDecide
+  ? `${u.roleLabel}, без права решения` : u.roleLabel);
 
-/* На месте имени в макете — выбор пользователя. Это заглушка входа: в рабочем
-   контуре пользователь приходит из ВМАП и не выбирается. Здесь без неё нельзя
-   ни показать, ни проверить ветки, которые от роли зависят: кнопки решения
-   видит только Заказчик с правом решения, факт реализации фиксирует только
-   Исполнитель. */
+/* На месте имени в макете — выбор пользователя. Это подмена входа, и живёт она
+   только в разработке: в рабочем контуре список пуст, и на его месте остаётся
+   имя вошедшего. Без переключателя невозможно проверить ветки, зависящие от
+   роли: кнопки решения видит только Заказчик с правом решения, факт реализации
+   фиксирует только Исполнитель, — а выходить и входить ради каждой шесть раз
+   невыносимо. */
 function ПереключательПользователя({
   user, users,
 }: {
-  user: SessionUser | null; users: SessionUser[];
+  user: SessionUser; users: SessionUser[];
 }) {
   const [идёт, начать] = useTransition();
   const router = useRouter();
-
-  if (!user) return <div className="user"><span className="avatar">—</span>Пользователь не определён</div>;
 
   /* Инициалы для аватара: из «Гадаятов Ф.Г.» получается «ГФ» — первая буква
      фамилии и первая буква имени, как в макете. */
   const части = user.fullName.split(' ');
   const инициалы = ((части[0]?.[0] ?? '') + (части[1]?.[0] ?? '')).toUpperCase();
+
+  if (users.length === 0) {
+    return (
+      <div className="user" title={`${user.position ?? ''} · ${РОЛЬ(user)}`}>
+        <span className="avatar">{инициалы}</span>{user.fullName}
+      </div>
+    );
+  }
 
   return (
     <div className="user" title={`${user.position ?? ''} · ${РОЛЬ(user)}`}>
