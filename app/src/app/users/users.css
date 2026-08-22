@@ -248,7 +248,15 @@
 
 /* ------------------------------ журнал ------------------------------ */
 
-.log { display: flex; flex-direction: column; gap: var(--group-gap-s); }
+/* Своя прокрутка: журнал растёт без границы, а растягивать им карточку
+   нельзя — полоса сохранения и всё, что выше, уезжают за нижний край.
+   Двенадцать строк примерно: дальше смотрят прокруткой. */
+.log {
+  display: flex; flex-direction: column; gap: var(--group-gap-s);
+  max-height: 320px; overflow: auto;
+  /* Место под полосу прокрутки, чтобы текст не прыгал при её появлении. */
+  padding-right: var(--item-padding-horizontal-xs);
+}
 .log__item {
   display: flex; flex-direction: column; gap: 2px;
   padding-left: var(--group-padding-s);
