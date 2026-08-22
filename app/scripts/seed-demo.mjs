@@ -59,7 +59,9 @@ const ПОЛЬЗОВАТЕЛИ = [
   { login: 'tevs', full_name: 'Тевс И.О.', position: 'Эксперт по механизированному фонду', role: 'expert', can_decide: false, can_edit_economy: false },
   { login: 'gadayatov', full_name: 'Гадаятов Ф.Г.', position: 'Ведущий технолог ЦДНГ', role: 'engineer', can_decide: true, can_edit_economy: false },
   { login: 'safin', full_name: 'Сафин Р.М.', position: 'Начальник технологического отдела', role: 'customerLead', can_decide: true, can_edit_economy: false },
-  { login: 'shakirov', full_name: 'Шакиров И.Р.', position: 'Технолог', role: 'viewer', can_decide: false, can_edit_economy: false },
+  /* Наблюдатель Заказчика — это инженер без права решения, а не своя роль
+     (решение 89): карточку он видит целиком, не хватает только кнопок. */
+  { login: 'shakirov', full_name: 'Шакиров И.Р.', position: 'Технолог', role: 'engineer', can_decide: false, can_edit_economy: false },
   /* Администратор модуля: рекомендаций у него не бывает (решение 82), но без
      него не открыть экран «Пользователи и роли» — он там единственный, кому
      этот экран показывают. */
