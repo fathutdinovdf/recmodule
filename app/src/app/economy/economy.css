@@ -1,0 +1,605 @@
+/* Экран «Экономическая модель».
+ *
+ * Собственные классы; общие (`.panel`, `.btn`, `.pagehead`) берутся из
+ * registry.css как есть и не переопределяются.
+ *
+ * Числа — главное содержимое экрана, поэтому вся таблица набрана табличными
+ * цифрами и выровнена по правому краю: в столбце ставок глаз сравнивает
+ * разряды, а не читает слова. Ширины колонок заданы, а не подобраны
+ * содержимым: при раскрытии пластов колонки не имеют права переехать.
+ */
+
+/* Заголовок не сжимается: в колонке он флекс-элемент со сжатием по умолчанию,
+   и подросшая карточка готовности выдавливала его в нулевую высоту — экран
+   оставался без названия. */
+.econ > .pagehead { flex: 0 0 auto; }
+
+.econ {
+  position: relative;
+  flex: 1 1 auto; min-height: 0;
+  display: flex; flex-direction: column;
+  gap: var(--block-gap-default);
+}
+
+/* ------------------------------ шапка ------------------------------ */
+
+/* Номер редакции — идентификатор, а не текст: его сверяют посимвольно с актом,
+   поэтому набран табличными цифрами и выделен из окружающей строки. */
+.econver {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-subtitle);
+}
+/* Номер редакции — вход в историю: человек, который его прочитал, чаще всего
+   и хочет узнать, что в ней меняли. */
+.econver--btn {
+  /* text-align: left — иначе браузерный дефолт кнопки центрирует номер,
+     и он единственный во всём блоке едет к середине колонки. */
+  padding: 0; border: 0; background: none; cursor: pointer; text-align: left;
+  font: var(--font-weight-subtitle) var(--font-size-text-large) / var(--line-height-text-large) var(--font-family-text);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-link);
+}
+.econver--btn:hover { text-decoration: underline; }
+.econver--btn:focus-visible { outline: 2px solid var(--focus-component); outline-offset: 2px; border-radius: var(--corner-radius-s); }
+
+.econlock {
+  display: inline-flex; align-items: center; gap: var(--item-gap-horizontal-xs);
+  padding: var(--item-padding-vertical-xs) var(--item-padding-horizontal-s);
+  border-radius: var(--corner-radius-component);
+  background: var(--component-default);
+  color: var(--text-tertiary);
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  cursor: default;
+}
+
+/* ------------------------------ верхний ряд ------------------------------ */
+
+.econtop {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: 292px minmax(0, 1fr);
+  gap: var(--block-gap-default);
+}
+
+.econtop .panel { flex: 0 0 auto; }
+
+/* ---------- цена нефти ---------- */
+
+.eprice {
+  padding: var(--group-padding-m);
+  gap: 2px;
+}
+
+.eprice__t, .eready__t {
+  margin: 0;
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+  text-transform: none;
+}
+
+.eprice__u {
+  margin: 0;
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+
+.eprice__n {
+  margin: var(--group-gap-s) 0 0;
+  font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-caption) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+
+/* ---------- готовность ---------- */
+
+/* Две зоны: слева состояние модели, справа — редакция, по которой она сейчас
+   считает. Раньше правая половина карточки пустовала, а строка редакции жила
+   мелкой подписью под заголовком страницы. */
+.eready {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(200px, 264px);
+  gap: var(--group-gap-m);
+  align-items: start;
+  padding: var(--group-padding-m);
+}
+.eready__main { display: flex; flex-direction: column; gap: var(--group-gap-xs); min-width: 0; }
+.eready__ver {
+  display: flex; flex-direction: column; gap: var(--item-gap-vertical-xs);
+  min-width: 0;
+  padding-left: var(--group-padding-m);
+  border-left: 1px solid var(--border-divider);
+  align-self: stretch;
+}
+.eready__vm {
+  margin: 0;
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+/* Причина в одну строку: полностью она читается в истории, здесь её задача —
+   напомнить, о чём была последняя правка, а не пересказать её.
+   Отбита отступом и линией от даты с автором сверху: без них все три строки
+   шли с одинаковым 2px-зазором `.eready__ver`, и свободный текст причины
+   читался как продолжение метаданных, а не отдельная пометка. */
+.eready__vr {
+  margin: var(--group-gap-xs) 0 0;
+  padding-top: var(--group-gap-xs);
+  border-top: 1px solid var(--border-divider-light);
+  font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-caption) var(--font-family-text);
+  font-style: italic;
+  color: var(--text-secondary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.eready__l {
+  margin: 0;
+  font: var(--font-weight-text) var(--font-size-text-large) / var(--line-height-text-large) var(--font-family-text);
+  color: var(--text-primary);
+}
+.eready__l b { font-weight: var(--font-weight-subtitle); font-variant-numeric: tabular-nums; }
+
+.eready__chips {
+  display: flex; flex-wrap: wrap;
+  gap: var(--item-gap-horizontal-s);
+  margin-top: var(--group-gap-xs);
+}
+
+/* Чип — не украшение, а отбор: клик оставляет в таблице ровно те объекты, о
+   которых он говорит. Поэтому он кнопка с aria-pressed, а не плашка. */
+.echip {
+  display: inline-flex; align-items: baseline;
+  gap: var(--item-gap-horizontal-m);
+  padding: var(--item-padding-vertical-xs) var(--item-padding-horizontal-s);
+  border: 1px solid var(--border-divider);
+  border-radius: var(--corner-radius-component);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  cursor: pointer;
+  transition: background-color .14s ease, border-color .14s ease, color .14s ease;
+}
+button.echip:hover { background: var(--state-hover); }
+.echip.is-on {
+  border-color: var(--component-accent);
+  background: var(--state-selected-light);
+  color: var(--text-primary);
+}
+.echip:focus-visible { outline: 2px solid var(--focus-component); outline-offset: 1px; }
+
+.echip__n {
+  font-weight: var(--font-weight-subtitle);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+/* Цвет несёт состояние, но не в одиночку: рядом всегда стоит слово. */
+.echip--ready .echip__n { color: var(--status-success-text); }
+.echip--gaps .echip__n { color: var(--status-warning-text); }
+.echip--noPlast .echip__n { color: var(--status-warning-text); }
+.echip--outside .echip__n { color: var(--text-tertiary); }
+.echip--wells { cursor: default; }
+.echip--wells .echip__n { color: var(--status-error-text); }
+
+.eready__wells {
+  margin: var(--group-gap-xs) 0 0;
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-secondary);
+}
+.eready__wells b { font-weight: var(--font-weight-subtitle); font-variant-numeric: tabular-nums; }
+
+.eready__reset {
+  align-self: flex-start;
+  margin-top: var(--group-gap-2xs);
+  padding: 0; border: 0; background: none; cursor: pointer;
+  color: var(--text-link);
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+}
+.eready__reset:hover { text-decoration: underline; }
+
+/* ------------------------------ таблица ------------------------------ */
+
+.etable {
+  flex: 1 1 auto; min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.econ[data-edit='on'] .etable { padding-bottom: 72px; }
+
+/* Одна сетка на шапку, строку объекта и строку пласта: пластовая ставка
+   обязана стоять ровно под колонкой НДПИ, иначе раскрытие читается как другая
+   таблица, а не как подробность строки. */
+.erow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 132px 132px 132px 212px 40px;
+  align-items: stretch;
+  border-bottom: 1px solid var(--border-divider-light);
+}
+
+.erow--head {
+  position: sticky; top: 0; z-index: 2;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-divider);
+}
+.erow--head .ecol {
+  padding: var(--item-padding-vertical-s) var(--item-padding-horizontal-s);
+  font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-caption) var(--font-family-text);
+  color: var(--text-tertiary);
+  letter-spacing: var(--letter-spacing-text-caption);
+}
+.erow--head .ecol--num, .erow--head .ecol--ndpi {
+  flex-direction: column; align-items: flex-end; justify-content: flex-end;
+}
+/* Единица измерения в шапке, а не в подсказке: столбцы «руб/т жидкости» и
+   «руб/т нефти» стоят рядом, и перепутать их стоит дороже, чем прочитать.
+   Отдельной строкой, потому что «Деэмульгаторы, руб/т н» в одну строку шире
+   колонки и наезжает на соседний заголовок. */
+.ecol__u { color: var(--text-quaternary); white-space: nowrap; }
+
+.ecol { display: flex; align-items: center; min-width: 0; }
+.ecol--num, .ecol--ndpi { justify-content: flex-end; text-align: right; }
+/* Линия перед НДПИ отделяет налог от трёх статей затрат. Без неё подпись
+   пласта повисала между колонкой деэмульгаторов и ставкой и читалась как
+   часть чужого числа. */
+.ecol--ndpi { border-left: 1px solid var(--border-divider-light); }
+.ecol--st { justify-content: center; }
+
+.erow--field { transition: background-color .12s ease; }
+.erow--field:hover { background: var(--state-hover-light); }
+
+/* Объект вне модели Заказчика приглушён целиком: править в нём нечего, и
+   единственное осмысленное действие — понять, почему по нему не считается. */
+.erow--field[data-state='outside'] .ename__t { color: var(--text-tertiary); }
+
+.ename {
+  display: flex; align-items: center; gap: var(--item-gap-horizontal-s);
+  min-width: 0; width: 100%;
+  padding: var(--item-padding-vertical-s) var(--item-padding-horizontal-s);
+  font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  color: var(--text-primary);
+}
+.ename--btn { border: 0; background: none; cursor: pointer; text-align: left; }
+.ename--btn:focus-visible { outline: 2px solid var(--focus-component); outline-offset: -2px; }
+.ename__t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ename__c {
+  flex: 0 0 auto; color: var(--icon-default);
+  transition: transform .18s cubic-bezier(.2, .8, .2, 1);
+}
+.erow--field.is-open .ename__c { transform: rotate(90deg); }
+
+/* Место под шеврон у месторождений без раскрытия — чтобы названия стояли в
+   один вертикальный ряд, а не расходились на четырнадцать пикселей. */
+.ename:not(.ename--btn) { padding-left: calc(var(--item-padding-horizontal-s) + 14px + var(--item-gap-horizontal-s)); }
+
+/* ---------- числа ---------- */
+
+.enum {
+  font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+/* Пустая ставка — не ноль. Ноль утверждал бы, что затрат нет, и молча занижал
+   бы эффект; прочерк говорит, что значение не заведено. */
+.enum--none, .enone { color: var(--text-quaternary); }
+
+.ecellbox {
+  position: relative;
+  padding: var(--item-padding-vertical-s) var(--item-padding-horizontal-s);
+  border-radius: var(--corner-radius-component);
+}
+
+/* Ставка и пласт в одну строку и без переноса: в режиме правки поле ввода
+   отбирало ширину, название пласта ломалось надвое и строка становилась выше
+   соседних — таблица чисел переставала читаться построчно. */
+.endpi {
+  display: inline-flex; align-items: baseline; flex-wrap: nowrap;
+  gap: var(--item-gap-horizontal-s); min-width: 0;
+}
+.endpi .ecellbox { flex: 0 0 auto; width: 104px; }
+.endpi__p {
+  flex: 0 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.endpi__p {
+  font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-caption) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+/* min-width: 0 — иначе у флекс-элемента порог сжатия равен ширине текста без
+   переноса, и сводка по 3+ пластам («3 пласта · 8 572,2026 – 20 065,2229»)
+   вылезает за 212px колонки поверх соседних строк вместо того, чтобы
+   обрезаться многоточием. */
+.endpi__sum {
+  min-width: 0; max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: var(--item-padding-vertical-s) var(--item-padding-horizontal-s);
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+.enone { padding-right: var(--item-padding-horizontal-s); }
+
+/* ---------- признак состояния ---------- */
+
+.emark {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--status-success);
+}
+.emark--gaps, .emark--noPlast { background: var(--status-warning); }
+/* Полый кружок у объекта вне модели: заливка означала бы состояние, а его нет
+   вовсе — объекта нет в источнике. */
+.emark--outside { background: none; box-shadow: inset 0 0 0 1.5px var(--icon-disabled); }
+
+/* ---------- пласты ---------- */
+
+.eplasts { background: var(--bg-secondary); }
+.erow--plast { border-bottom: 1px solid var(--border-divider-light); }
+.erow--plast:last-child { border-bottom: 0; }
+.eplast__n {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: var(--item-padding-vertical-xs) var(--item-padding-horizontal-s);
+  padding-left: calc(var(--item-padding-horizontal-s) + 14px + var(--item-gap-horizontal-s));
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-secondary);
+}
+
+.etable__empty {
+  margin: 0; padding: var(--group-padding-l);
+  text-align: center;
+  font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+
+/* ------------------------------ режим правки ------------------------------ */
+
+/* Подложка появляется каскадом по строкам: смена режима — событие, и она
+   должна быть замечена, а не обнаружена по первому промаху мимо числа. */
+.ecellbox.is-armed {
+  animation: econ-arm .18s ease-out backwards;
+  animation-delay: calc(var(--i, 0) * 12ms);
+}
+
+@keyframes econ-arm {
+  from { background: transparent; box-shadow: inset 0 0 0 1px transparent; }
+  to { background: var(--component-default); box-shadow: inset 0 0 0 1px var(--border-component-default); }
+}
+
+.ecellbox.is-armed {
+  background: var(--component-default);
+  box-shadow: inset 0 0 0 1px var(--border-component-default);
+}
+
+.enum--in {
+  width: 100%;
+  border: 0; background: none; padding: 0; margin: 0;
+  text-align: right;
+  color: inherit;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.enum--in:focus { outline: none; }
+.ecellbox:focus-within { box-shadow: inset 0 0 0 2px var(--focus-component); }
+
+.ecellbox.is-dirty {
+  background: var(--state-selected-light);
+  box-shadow: inset 0 0 0 1px var(--component-accent);
+}
+.ecellbox.has-error {
+  background: var(--status-error-light-bg);
+  box-shadow: inset 0 0 0 1px var(--status-error);
+}
+.ecellbox__e {
+  position: absolute; left: 0; top: 100%; z-index: 3;
+  margin-top: 2px;
+  padding: var(--item-padding-vertical-2xs) var(--item-padding-horizontal-xs);
+  border-radius: var(--corner-radius-s);
+  background: var(--status-error);
+  color: var(--text-on-accent);
+  font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-caption) var(--font-family-text);
+  white-space: nowrap;
+}
+
+/* Подтверждение после публикации: короткая вспышка и возврат к обычному виду.
+   Держать подсветку дольше значит утверждать, что с числом что-то не так. */
+.ecellbox.is-fresh { animation: econ-fresh 1.4s ease-out; }
+@keyframes econ-fresh {
+  0% { background: var(--status-success-light-bg); }
+  60% { background: var(--status-success-light-bg); }
+  100% { background: transparent; }
+}
+
+/* ---------- крупная ячейка цены ---------- */
+
+.ecellbox--big { padding: 0; margin: 2px 0; }
+.ecellbox--big .enum {
+  font: var(--font-weight-headline) var(--font-size-h3) / var(--line-height-h3) var(--font-family-headline);
+  color: var(--text-heading);
+}
+.ecellbox--big .enum--in { text-align: left; }
+.ecellbox--big.is-armed {
+  padding: var(--item-padding-vertical-2xs) var(--item-padding-horizontal-xs);
+  margin: 0 calc(-1 * var(--item-padding-horizontal-xs));
+}
+
+/* ------------------------------ полоса черновика ------------------------------ */
+
+.ebar {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 5;
+  display: flex; align-items: center; gap: var(--group-gap-m);
+  padding: var(--group-padding-s) var(--group-padding-m);
+  border-radius: var(--corner-radius-section);
+  background: var(--bg-card);
+  box-shadow: var(--elevation-3);
+  border: 1px solid var(--border-divider);
+}
+.ebar__l {
+  display: flex; align-items: center; gap: var(--item-gap-horizontal-m);
+  font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  color: var(--text-primary);
+}
+.ebar__l b { font-weight: var(--font-weight-subtitle); font-variant-numeric: tabular-nums; }
+.ebar__err {
+  display: inline-flex; align-items: center; gap: var(--item-gap-horizontal-xs);
+  color: var(--status-error-text);
+  font-size: var(--font-size-text-small);
+}
+.ebar__r { margin-left: auto; display: flex; gap: var(--item-gap-horizontal-m); }
+
+/* ------------------------------ окно публикации ------------------------------ */
+
+.econpub { width: min(680px, 92vw); max-width: none; }
+
+.pub { display: flex; flex-direction: column; gap: var(--group-gap-m); }
+
+.pub__sum {
+  margin: 0;
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-secondary);
+}
+
+.pub__list {
+  margin: 0; padding: 0; list-style: none;
+  max-height: 260px; overflow-y: auto;
+  border: 1px solid var(--border-divider);
+  border-radius: var(--corner-radius-component);
+}
+.pub__row, .ehist__list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 132px auto;
+  align-items: baseline;
+  gap: var(--item-gap-horizontal-m);
+  padding: var(--item-padding-vertical-s) var(--item-padding-horizontal-s);
+  border-bottom: 1px solid var(--border-divider-light);
+}
+.pub__row:last-child, .ehist__list li:last-child { border-bottom: 0; }
+
+.pub__obj {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pub__f {
+  font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-caption) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+.pub__v {
+  display: inline-flex; align-items: baseline; gap: var(--item-gap-horizontal-xs);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--font-size-text-small);
+}
+.pub__old { color: var(--text-tertiary); text-decoration: line-through; }
+.pub__arr { color: var(--text-quaternary); }
+.pub__new { color: var(--text-primary); font-weight: var(--font-weight-subtitle); }
+
+/* Относительный сдвиг рядом с абсолютным: ставка, выросшая втрое, читается
+   как опечатка до публикации, а не в акте через месяц. */
+.pub__d { font-size: var(--font-size-text-caption); }
+.pub__d--up { color: var(--status-warning-text); }
+.pub__d--down { color: var(--status-processing-text); }
+
+.pub__warn {
+  display: flex; align-items: flex-start; gap: var(--item-gap-horizontal-m);
+  margin: 0;
+  padding: var(--item-padding-vertical-s) var(--item-padding-horizontal-s);
+  border-radius: var(--corner-radius-component);
+  background: var(--status-warning-light-bg);
+  color: var(--status-warning-text);
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+}
+.pub__warn svg { flex: 0 0 auto; margin-top: 1px; }
+
+.pub__row--clear .pub__new { color: var(--status-warning-text); font-weight: var(--font-weight-text); }
+
+.pub__reason { display: flex; flex-direction: column; gap: var(--item-gap-vertical-xs); }
+.pub__reason span {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-secondary);
+}
+.pub__reason textarea {
+  width: 100%; resize: vertical;
+  padding: var(--item-padding-vertical-s) var(--item-padding-horizontal-s);
+  border: 1px solid var(--border-component-default);
+  border-radius: var(--corner-radius-component);
+  background: var(--bg-default);
+  color: var(--text-primary);
+  font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+}
+.pub__reason textarea:focus-visible { outline: 2px solid var(--focus-component); outline-offset: -1px; }
+
+.pub__error {
+  margin: 0;
+  padding: var(--item-padding-vertical-s) var(--item-padding-horizontal-s);
+  border-radius: var(--corner-radius-component);
+  background: var(--status-error-light-bg);
+  color: var(--status-error-text);
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+}
+
+.pub__act { display: flex; gap: var(--item-gap-horizontal-m); }
+
+/* ------------------------------ история ------------------------------ */
+
+/* Шире, чем sm:max-w-sm у компонента: в записи стоит список «было → стало»,
+   и в 384 пикселя он переносится по слогам. */
+[data-slot='sheet-content'].econhistory {
+  width: min(560px, 94vw); max-width: none;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  padding: var(--group-padding-m);
+  gap: var(--group-gap-m);
+}
+.econhistory [data-slot='sheet-title'] {
+  font: var(--font-weight-headline) var(--font-size-h5) / var(--line-height-h5) var(--font-family-headline);
+  color: var(--text-heading);
+}
+.econhistory [data-slot='sheet-description'] {
+  font: var(--font-weight-text) var(--font-size-text-small) / var(--line-height-text-small) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+
+.ehist {
+  min-height: 0; overflow-y: auto;
+  display: flex; flex-direction: column; gap: var(--group-gap-m);
+}
+.ehist__v {
+  border: 1px solid var(--border-divider);
+  border-radius: var(--corner-radius-component);
+  padding: var(--group-padding-s);
+  display: flex; flex-direction: column; gap: var(--item-gap-vertical-xs);
+}
+.ehist__h { display: flex; align-items: baseline; gap: var(--item-gap-horizontal-m); }
+.ehist__at {
+  margin-left: auto;
+  font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-caption) var(--font-family-text);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+.ehist__r {
+  margin: 0;
+  font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  color: var(--text-primary);
+}
+.ehist__a {
+  margin: 0;
+  font: var(--font-weight-text) var(--font-size-text-caption) / var(--line-height-text-caption) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+.ehist__list {
+  margin: var(--item-gap-vertical-xs) 0 0; padding: 0; list-style: none;
+  border-top: 1px solid var(--border-divider-light);
+}
+.ehist__list li { grid-template-columns: minmax(0, 1fr) 104px auto; padding-left: 0; padding-right: 0; }
+
+.ehist__empty {
+  margin: 0;
+  font: var(--font-weight-text) var(--font-size-text-medium) / var(--line-height-text-medium) var(--font-family-text);
+  color: var(--text-tertiary);
+}
+
+/* ------------------------------ движение выключено ------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  .econ *, .econ *::before, .econ *::after {
+    animation-duration: .001ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: .001ms !important;
+  }
+}

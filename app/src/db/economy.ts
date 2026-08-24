@@ -105,3 +105,126 @@ export async function getOilPrice(): Promise<number> {
   const rows = await query<{ oil_price: string }>('SELECT oil_price FROM rec.econ_global WHERE id = 1');
   return Number(rows[0]?.oil_price ?? 0);
 }
+
+/* ======================= экран «Экономическая модель» =======================
+ *
+ * Ниже — чтение для редактора ставок. Отдельно от `getWellEconomy` выше:
+ * тот отвечает на вопрос расчёта «сколько стоит тонна у этой скважины», а эти
+ * функции показывают модель целиком, включая то, чего в ней не хватает.
+ *
+ * Пласты приклеиваются к месторождению по `source_name`, а не по `field_name`:
+ * ставки НДПИ пришли из модели Заказчика и названы её словами, узел дерева
+ * ВМАП называется иначе, и четыре Южно-Ягунских узла ссылаются на одну
+ * строку модели. Связь именно такая, какой её построил `load-economy`.
+ */
+
+export interface EconPlast {
+  id: number;
+  plast: string;
+  rate: number;
+}
+
+export interface EconField extends FieldRate {
+  plasts: EconPlast[];
+  /** Скважин, привязанных к пластовой ставке. Ноль означает, что расчёт по
+      объекту не пойдёт даже при заведённых ставках затрат. */
+  wells: number;
+}
+
+export interface EconModel {
+  oilPrice: number;
+  fields: EconField[];
+  /** Скважины, по которым уже выданы рекомендации, но ставки НДПИ у них нет. */
+  wellsUnbound: number;
+}
+
+export async function econModel(): Promise<EconModel> {
+  const [price, fields, plasts, wells, unbound] = await Promise.all([
+    getOilPrice(),
+    listFieldRates(),
+    listNdpiRates(),
+    query<{ field_id: string; n: string }>(
+      'SELECT field_id, count(*) AS n FROM rec.econ_well_rates GROUP BY field_id'),
+    /* Считаем не «сколько скважин фонда без ставки» — таких тысячи и это
+       нормально, — а сколько из них уже упомянуты в рекомендациях. Только по
+       ним расчёт эффекта однажды остановится, и только они требуют действия. */
+    query<{ n: string }>(`
+      SELECT count(*) AS n FROM (
+        SELECT DISTINCT r.field_id, lower(r.well_number) AS wn
+        FROM rec.recommendations r
+        WHERE r.deleted_at IS NULL AND r.status <> 'draft'
+      ) t
+      LEFT JOIN rec.econ_well_rates e
+        ON e.field_id = t.field_id AND lower(e.well_number) = t.wn
+      WHERE e.field_id IS NULL
+    `),
+  ]);
+
+  const поПластам = new Map<string, EconPlast[]>();
+  for (const p of plasts) {
+    const список = поПластам.get(p.fieldName) ?? [];
+    список.push({ id: p.id, plast: p.plast, rate: p.rate });
+    поПластам.set(p.fieldName, список);
+  }
+
+  const поСкважинам = new Map(wells.map((r) => [Number(r.field_id), Number(r.n)]));
+
+  return {
+    oilPrice: price,
+    wellsUnbound: Number(unbound[0]?.n ?? 0),
+    fields: fields.map((f) => ({
+      ...f,
+      plasts: f.sourceName ? поПластам.get(f.sourceName) ?? [] : [],
+      wells: поСкважинам.get(f.fieldId) ?? 0,
+    })),
+  };
+}
+
+export interface EconChange {
+  scope: 'global' | 'field' | 'ndpi';
+  object: string;
+  field: string;
+  old: string | null;
+  new: string | null;
+}
+
+export interface EconVersion {
+  id: number;
+  version: string;
+  at: Date;
+  effectiveFrom: Date;
+  actorName: string;
+  reason: string;
+  changes: EconChange[];
+}
+
+export async function econHistory(limit = 50): Promise<EconVersion[]> {
+  const rows = await query<{
+    id: string; version: string; at: Date; effective_from: Date;
+    actor_name: string; reason: string; changes: EconChange[];
+  }>(`
+    SELECT v.id, v.version, v.at, v.effective_from, v.actor_name, v.reason,
+           coalesce(
+             json_agg(json_build_object(
+               'scope', c.scope, 'object', c.object_name, 'field', c.field,
+               'old', c.old_value, 'new', c.new_value
+             ) ORDER BY c.id) FILTER (WHERE c.id IS NOT NULL),
+             '[]'
+           ) AS changes
+    FROM rec.econ_versions v
+    LEFT JOIN rec.econ_changes c ON c.version_id = v.id
+    GROUP BY v.id
+    ORDER BY v.at DESC
+    LIMIT $1
+  `, [limit]);
+
+  return rows.map((r) => ({
+    id: Number(r.id),
+    version: r.version,
+    at: r.at,
+    effectiveFrom: r.effective_from,
+    actorName: r.actor_name,
+    reason: r.reason,
+    changes: r.changes,
+  }));
+}
