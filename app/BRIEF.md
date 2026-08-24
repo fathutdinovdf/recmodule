@@ -93,7 +93,19 @@ Next. Причина: фронт ВМАП — React 18 SPA на Vite, не Next;
   код в `/opt/recmodule`. Только Postgres в Docker
   (`app/docker-compose.yml`, порт 5433→5432 как локально).
 - Домен `cycleop-rec.ru` (по аналогии с `cycleop-vmap`/`cycleop-design`/
-  `cycleop-id`), HTTPS — nginx + certbot, см. `deploy/setup-vm-tls.sh`.
+  `cycleop-id`), NS переведены на reg.ru, A-записи (`@`, `www`) на IP VM —
+  работает: `http://cycleop-rec.ru`.
+- **HTTPS отложен.** `certbot --nginx` (HTTP-01) не проходит: серверы Let's
+  Encrypt получают таймаут коннекта до этой VM (порт 80 при этом снаружи
+  открыт и отвечает — похоже на блокировку встречного трафика на магистрали, а
+  не на настройки VM или группы безопасности). DNS-01 тоже не пошёл: TXT-запись
+  `_acme-challenge` в DNS-панели reg.ru видна, но не публикуется на их же NS
+  (`ns1.reg.ru`) даже спустя несколько часов — не пропагация, а, похоже,
+  зависший бэкенд у reg.ru. Платный SSL от reg.ru (раздел «SSL» в личном
+  кабинете) — тоже вариант, но 3–7 рабочих дней. Следующий заход: либо
+  дождаться reg.ru, либо перевести DNS домена на Yandex Cloud DNS и повторить
+  DNS-01 оттуда. Скрипт `deploy/setup-vm-tls.sh <домен>` уже готов и отработает
+  как только валидация пройдёт.
 - Сценарий полного повторного разворачивания — `deploy/setup-vm-base.sh`
   (Docker, Node, клон приватного репозитория по deploy-key, БД, сборка,
   systemd) и `deploy/setup-vm-tls.sh <домен>` (nginx, certbot) — оба в
