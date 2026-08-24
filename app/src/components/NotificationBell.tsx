@@ -20,6 +20,7 @@ import { AtSign, BadgeCheck, MessageSquare } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Hint } from '@/components/ui/Hint';
+import { Button } from '@/components/ui/Button';
 import { отметитьВсеУведомления, отметитьУведомление } from '@/lib/notification-actions';
 import { ключДня, подписьДня, времяДня } from '@/app/rec/[id]/log/format';
 import type { NotificationType } from '@/db/notifications';
@@ -88,14 +89,21 @@ export function NotificationBell({ уведомления }: { уведомле�
         </PopoverTrigger>
       </Hint>
 
-      <PopoverContent align="end" className="w-96 p-0">
+      {/* Без onOpenAutoFocus Radix уводит фокус на первый фокусируемый узел
+          внутри — это как раз «Прочитать всё», необратимое массовое действие.
+          Клавиатурный пользователь, открывший панель и нажавший Enter по
+          привычке (обычный жест после открытия диалога), стирал бы весь
+          список непрочитанного вслепую. Фокус остаётся на самой панели. */}
+      <PopoverContent align="end" className="w-96 p-0"
+                       onOpenAutoFocus={(e) => { e.preventDefault(); (e.target as HTMLElement).focus(); }}>
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <span className="text-sm font-medium text-foreground">Уведомления</span>
           {непрочитано > 0 && (
-            <button type="button" className="text-xs text-[var(--text-accent)] hover:underline"
+            <Button type="button" variant="ghost" size="sm"
+                    className="h-6 gap-1 border-transparent px-1.5 text-xs text-[var(--text-accent)] hover:text-[var(--text-accent)]"
                     onClick={() => начать(async () => { await отметитьВсеУведомления(); router.refresh(); })}>
               Прочитать всё
-            </button>
+            </Button>
           )}
         </div>
 

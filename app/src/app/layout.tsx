@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
 import './tokens.css';
 import './registry.css';
 import './app.css';
@@ -9,6 +10,9 @@ import { ScrollOverlay } from '@/components/ScrollOverlay';
 import { AppShell } from '@/components/AppShell';
 import { MotionProvider } from '@/components/MotionProvider';
 
+/* subsets: cyrillic обязателен — интерфейс по-русски (см. CLAUDE.md). */
+const inter = Inter({ subsets: ['latin', 'cyrillic'], variable: '--font-inter', display: 'swap' });
+
 export const metadata: Metadata = {
   title: 'Модуль управления рекомендациями',
   description: 'Экспертное сопровождение механизированного фонда скважин',
@@ -18,7 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     /* suppressHydrationWarning: скрипт ниже правит data-theme до гидрации, и
        React иначе ругается на расхождение атрибута с серверной разметкой. */
-    <html lang="ru" data-theme="light" suppressHydrationWarning>
+    <html lang="ru" data-theme="light" suppressHydrationWarning className={inter.variable}>
       <head>
         {/* Тема ставится ДО первой отрисовки, поэтому скрипт синхронный и
             встроенный: любой внешний файл или эффект React выполнится после

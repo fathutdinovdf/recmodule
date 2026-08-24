@@ -30,7 +30,7 @@ import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { Textarea } from '@/components/ui/Textarea';
-import { Field, FieldError, FieldLabel } from '@/components/ui/field';
+import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field';
 import { ActionDialog } from '@/components/ui/ActionDialog';
 import { DialogFooter, DialogClose } from '@/components/ui/dialog';
 import {
@@ -225,6 +225,7 @@ function КнопкаПроблемы() {
           <FieldLabel htmlFor="problem-text">Что сообщаете</FieldLabel>
           <Textarea id="problem-text" name="text" rows={4} aria-invalid={Boolean(ошибка)}
                     placeholder="Проблема, идея, что стоит поправить в модуле — пишите как есть. Если это баг: экран и шаги — самое ценное." />
+          <FieldDescription>Заявка уйдёт на почту администратора модуля.</FieldDescription>
         </Field>
 
         {файлы.length > 0 && (
