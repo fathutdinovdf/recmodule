@@ -79,6 +79,27 @@ Next. Причина: фронт ВМАП — React 18 SPA на Vite, не Next;
 при переносе на ландшафт Заказчика `DATA_SOURCE` убирается, и код ВМАП
 возвращается в работу как есть. Выпиливать его нельзя.
 
+## Демо-стенд в Yandex Cloud
+
+Поднят 24.08.2026 для показа заказчику вне контура ВМАП, `DATA_SOURCE=manual`,
+свои демо-данные (`db:seed`).
+
+- VM `recmodule-demo`, Yandex Cloud, cloud `cloud-denisson2002`: 2 vCPU / 4 ГБ /
+  20 ГБ SSD, Ubuntu 24.04, публичный IP `130.193.55.90` (динамический — при
+  пересоздании VM сменится, тогда поправить DNS и, если правили локальный VPN
+  под конкретный IP, пересчитать исключение там же).
+- Приложение — не в Docker: `next build` + `next start` под systemd
+  (`recmodule.service`), сервисный пользователь `recmodule`,
+  код в `/opt/recmodule`. Только Postgres в Docker
+  (`app/docker-compose.yml`, порт 5433→5432 как локально).
+- Домен `cycleop-rec.ru` (по аналогии с `cycleop-vmap`/`cycleop-design`/
+  `cycleop-id`), HTTPS — nginx + certbot, см. `deploy/setup-vm-tls.sh`.
+- Сценарий полного повторного разворачивания — `deploy/setup-vm-base.sh`
+  (Docker, Node, клон приватного репозитория по deploy-key, БД, сборка,
+  systemd) и `deploy/setup-vm-tls.sh <домен>` (nginx, certbot) — оба в
+  `app/deploy/`. `.env.production` на VM не в гите (`deploy/.env.production.example`
+  — шаблон).
+
 **Устройство.** `src/db/wells-data.ts` — фасад, выбирающий реализацию;
 все потребители (`services/baseline.ts`, `services/effect-window.ts`, мастер
 регистрации, оболочка карточки) импортируют функции оттуда, а не из
@@ -1127,6 +1148,38 @@ FK) и стратегия отката после теста, чтобы не з
   бокса на несколько пикселов и обрезается вплотную. Лечится небольшим
   `padding` на `.context` — тени внутри есть куда деваться, ширина у карточек
   не фиксированная и подстраивается сама.
+- **С российских IP (в том числе Yandex Cloud VM) не отвечают:
+  `download.docker.com`, `registry-1.docker.io` (Docker Hub), `github.com:22`,
+  `registry.npmjs.org`.** Все таймаутят молча, без внятной ошибки блокировки.
+  Обходы, зашитые в `deploy/setup-vm-base.sh`: Docker ставится пакетом
+  `docker.io` из репозитория Ubuntu, а не с `download.docker.com`; для образов
+  Docker настроено `registry-mirrors: ["https://mirror.gcr.io"]` в
+  `/etc/docker/daemon.json`; GitHub — по SSH через `ssh.github.com:443` вместо
+  `:22` (тоже блокируют); npm — `registry set https://registry.npmmirror.com`.
+- **`sudo -u user cmd >> file` пишет файл от имени ТОГО, кто вызвал sudo (root),
+  а не от `user`.** Редирект `>>` открывает файловый дескриптор внешняя
+  оболочка, до того как `sudo` меняет пользователя. Ловушка: `ssh-keyscan ... >>
+  known_hosts` для сервисного пользователя создавал файл от root, и та же
+  учётка потом не могла обновить `known_hosts` через git —
+  `Operation not permitted`. Лечится редиректом ВНУТРИ `sudo -u user bash -c
+  '... >> file'` или явным `chown` после.
+- **`git clone` не терпит непустую целевую директорию** — даже если там только
+  скрытые файлы. Из-за этого нельзя делать домашний каталог сервисного
+  пользователя (куда кладётся SSH-ключ) тем же путём, куда клонируется
+  репозиторий: `useradd -d` и цель `git clone` должны быть разными путями
+  (см. `deploy/setup-vm-base.sh` — `/home/recmodule` и `/opt/recmodule`).
+- **`db:migrate -- --baseline` требует, чтобы схема `rec` УЖЕ существовала** —
+  он только помечает миграции применёнными, не выполняет их. На чистой базе
+  (первый деплой) падает `schema "rec" does not exist`. На пустой базе нужен
+  обычный `npm run db:migrate` без `--baseline`.
+- **VPN с `AllowedIPs = 0.0.0.0/0` и включённым kill-switch заворачивает в
+  туннель вообще весь трафик**, включая к серверам в том же Yandex Cloud —
+  никакой маршрут Windows (`route add ... metric 1`) это не обходит: WireGuard
+  и kill-switch работают ниже таблицы маршрутизации ОС. Единственный рабочий
+  способ исключить один IP — переписать `AllowedIPs` на полный список подсетей
+  IPv4 МИНУС этот адрес (32 диапазона, `ipaddress.ip_network('0.0.0.0/0')
+  .address_exclude(...)` в Python). Привязано к конкретному IP: сменится IP
+  VM — пересчитывать заново.
 
 ## Документы проекта (корень)
 
