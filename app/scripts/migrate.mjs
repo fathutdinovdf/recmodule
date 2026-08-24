@@ -68,7 +68,8 @@ const файлы = readdirSync(папка).filter((f) => f.endsWith('.sql')).sor
 await client.connect();
 try {
   /* Журнал живёт в схеме модуля и создаётся вне транзакции миграций: он
-     нужен раньше, чем первая из них. */
+     нужен раньше, чем первая из них — а на чистой базе раньше и самой схемы. */
+  await client.query('CREATE SCHEMA IF NOT EXISTS rec');
   await client.query(`
     CREATE TABLE IF NOT EXISTS rec.schema_migrations (
       name       text PRIMARY KEY,

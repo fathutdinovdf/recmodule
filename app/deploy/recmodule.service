@@ -1,0 +1,16 @@
+[Unit]
+Description=Модуль управления рекомендациями (Next.js)
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=recmodule
+WorkingDirectory=/opt/recmodule/app
+EnvironmentFile=/opt/recmodule/app/.env.production
+ExecStart=/usr/bin/npm run start
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
