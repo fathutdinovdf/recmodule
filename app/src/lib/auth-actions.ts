@@ -56,7 +56,11 @@ export async function войти(_: РезультатВхода, форма: Fo
     path: '/',
     httpOnly: true,
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    /* Secure по умолчанию в проде, но не на демо-стенде без HTTPS
+       (COOKIE_INSECURE=true в его .env.production, см. BRIEF.md) — иначе
+       браузер молча не сохраняет куку, и любой запрос после входа выглядит
+       неавторизованным. */
+    secure: process.env.NODE_ENV === 'production' && process.env.COOKIE_INSECURE !== 'true',
     maxAge: 60 * 60 * 24 * СРОК_СУТОК,
   });
   /* Кука подмены входа старше сессии и в разработке живёт год. Если её не
