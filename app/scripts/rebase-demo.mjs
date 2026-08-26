@@ -29,6 +29,25 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import pg from 'pg';
 
+/* Предохранитель от случайного запуска там, где рекомендации уже настоящие,
+ * а не демо (прод в Yandex Cloud — см. app/BRIEF.md; и этот скрипт всё равно
+ * ходит на стенд ВМАП, недоступный оттуда). Голый node .env.local не читает,
+ * поэтому смотрим в него сами. На деве флаг стоит в .env.local, там, где
+ * данные реальные, — сознательно не выставлен. */
+function демоРазрешён() {
+  if (process.env.ALLOW_DEMO_RESET === '1') return true;
+  try {
+    const здесь = dirname(fileURLToPath(import.meta.url));
+    return /^ALLOW_DEMO_RESET=1\s*$/m.test(readFileSync(join(здесь, '..', '.env.local'), 'utf8'));
+  } catch {
+    return false;
+  }
+}
+if (!демоРазрешён()) {
+  console.error('Отказ: ALLOW_DEMO_RESET=1 не выставлен — скрипт трогает демо-данные (is_demo). См. app/BRIEF.md.');
+  process.exit(1);
+}
+
 /* Домен подключается прямо из исходников на TypeScript: node 24 снимает типы
    сам. Копировать формулу отбора суток в скрипт нельзя — это ровно тот случай,
    когда две копии разъезжаются молча. */
