@@ -5,9 +5,18 @@
    тот же parseListFilterFromSearchParams, что и у самого реестра (app/page.tsx),
    иначе «то же самое отфильтровано» значило бы два разных фильтра. */
 
-import { getFilteredNeighbours, parseListFilterFromSearchParams, type Neighbours } from '@/db/recommendations';
+import {
+  getFilteredNeighbours, getOrderedIdsByFilter, parseListFilterFromSearchParams, type Neighbours,
+} from '@/db/recommendations';
 
 export async function соседиПоОтбору(recId: number, отбор: string): Promise<Neighbours> {
   const sp = Object.fromEntries(new URLSearchParams(отбор));
   return getFilteredNeighbours(recId, parseListFilterFromSearchParams(sp));
+}
+
+/** Id рекомендаций по отбору — листалка кэширует их на клиенте и дальше сама
+ *  считает соседей, см. комментарий у getOrderedIdsByFilter. */
+export async function идПоОтбору(отбор: string): Promise<number[]> {
+  const sp = Object.fromEntries(new URLSearchParams(отбор));
+  return getOrderedIdsByFilter(parseListFilterFromSearchParams(sp));
 }

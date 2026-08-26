@@ -25,6 +25,7 @@ import { дата, число, прирост, рубли } from '@/lib/format';
 import { currentUser } from '@/lib/session';
 import { Tabs } from './tabs';
 import { Pager } from './pager';
+import { BackLink } from './back-link';
 import { CardActionsMenu } from './card-actions-menu';
 import { Спарклайн } from './spark';
 import '../../card.css';
@@ -83,9 +84,7 @@ export default async function CardLayout({
     <main className="content content--card">
       <div className="cardhead">
         <div className="cardhead__top">
-          <Hint text="К реестру">
-            <Link className="cnbtn" href="/" aria-label="К реестру"><Icon id="back" size={20} /></Link>
-          </Hint>
+          <BackLink />
           <span className="cardhead__num">{card.number ?? 'Черновик'}</span>
           <span className="headstatus">
             <i className={`status__d status__d--${card.tone} ${card.filled ? '' : 'is-hollow'}`} />

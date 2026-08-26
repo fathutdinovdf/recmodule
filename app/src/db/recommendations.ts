@@ -415,6 +415,29 @@ export async function getFilteredNeighbours(
   };
 }
 
+/** Id рекомендаций в границах отбора реестра, в том же порядке, что и сам
+ *  реестр. Листалка карточки (pager.tsx) кэширует этот список на клиенте
+ *  по значению ?from= и дальше вычисляет prev/next/pos локально, без похода
+ *  на сервер при каждом клике — иначе позиция мелькала бы неверными
+ *  значениями, пока идёт запрос. Кэш не ревалидируется: свежесть отбора в
+ *  рамках одного захода из реестра не критична (решение пользователя). */
+export async function getOrderedIdsByFilter(
+  filter: Omit<ListFilter, 'limit' | 'offset'>,
+): Promise<number[]> {
+  const { where, params } = buildConditions(filter);
+  const sort = filter.sort;
+  const orderBy = sort
+    ? `${SORT_EXPR[sort.key]} ${sort.dir === 'desc' ? 'DESC' : 'ASC'} NULLS LAST, id DESC`
+    : 'registered_at DESC NULLS FIRST, id DESC';
+
+  const rows = await query<{ id: string }>(`
+    WITH base AS (${await основа()})
+    SELECT id FROM base ${where} ORDER BY ${orderBy}
+  `, params);
+
+  return rows.map((r) => Number(r.id));
+}
+
 /** Счётчики для плиток над таблицей. */
 export async function statusCounts(): Promise<Record<string, number>> {
   const rows = await query<{ status: string; n: string }>(`
