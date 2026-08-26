@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import { Suspense } from 'react';
 import './tokens.css';
 import './registry.css';
 import './app.css';
@@ -9,6 +10,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { ScrollOverlay } from '@/components/ScrollOverlay';
 import { AppShell } from '@/components/AppShell';
 import { MotionProvider } from '@/components/MotionProvider';
+import { YandexMetrika } from '@/components/YandexMetrika';
 
 /* subsets: cyrillic обязателен — интерфейс по-русски (см. CLAUDE.md). */
 const inter = Inter({ subsets: ['latin', 'cyrillic'], variable: '--font-inter', display: 'swap' });
@@ -47,6 +49,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Индикатор прокрутки окна. Экраны с собственным прокручиваемым
             контейнером (карточка) поднимают свой — см. `ScrollOverlay`. */}
         <ScrollOverlay target={null} />
+        <Suspense fallback={null}>
+          <YandexMetrika />
+        </Suspense>
       </body>
     </html>
   );
