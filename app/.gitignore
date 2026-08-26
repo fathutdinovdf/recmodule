@@ -12,6 +12,8 @@ next-env.d.ts
 .env.local
 .env.production
 deploy/.env.production.local
+deploy/*.key
+deploy/*.crt
 
 # Отложенные копии сборки и рабочие снимки — мусор рабочего каталога.
 .next-stale-*/

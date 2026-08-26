@@ -22,6 +22,19 @@
   border-radius: 999px;
 }
 
+/* Тот же тонкий скроллбар для списков внутри всплывающих окон (например,
+   истории значения в попапе суток) — своей высоты не задаёт, только вид. */
+.thin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-divider-light) transparent;
+}
+.thin-scroll::-webkit-scrollbar { width: 6px; }
+.thin-scroll::-webkit-scrollbar-track { background: transparent; }
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-divider-light);
+  border-radius: 999px;
+}
+
 /* Вкладка, у которой ещё нет своей страницы. Тем же приёмом, что и не сделанные
    пункты левой навигации: видно, что она есть, но нажать нельзя. */
 .tab--off {

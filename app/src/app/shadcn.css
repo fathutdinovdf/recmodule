@@ -2,10 +2,36 @@
  * выверенные таблицы, поля и типографику ВМАП. Для shadcn нужны тема и
  * utilities; базовые HTML-стили остаются ответственностью существующего CSS.
  */
-@layer theme, utilities;
+@layer base, theme, utilities;
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 @import "tw-animate-css";
+
+/* Точечная замена preflight — не на весь документ, а только на разметку
+ * shadcn/Radix/animate-ui: у неё, в отличие от макета, каждый узел компонента
+ * несёт атрибут data-slot. Без этого сброса свежепоставленный компонент
+ * (`npx shadcn add …`) приезжает с браузерными умолчаниями кнопки, списка,
+ * заголовка — рамка и серая заливка на <button>, margin у <h3>, точки у <ul> —
+ * и выглядит поломанным ровно до тех пор, пока кто-то не заметит и не почини́т
+ * точечно. Так уже чинили tabs.tsx, затем накопилось в accordion.tsx.
+ *
+ * Слой `base` в @layer выше объявлен ПЕРЕД `utilities`: у CSS layers порядок
+ * объявления решает приоритет, а не специфичность правил внутри них, поэтому
+ * даже широкий селектор [data-slot] здесь гарантированно проигрывает любому
+ * реальному классу компонента (bg-*, border-*, text-* и т.д.) — сброс виден
+ * только там, где сам компонент ничего не задал. */
+@layer base {
+  [data-slot] {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    list-style: none;
+    appearance: none;
+  }
+}
 
 /* Тёмная тема: нейтральная палитра shadcn/ui вместо выгрузки ВМАП.
  *

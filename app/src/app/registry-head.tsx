@@ -14,6 +14,8 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { motion } from 'motion/react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover';
 import { Checkbox } from '@/components/ui/Checkbox';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { Highlight, HighlightItem } from '@/components/animate-ui/primitives/effects/highlight';
 import { Hint } from '@/components/ui/Hint';
 import { КОЛОНКИ, firstDir, type ColDef } from './registry-columns';
@@ -131,18 +133,22 @@ function TextPopover({
   const [open, setOpen] = React.useState(false);
   const [q, setQ] = React.useState(value);
   const [suggestions, setSuggestions] = React.useState<FacetOption[]>([]);
+  const [ищем, setИщем] = React.useState(false);
   React.useEffect(() => { if (open) setQ(value); }, [open, value]);
 
   /* Подсказки — по введённой строке, с задержкой, чтобы не долбить сервер
      на каждый символ; пустое поле подсказок не показывает — их пока не по
-     чему строить. */
+     чему строить. Пока запрос не ответил, список подсказок молча не менялся —
+     набор из пары букв, для которых ничего не нашлось, было не отличить от
+     ещё не пришедшего ответа. */
   React.useEffect(() => {
-    if (!open || !q.trim()) { setSuggestions([]); return; }
+    if (!open || !q.trim()) { setSuggestions([]); setИщем(false); return; }
     let live = true;
+    setИщем(true);
     const t = setTimeout(() => {
       fetch(`/api/registry/facet?col=${col.key}&q=${encodeURIComponent(q.trim())}`)
         .then((r) => r.json())
-        .then((data) => { if (live) setSuggestions(data.options ?? []); });
+        .then((data) => { if (live) { setSuggestions(data.options ?? []); setИщем(false); } });
     }, 200);
     return () => { live = false; clearTimeout(t); };
   }, [open, q, col.key]);
@@ -167,7 +173,9 @@ function TextPopover({
       </Hint>
       <PopoverContent className="flex min-w-[240px] max-w-[320px] flex-col gap-[var(--group-gap-s)] p-[var(--group-padding-s)]" align="start">
         <label className="field">
-          <svg className="ic16 field__icon"><use href="#i-search" /></svg>
+          {ищем
+            ? <Spinner className="ic16 field__icon" />
+            : <svg className="ic16 field__icon"><use href="#i-search" /></svg>}
           <input
             autoFocus
             type="search"
@@ -316,7 +324,12 @@ function FilterPopover({ col, filterOn, selected, отбор }: {
         </label>
 
         <div className="popover__list">
-          {options === null && <div className="popover__row mark">Загрузка…</div>}
+          {options === null && Array.from({ length: 5 }, (_, i) => (
+            <div key={i} className="popover__row" aria-hidden>
+              <Skeleton className="size-4 shrink-0 rounded-[4px]" />
+              <Skeleton className={`h-3.5 ${i % 2 ? 'w-20' : 'w-32'}`} />
+            </div>
+          ))}
           {options !== null && visible.length === 0 && (
             <div className="popover__row mark">Ничего не найдено</div>
           )}

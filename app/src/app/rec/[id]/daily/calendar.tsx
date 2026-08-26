@@ -31,6 +31,10 @@ import { SubmitButton } from '@/components/ui/SubmitButton';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/Progress';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Accordion, AccordionItem, AccordionTrigger, AccordionContent,
+} from '@/components/animate-ui/components/radix/accordion';
 import { сохранитьСутки, историяСуток, type DayActionState } from './actions';
 
 export interface ДеньКалендаря {
@@ -425,7 +429,7 @@ function ОкноДня({ день, recId, можноПравить, закры�
         {/* Три правила, которые иначе выясняются только по расхождению в
             деньгах. Ноль и пусто — разные вещи: ноль идёт в расчёт и даёт
             отрицательный прирост, пусто выпадает из него совсем. */}
-        <p className="mt-2 text-xs text-[var(--text-tertiary)]">
+        <p className="mt-2 mb-0 text-xs text-[var(--text-tertiary)]">
           Пустой дебит — «данных нет», сутки выпадают из расчёта. Ноль — это
           остановленная скважина, он в расчёт идёт. Обводнённость, если её не
           заполнить, тянется с последних известных суток: её меряют
@@ -453,8 +457,11 @@ function ОкноДня({ день, recId, можноПравить, закры�
 
 function Журнал({ события }: { события: Событие[] | null }) {
   if (события === null) {
-    return <div className="border-t border-border px-4 py-2 text-xs text-[var(--text-tertiary)]">
-      Загружаем историю…
+    /* Строка той же высоты, что у заголовка аккордеона ниже (border-t px-4
+       py-2) — независимо от того, окажется истории 0 или 10, эта полоса не
+       прыгнет при подмене на настоящий контент. */
+    return <div className="flex items-center border-t border-border px-4 py-2">
+      <Skeleton className="h-3.5 w-36" />
     </div>;
   }
   if (события.length === 0) {
@@ -466,40 +473,52 @@ function Журнал({ события }: { события: Событие[] | n
   const величина = (v: number | null) => (v === null ? '—' : String(v).replace('.', ','));
 
   return (
-    <div className="border-t border-border">
-      <div className="flex items-center gap-1.5 px-4 pt-2 text-xs font-medium text-[var(--text-tertiary)]">
-        <History className="size-3" aria-hidden /> История значения
-      </div>
-      <ul className="max-h-44 overflow-y-auto px-4 pb-3 pt-1.5">
+    <Accordion type="single" collapsible className="border-t border-border">
+      <AccordionItem value="история" className="border-b-0">
+        <AccordionTrigger
+          showArrow
+          className="gap-1.5 px-4 py-2 text-xs font-medium text-[var(--text-tertiary)] hover:no-underline"
+        >
+          <span className="flex flex-1 items-center gap-1.5">
+            <History className="size-3" aria-hidden /> История значения
+            <span className="tabular-nums text-[var(--text-quaternary)]">{события.length}</span>
+          </span>
+        </AccordionTrigger>
+        <AccordionContent className="p-0">
+      <ul className="thin-scroll m-0 list-none max-h-44 overflow-y-auto px-4 pb-3 pt-1">
         {события.map((e) => (
           <li key={e.id} className="border-b border-[var(--border-divider-light)] py-1.5 text-xs last:border-0">
             <div className="flex items-baseline justify-between gap-2">
               <span className="font-medium">{ПАРАМЕТР[e.parameterId] ?? `параметр ${e.parameterId}`}</span>
-              <span className="tabular-nums text-[var(--text-tertiary)]">
+              <span className="shrink-0 tabular-nums text-[var(--text-tertiary)]">
                 {new Date(e.at).toLocaleString('ru-RU', {
                   day: '2-digit', month: '2-digit', year: 'numeric',
                   hour: '2-digit', minute: '2-digit',
                 }).replace(',', '')}
               </span>
             </div>
-            <div className="mt-0.5 text-[var(--text-secondary)]">
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[var(--text-secondary)]">
               {/* Первый ввод и правку различаем словом, а не только стрелкой:
                   «— → 120,5» глазом читается как правку с пустого места. */}
-              {e.oldValue === null
-                ? <>внесено <b className="tabular-nums">{величина(e.newValue)}</b></>
-                : e.newValue === null
-                  ? <>стёрто (было <span className="tabular-nums">{величина(e.oldValue)}</span>)</>
-                  : <>
-                      <span className="tabular-nums line-through opacity-60">{величина(e.oldValue)}</span>
-                      {' → '}
-                      <b className="tabular-nums">{величина(e.newValue)}</b>
-                    </>}
-              {' · '}{e.actorName}
-              {e.recNumber && <Badge variant="outline" className="ml-1.5">{e.recNumber}</Badge>}
+              <span>
+                {e.oldValue === null
+                  ? <>внесено <b className="tabular-nums">{величина(e.newValue)}</b></>
+                  : e.newValue === null
+                    ? <>стёрто (было <span className="tabular-nums">{величина(e.oldValue)}</span>)</>
+                    : <>
+                        <span className="tabular-nums line-through opacity-60">{величина(e.oldValue)}</span>
+                        {' → '}
+                        <b className="tabular-nums">{величина(e.newValue)}</b>
+                      </>}
+                {' · '}{e.actorName}
+              </span>
+              {e.recNumber && <Badge variant="outline">{e.recNumber}</Badge>}
             </div>
           </li>
         ))}
       </ul>
-    </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
   );
 }

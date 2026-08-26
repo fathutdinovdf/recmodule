@@ -31,3 +31,31 @@ export async function уведомитьОЗаявке({ автор, page, text,
     attachments: вложения,
   });
 }
+
+/* Письмо о входе в модуль. Получатель — тот же PROBLEM_REPORT_EMAIL, что и у
+ * заявок о проблемах: отдельного адреса под это не заводили. */
+export async function уведомитьОВходе({ логин, роль, userAgent }: {
+  логин: string; роль: string; userAgent: string | null;
+}): Promise<void> {
+  const host = process.env.SMTP_HOST;
+  const получатель = process.env.PROBLEM_REPORT_EMAIL;
+  if (!host || !получатель) return;
+
+  const transporter = nodemailer.createTransport({
+    host,
+    port: Number(process.env.SMTP_PORT ?? 465),
+    secure: process.env.SMTP_SECURE !== 'false',
+    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD },
+  });
+
+  const время = new Date().toLocaleString('ru-RU', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    to: получатель,
+    subject: `Вход в модуль — ${логин}`,
+    text: `${логин} (${роль}) вошёл в модуль ${время}.${userAgent ? `\n\nUser-Agent: ${userAgent}` : ''}`,
+  });
+}

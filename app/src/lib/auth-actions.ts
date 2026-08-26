@@ -15,6 +15,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { query } from '@/db/pool';
 import { парольПодходит } from './password';
+import { уведомитьОВходе } from './mail';
 import { КУКА_СЕССИИ, КУКА_ПОЛЬЗОВАТЕЛЯ } from './session-cookies';
 
 /* Тридцать суток. Модуль открывают не каждый день — недельный срок означал бы
@@ -29,8 +30,8 @@ export async function войти(_: РезультатВхода, форма: Fo
   const пароль = String(форма.get('password') ?? '');
   if (!логин || !пароль) return { ошибка: 'Введите логин и пароль' };
 
-  const [u] = await query<{ id: string; password_hash: string | null; home: string }>(`
-    SELECT u.id, u.password_hash, r.home
+  const [u] = await query<{ id: string; password_hash: string | null; home: string; label: string }>(`
+    SELECT u.id, u.password_hash, r.home, r.label
       FROM rec.users u JOIN rec.roles r ON r.key = u.role_key
      WHERE lower(u.login) = $1 AND u.is_active`, [логин]);
 
@@ -50,6 +51,12 @@ export async function войти(_: РезультатВхода, форма: Fo
     VALUES ($1, $2, now() + ($3 || ' days')::interval, $4)`,
   [id, u.id, String(СРОК_СУТОК), агент]);
   await query('UPDATE rec.users SET last_login_at = now() WHERE id = $1', [u.id]);
+
+  /* Без await: SMTP может отвечать секундами (а при недоступном хосте —
+     висеть до таймаута), и вход не должен ждать письмо — оно вторично по
+     отношению к самой сессии. */
+  уведомитьОВходе({ логин, роль: u.label, userAgent: агент })
+    .catch((e) => console.error('не удалось отправить письмо о входе', e));
 
   const куки = await cookies();
   куки.set(КУКА_СЕССИИ, id, {

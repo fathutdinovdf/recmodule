@@ -10,6 +10,7 @@
 
 import * as React from 'react';
 import { motion } from 'motion/react';
+import { Spinner } from '@/components/ui/spinner';
 import { RegistrationWizard } from './rec/new/wizard';
 import { справочникиМастера, type RegistrationReferencesResult } from './rec/new/actions';
 import './rec/new/wizard.css';
@@ -18,6 +19,11 @@ export function RegistrationLauncher() {
   const [open, setOpen] = React.useState(false);
   const [hover, setHover] = React.useState(false);
   const [references, setReferences] = React.useState<RegistrationReferencesResult | null>(null);
+
+  /* Между кликом и ответом справочникиМастера() окно ещё не открыто — без
+     этого признака нажатие на кнопку не давало вообще никакого отклика,
+     пока сервер не ответит: человек не понимал, дошёл ли клик. */
+  const загрузка = open && !references;
 
   function launch() {
     setOpen(true);
@@ -35,12 +41,14 @@ export function RegistrationLauncher() {
         type="button"
         className="btn btn--accent btn--main"
         onClick={launch}
+        disabled={загрузка}
+        aria-busy={загрузка}
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
         onFocus={() => setHover(true)}
         onBlur={() => setHover(false)}
       >
-        <MorphIcon on={hover} />Создать рекомендацию
+        <MorphIcon on={hover} pending={загрузка} />Создать рекомендацию
       </button>
       {open && references?.allowed && (
         <RegistrationWizard
@@ -67,13 +75,17 @@ export function RegistrationLauncher() {
  * квадрате 16×16, иначе на подмене кнопка дёргала бы ширину.
  * Поворот в противоход (уходящая вправо, приходящая слева) читается как
  * одно движение, а не как две независимые иконки. */
-function MorphIcon({ on }: { on: boolean }) {
+function MorphIcon({ on, pending }: { on: boolean; pending: boolean }) {
   const common = {
     className: 'ic16 btn__morph-ic',
     'aria-hidden': true,
     initial: false,
     transition: { type: 'spring' as const, stiffness: 420, damping: 30 },
   };
+  /* Тот же квадрат 16×16, что у обычных двух иконок — иначе подмена на
+     спиннер дёргает ширину кнопки ровно так, как боялся исходный комментарий
+     про stacking двух svg. */
+  if (pending) return <span className="btn__morph"><Spinner className="ic16 btn__morph-ic" /></span>;
   return (
     <span className="btn__morph">
       <motion.svg {...common} animate={{ opacity: on ? 0 : 1, scale: on ? 0.6 : 1, rotate: on ? 40 : 0 }}>
