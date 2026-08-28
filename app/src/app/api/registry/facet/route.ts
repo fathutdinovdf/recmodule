@@ -6,9 +6,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { columnFacet, textFacet, type FilterColumn, type TextFacetColumn } from '@/db/recommendations';
 
 const КОЛОНКИ: FilterColumn[] = [
-  'field', 'direction', 'well', 'priority', 'executor', 'status', 'control', 'decision',
+  'field', 'direction', 'well', 'kust', 'priority', 'executor', 'status', 'control', 'decision',
+  'customer', 'completeness',
 ];
-const ТЕКСТ_КОЛОНКИ: TextFacetColumn[] = ['number', 'problem'];
+const ТЕКСТ_КОЛОНКИ: TextFacetColumn[] = ['number', 'problem', 'action', 'rationale', 'rejectReason'];
 
 export async function GET(req: NextRequest) {
   const col = req.nextUrl.searchParams.get('col');

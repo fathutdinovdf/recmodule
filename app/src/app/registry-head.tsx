@@ -18,7 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { Highlight, HighlightItem } from '@/components/animate-ui/primitives/effects/highlight';
 import { Hint } from '@/components/ui/Hint';
-import { КОЛОНКИ, firstDir, type ColDef } from './registry-columns';
+import { firstDir, type ColDef } from './registry-columns';
 import type { FacetOption } from '@/db/recommendations';
 
 export interface HeadState {
@@ -45,7 +45,7 @@ function useОтбор() {
   }, [router, pathname, sp]);
 }
 
-export function RegistryHead({ state }: { state: HeadState }) {
+export function RegistryHead({ state, columns }: { state: HeadState; columns: ColDef[] }) {
   const отбор = useОтбор();
 
   const onSort = (key: string) => отбор((p) => {
@@ -59,7 +59,7 @@ export function RegistryHead({ state }: { state: HeadState }) {
   return (
     <thead>
       <tr>
-        {КОЛОНКИ.map((c) => {
+        {columns.map((c) => {
           const isSort = state.sort?.key === c.key;
           const dir = isSort ? state.sort!.dir : firstDir(c.key);
           const hint = !isSort ? `${c.label} — сортировать`

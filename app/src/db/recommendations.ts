@@ -31,20 +31,31 @@ export interface RecommendationRow {
   fieldName: string;
   problem: string;
   action: string;
+  rationale: string | null;
+  expectQzh: number | null;
+  expectQn: number | null;
+  expectEe: number | null;
   completeness: string | null;
   registeredAt: Date | null;
   sentAt: Date | null;
+  openedAt: Date | null;
   dueAt: Date | null;
   authorName: string;
   executorName: string | null;
   /** Решение Заказчика последнего круга и когда оно принято. */
   decisionKind: string | null;
+  /** Кто со стороны Заказчика принял последнее решение по кругу. */
+  customerName: string | null;
+  /** Обоснование последнего решения — заполнено при отклонении и уточнении. */
+  decisionComment: string | null;
   repliedAt: Date | null;
   slaHours: number | null;
   commentsCount: number;
+  attachmentsCount: number;
   /* Есть ли незакрытый спор — по нему в реестре ставится пометка: расчёт
      эффекта по такой рекомендации считается предварительным. */
   hasOpenDispute: boolean;
+  factDate: Date | null;
   windowOpenAt: Date | null;
   windowCloseAt: Date | null;
 }
@@ -122,17 +133,20 @@ export async function listStatuses(): Promise<StatusRef[]> {
  */
 
 export type FilterColumn =
-  | 'field' | 'direction' | 'well' | 'priority' | 'executor'
-  | 'status' | 'control' | 'decision';
+  | 'field' | 'direction' | 'well' | 'kust' | 'priority' | 'executor'
+  | 'status' | 'control' | 'decision' | 'customer' | 'completeness';
 
-export type SortColumn = FilterColumn | 'number' | 'regDate';
+export type SortColumn = FilterColumn | 'number' | 'regDate' | 'formDate'
+  | 'action' | 'rationale' | 'sentAt' | 'openedAt' | 'dueAt' | 'repliedAt'
+  | 'rejectReason' | 'factDate' | 'windowOpenAt' | 'windowCloseAt'
+  | 'commentsCount' | 'attachmentsCount' | 'expectQzh' | 'expectQn' | 'expectEe';
 
 export type Period = '7' | '30' | 'month';
 
 export interface ListFilter {
   statuses?: string[];
   colFilters?: Partial<Record<FilterColumn, string[]>>;
-  text?: { number?: string; problem?: string };
+  text?: Partial<Record<TextFacetColumn, string>>;
   period?: Period;
   sort?: { key: SortColumn; dir: 'asc' | 'desc' };
   limit?: number;
@@ -151,15 +165,21 @@ const BASE_CTE = `
     CASE WHEN s.shows_sla THEN p.sort_order END AS priority_order,
     d.name AS direction, d.sort_order AS direction_order,
     r.well_id, r.well_number, r.kust, r.field_id, r.field_name,
-    r.problem, r.action, r.completeness,
+    r.problem, r.action, r.rationale,
+    r.expect_qzh, r.expect_qn, r.expect_ee,
+    r.completeness,
     r.registered_at, r.sent_at, r.due_at,
     u.full_name AS author_name,
     ex.full_name AS executor_name,
     p.response_hours AS sla_hours,
     dec.kind AS decision_kind, dec.at AS replied_at,
+    dec.actor_name AS customer_name, dec.comment AS decision_comment,
     (SELECT count(*) FROM rec.comments c WHERE c.rec_id = r.id AND c.deleted_at IS NULL) AS comments_count,
+    (SELECT count(*) FROM rec.attachments a WHERE a.rec_id = r.id) AS attachments_count,
     EXISTS (SELECT 1 FROM rec.disputes ds WHERE ds.rec_id = r.id AND ds.state = 'open') AS has_open_dispute,
-    i.window_open_at, i.window_close_at,
+    (SELECT min(e.at) FROM rec.recommendation_events e
+      WHERE e.rec_id = r.id AND e.kind = 'opened') AS opened_at,
+    i.fact_date, i.window_open_at, i.window_close_at,
     CASE
       WHEN NOT s.shows_sla THEN 'hidden'
       WHEN r.status = 'registered' THEN 'pending'
@@ -176,7 +196,7 @@ const BASE_CTE = `
   LEFT JOIN rec.priorities p ON p.code = r.priority
   LEFT JOIN rec.implementations i ON i.rec_id = r.id
   LEFT JOIN LATERAL (
-    SELECT d2.kind, d2.at FROM rec.decisions d2
+    SELECT d2.kind, d2.at, d2.actor_name, d2.comment FROM rec.decisions d2
     WHERE d2.rec_id = r.id ORDER BY d2.at DESC LIMIT 1
   ) dec ON true
   WHERE r.deleted_at IS NULL
@@ -203,14 +223,33 @@ const CONTROL_ORDER_SQL = `CASE control_kind
 const SORT_EXPR: Record<SortColumn, string> = {
   number: 'number',
   regDate: 'registered_at',
+  formDate: 'registered_at',
   field: 'field_name',
   direction: 'direction',
   well: 'well_number',
+  kust: 'kust',
+  action: 'action',
+  rationale: 'rationale',
   priority: 'priority_order',
   executor: 'executor_name',
   status: 'status_order',
+  sentAt: 'sent_at',
+  openedAt: 'opened_at',
+  dueAt: 'due_at',
+  repliedAt: 'replied_at',
   control: CONTROL_ORDER_SQL,
   decision: 'decision_kind',
+  rejectReason: 'decision_comment',
+  customer: 'customer_name',
+  factDate: 'fact_date',
+  completeness: 'completeness',
+  windowOpenAt: 'window_open_at',
+  windowCloseAt: 'window_close_at',
+  commentsCount: 'comments_count',
+  attachmentsCount: 'attachments_count',
+  expectQzh: 'expect_qzh',
+  expectQn: 'expect_qn',
+  expectEe: 'expect_ee',
 };
 
 /* Плитки над таблицей — какие статусы за какой стоят. Источник истины один:
@@ -234,7 +273,8 @@ export function parseListFilterFromSearchParams(
   sp: Record<string, string | undefined>,
 ): Omit<ListFilter, 'limit' | 'offset'> {
   const КОЛОНКИ_ФИЛЬТРА: FilterColumn[] = [
-    'field', 'direction', 'well', 'priority', 'executor', 'status', 'control', 'decision',
+    'field', 'direction', 'well', 'kust', 'priority', 'executor', 'status', 'control', 'decision',
+    'customer', 'completeness',
   ];
 
   const colFilters: Partial<Record<FilterColumn, string[]>> = {};
@@ -243,10 +283,9 @@ export function parseListFilterFromSearchParams(
     if (raw) colFilters[key] = raw.split('|').filter(Boolean);
   }
 
-  const text: { number?: string; problem?: string } = {
-    number: sp.number || undefined,
-    problem: sp.problem || undefined,
-  };
+  const ТЕКСТ_КОЛОНКИ: TextFacetColumn[] = ['number', 'problem', 'action', 'rationale', 'rejectReason'];
+  const text: Partial<Record<TextFacetColumn, string>> = {};
+  for (const key of ТЕКСТ_КОЛОНКИ) if (sp[key]) text[key] = sp[key];
 
   const period: Period | undefined = sp.period === '7' || sp.period === '30' || sp.period === 'month'
     ? sp.period : undefined;
@@ -276,11 +315,14 @@ function buildConditions(filter: ListFilter): { where: string; params: unknown[]
     field: 'field_name',
     direction: 'direction',
     well: 'well_number',
+    kust: `COALESCE(kust, '')`,
     priority: `COALESCE(priority_disp, '')`,
     executor: `COALESCE(executor_name, '')`,
     status: 'status',
     control: 'control_kind',
     decision: `COALESCE(decision_kind, '')`,
+    customer: `COALESCE(customer_name, '')`,
+    completeness: `COALESCE(completeness, '')`,
   };
   for (const [key, values] of Object.entries(filter.colFilters ?? {})) {
     if (!values?.length) continue;
@@ -288,13 +330,10 @@ function buildConditions(filter: ListFilter): { where: string; params: unknown[]
     условия.push(`${colExpr[key as FilterColumn]} = ANY($${параметры.length})`);
   }
 
-  if (filter.text?.number) {
-    параметры.push(`%${filter.text.number.trim()}%`);
-    условия.push(`rec.ci(number) LIKE rec.ci($${параметры.length})`);
-  }
-  if (filter.text?.problem) {
-    параметры.push(`%${filter.text.problem.trim()}%`);
-    условия.push(`rec.ci(problem) LIKE rec.ci($${параметры.length})`);
+  for (const [key, value] of Object.entries(filter.text ?? {})) {
+    if (!value) continue;
+    параметры.push(`%${value.trim()}%`);
+    условия.push(`rec.ci(COALESCE(${ТЕКСТ_ВЫРАЖЕНИЕ[key as TextFacetColumn]}, '')) LIKE rec.ci($${параметры.length})`);
   }
 
   if (filter.period === 'month') {
@@ -352,17 +391,26 @@ export async function listRecommendations(filter: ListFilter = {}): Promise<{
       fieldName: r.field_name as string,
       problem: r.problem as string,
       action: r.action as string,
+      rationale: r.rationale as string | null,
+      expectQzh: r.expect_qzh === null ? null : Number(r.expect_qzh),
+      expectQn: r.expect_qn === null ? null : Number(r.expect_qn),
+      expectEe: r.expect_ee === null ? null : Number(r.expect_ee),
       completeness: r.completeness as string | null,
       registeredAt: r.registered_at as Date | null,
       sentAt: r.sent_at as Date | null,
+      openedAt: r.opened_at as Date | null,
       dueAt: r.due_at as Date | null,
       authorName: r.author_name as string,
       executorName: r.executor_name as string | null,
       decisionKind: r.decision_kind as string | null,
+      customerName: r.customer_name as string | null,
+      decisionComment: r.decision_comment as string | null,
       repliedAt: r.replied_at as Date | null,
       slaHours: r.sla_hours === null ? null : Number(r.sla_hours),
       commentsCount: Number(r.comments_count),
+      attachmentsCount: Number(r.attachments_count),
       hasOpenDispute: r.has_open_dispute as boolean,
+      factDate: r.fact_date as Date | null,
       windowOpenAt: r.window_open_at as Date | null,
       windowCloseAt: r.window_close_at as Date | null,
     })),
@@ -465,6 +513,8 @@ const КОНТРОЛЬ_МЕТКА: Record<string, string> = {
   ok: 'в срок', late: 'с опозданием', overdue: 'просрочено', waiting: 'осталось',
 };
 
+const ПОЛНОТА_МЕТКА: Record<string, string> = { full: 'Полностью', partial: 'Частично' };
+
 /** Список значений колонки со счётчиком — для чек-листа в поповере фильтра.
  *  Считается по всему реестру (без учёта активных фильтров), как в макете:
  *  иначе выбор в одной колонке молча менял бы счётчики в другой. */
@@ -502,6 +552,37 @@ export async function columnFacet(col: FilterColumn, search?: string): Promise<F
         GROUP BY executor_name ORDER BY executor_name NULLS FIRST
       `, like ? [like] : []);
       return rows.map((r) => ({ value: r.v ?? '', label: r.v ?? '—', count: Number(r.n) }));
+    }
+
+    case 'kust': {
+      const rows = await query<{ v: string | null; n: string }>(`
+        WITH base AS (${await основа()})
+        SELECT kust AS v, count(*)::text AS n FROM base
+        ${like ? `WHERE rec.ci(COALESCE(kust, '—')) LIKE rec.ci($1)` : ''}
+        GROUP BY kust ORDER BY kust NULLS FIRST
+      `, like ? [like] : []);
+      return rows.map((r) => ({ value: r.v ?? '', label: r.v ?? '—', count: Number(r.n) }));
+    }
+
+    case 'customer': {
+      const rows = await query<{ v: string | null; n: string }>(`
+        WITH base AS (${await основа()})
+        SELECT customer_name AS v, count(*)::text AS n FROM base
+        ${like ? `WHERE rec.ci(COALESCE(customer_name, '—')) LIKE rec.ci($1)` : ''}
+        GROUP BY customer_name ORDER BY customer_name NULLS FIRST
+      `, like ? [like] : []);
+      return rows.map((r) => ({ value: r.v ?? '', label: r.v ?? '—', count: Number(r.n) }));
+    }
+
+    case 'completeness': {
+      const rows = await query<{ v: string | null; n: string }>(`
+        WITH base AS (${await основа()})
+        SELECT completeness AS v, count(*)::text AS n FROM base
+        GROUP BY completeness ORDER BY completeness NULLS FIRST
+      `, []);
+      return rows
+        .map((r) => ({ value: r.v ?? '', label: r.v ? (ПОЛНОТА_МЕТКА[r.v] ?? r.v) : '—', count: Number(r.n) }))
+        .filter((o) => !like || o.label.toLowerCase().includes(search!.trim().toLowerCase()));
     }
 
     case 'priority': {
@@ -552,21 +633,29 @@ export async function columnFacet(col: FilterColumn, search?: string): Promise<F
   }
 }
 
-export type TextFacetColumn = 'number' | 'problem';
+export type TextFacetColumn = 'number' | 'problem' | 'action' | 'rationale' | 'rejectReason';
 
-/** Подсказки для текстового поиска (номер, проблема/отклонение) — список
+const ТЕКСТ_ВЫРАЖЕНИЕ: Record<TextFacetColumn, string> = {
+  number: 'number',
+  problem: 'problem',
+  action: 'action',
+  rationale: 'rationale',
+  rejectReason: 'decision_comment',
+};
+
+/** Подсказки для текстового поиска по свободным текстовым колонкам — список
  *  различных значений, содержащих введённую строку, только по запросу:
- *  без него подсказывать нечего, а тянуть все проблемы реестра незачем. */
+ *  без него подсказывать нечего, а тянуть все тексты реестра незачем. */
 export async function textFacet(col: TextFacetColumn, search: string): Promise<FacetOption[]> {
   const q = search.trim();
   if (!q) return [];
   const like = `%${q}%`;
-  const expr = col === 'number' ? 'number' : 'problem';
+  const expr = ТЕКСТ_ВЫРАЖЕНИЕ[col];
 
   const rows = await query<{ v: string; n: string }>(`
     WITH base AS (${await основа()})
     SELECT ${expr} AS v, count(*)::text AS n FROM base
-    WHERE rec.ci(${expr}) LIKE rec.ci($1)
+    WHERE rec.ci(COALESCE(${expr}, '')) LIKE rec.ci($1)
     GROUP BY ${expr} ORDER BY ${expr}
     LIMIT 8
   `, [like]);

@@ -8,18 +8,23 @@
  */
 
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import {
   listRecommendations, statusCounts, ПЛИТКИ_СТАТУСЫ,
-  type FilterColumn, type SortColumn, type Period,
+  type FilterColumn, type SortColumn, type Period, type TextFacetColumn,
 } from '@/db/recommendations';
 import type { RecommendationRow } from '@/db/recommendations';
 import { control, fmtDur, toWindow } from '@/domain/workhours';
 import { Icon } from '@/components/Icons';
 import { Hint } from '@/components/ui/Hint';
-import { КОЛОНКИ } from './registry-columns';
+import {
+  видимыеКолонки, ГРУППЫ_КОЛОНОК, КОЛОНКИ_ВСЕ, КОЛОНКИ_ПО_УМОЛЧАНИЮ, type ColDef,
+} from './registry-columns';
 import { RegistryHead } from './registry-head';
 import { RegistrationLauncher } from './registration-launcher';
 import { RegistryTiles } from './registry-tiles';
+import { ColumnsPanel } from './registry-columns-panel';
+import { ВИДИМЫЕ_КОЛОНКИ_COOKIE } from './registry-columns-cookie';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,8 +40,12 @@ const ПЛИТКИ = [
 
 /* Колонки-справочники, по которым в заголовке живёт чек-лист значений. */
 const КОЛОНКИ_ФИЛЬТРА: FilterColumn[] = [
-  'field', 'direction', 'well', 'priority', 'executor', 'status', 'control', 'decision',
+  'field', 'direction', 'well', 'kust', 'priority', 'executor', 'status', 'control', 'decision',
+  'customer', 'completeness',
 ];
+
+/* Колонки свободного текста — поиск подстрокой в заголовке. */
+const КОЛОНКИ_ТЕКСТА: TextFacetColumn[] = ['number', 'problem', 'action', 'rationale', 'rejectReason'];
 
 const РЕШЕНИЕ: Record<string, { label: string; kind: string }> = {
   accept: { label: 'Принята', kind: 'ok' },
@@ -51,10 +60,18 @@ const дт = (d: Date | null) => (d
     }).replace(',', '')
   : '—');
 
+const дата = (d: Date | null) => (d
+  ? new Date(d).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  : '—');
+
+const число = (n: number | null, dp = 1) => (n === null ? '—' : n.toLocaleString('ru-RU', { maximumFractionDigits: dp }));
+
+const ПОЛНОТА_МЕТКА: Record<string, string> = { full: 'Полностью', partial: 'Частично' };
+
 function Ячейка({
   r, col, ссылкаНаКарточку,
 }: {
-  r: RecommendationRow; col: typeof КОЛОНКИ[number]; ссылкаНаКарточку: string;
+  r: RecommendationRow; col: ColDef; ссылкаНаКарточку: string;
 }) {
   switch (col.key) {
     case 'number':
@@ -145,6 +162,69 @@ function Ячейка({
         : <span className="mark">—</span>;
     }
 
+    case 'formDate':
+      return <span className="cell-date">{дт(r.registeredAt)}</span>;
+
+    case 'kust':
+      return <>{r.kust ?? '—'}</>;
+
+    case 'action':
+      return <div className="clip"><Hint text={r.action}><span>{r.action}</span></Hint></div>;
+
+    case 'rationale':
+      return r.rationale
+        ? <div className="clip"><Hint text={r.rationale}><span>{r.rationale}</span></Hint></div>
+        : <span className="mark">—</span>;
+
+    case 'sentAt':
+      return <span className="cell-date">{дт(r.sentAt)}</span>;
+
+    case 'openedAt':
+      return <span className="cell-date">{дт(r.openedAt)}</span>;
+
+    case 'dueAt':
+      return <span className="cell-date">{дт(r.dueAt)}</span>;
+
+    case 'repliedAt':
+      return <span className="cell-date">{дт(r.repliedAt)}</span>;
+
+    case 'rejectReason':
+      return r.decisionComment
+        ? <div className="clip"><Hint text={r.decisionComment}><span>{r.decisionComment}</span></Hint></div>
+        : <span className="mark">—</span>;
+
+    case 'customer':
+      return <div className="clip1">{r.customerName ?? '—'}</div>;
+
+    case 'factDate':
+      return <span className="cell-date">{дата(r.factDate)}</span>;
+
+    case 'completeness':
+      return r.completeness
+        ? <>{ПОЛНОТА_МЕТКА[r.completeness] ?? r.completeness}</>
+        : <span className="mark">—</span>;
+
+    case 'windowOpenAt':
+      return <span className="cell-date">{дата(r.windowOpenAt)}</span>;
+
+    case 'windowCloseAt':
+      return <span className="cell-date">{дата(r.windowCloseAt)}</span>;
+
+    case 'commentsCount':
+      return <>{r.commentsCount}</>;
+
+    case 'attachmentsCount':
+      return <>{r.attachmentsCount}</>;
+
+    case 'expectQzh':
+      return <>{число(r.expectQzh)}</>;
+
+    case 'expectQn':
+      return <>{число(r.expectQn)}</>;
+
+    case 'expectEe':
+      return <>{число(r.expectEe)}</>;
+
     default:
       return null;
   }
@@ -167,10 +247,8 @@ export default async function Page({
     if (raw) colFilters[key] = raw.split('|').filter(Boolean);
   }
 
-  const text: { number?: string; problem?: string } = {
-    number: sp.number || undefined,
-    problem: sp.problem || undefined,
-  };
+  const text: Partial<Record<TextFacetColumn, string>> = {};
+  for (const key of КОЛОНКИ_ТЕКСТА) if (sp[key]) text[key] = sp[key];
 
   const period: Period | undefined = sp.period === '7' || sp.period === '30' || sp.period === 'month'
     ? sp.period : undefined;
@@ -192,7 +270,7 @@ export default async function Page({
   ]);
 
   const фильтрВключён = Boolean(
-    плитка || period || text.number || text.problem
+    плитка || period || Object.values(text).some(Boolean)
     || Object.values(colFilters).some((v) => v?.length),
   );
   const страниц = Math.max(1, Math.ceil(total / наСтранице));
@@ -218,15 +296,20 @@ export default async function Page({
     return s ? `/?${s}` : '/';
   };
 
+  /* Видимость колонок — в cookie, а не в URL: это личная настройка
+     наблюдения за реестром, а не часть отфильтрованной выборки, и не должна
+     ехать в ссылке, которой делятся ради самого отбора (решение 24/56). */
+  const cookieКолонок = (await cookies()).get(ВИДИМЫЕ_КОЛОНКИ_COOKIE)?.value;
+  const видимые = cookieКолонок ? new Set(cookieКолонок.split(',').filter(Boolean)) : null;
+  const КОЛОНКИ = видимыеКолонки(видимые);
+
   return (
     <main className="content">
       <div className="pagehead">
         <h1>Реестр рекомендаций</h1>
         <div className="pagehead__actions">
           <RegistrationLauncher />
-          <Hint text="Настройка колонок">
-            <button className="iconbtn iconbtn--lg" type="button" aria-label="Настройка колонок"><Icon id="cols" size={20} /></button>
-          </Hint>
+          <ColumnsPanel groups={ГРУППЫ_КОЛОНОК} all={КОЛОНКИ_ВСЕ} visible={видимые ?? КОЛОНКИ_ПО_УМОЛЧАНИЮ} />
           <Hint text="Экспорт">
             <button className="iconbtn iconbtn--lg" type="button" aria-label="Экспорт"><Icon id="export" size={20} /></button>
           </Hint>
@@ -249,12 +332,14 @@ export default async function Page({
             <colgroup>
               {КОЛОНКИ.map((c) => <col key={c.key} style={{ width: c.w }} />)}
             </colgroup>
-            <RegistryHead state={{
-              sort: sort ?? null,
-              period: period ?? '',
-              colFilters: Object.fromEntries(КОЛОНКИ_ФИЛЬТРА.map((k) => [k, colFilters[k] ?? []])),
-              text: { number: text.number ?? '', problem: text.problem ?? '' },
-            }}
+            <RegistryHead
+              columns={КОЛОНКИ}
+              state={{
+                sort: sort ?? null,
+                period: period ?? '',
+                colFilters: Object.fromEntries(КОЛОНКИ_ФИЛЬТРА.map((k) => [k, colFilters[k] ?? []])),
+                text: Object.fromEntries(КОЛОНКИ_ТЕКСТА.map((k) => [k, text[k] ?? ''])),
+              }}
             />
             <tbody>
               {rows.length === 0 && (
