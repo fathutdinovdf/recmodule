@@ -367,7 +367,7 @@ export default async function Page({
                 return (
                   <tr key={r.id} className={c.kind === 'overdue' ? 'row-overdue' : ''}>
                     {КОЛОНКИ.map((col) => (
-                      <td key={col.key} className={col.key === 'number' ? 'cell-num' : ''}>
+                      <td key={col.key} data-col={col.key} className={col.key === 'number' ? 'cell-num' : ''}>
                         <Ячейка r={r} col={col} ссылкаНаКарточку={ссылкаНаКарточку(r.id)} />
                       </td>
                     ))}
