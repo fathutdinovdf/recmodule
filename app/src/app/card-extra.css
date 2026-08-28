@@ -106,6 +106,10 @@
   margin-left: 6px;
 }
 .eff-total__side { flex: 1 1 260px; display: flex; flex-direction: column; gap: 4px; }
+/* Прижата к правому краю плашки, а не к концу колонки с примечанием:
+   `.eff-total` растёт по высоте от длины примечания, и кнопка внизу колонки
+   съезжала бы вместе с текстом. Верхний угол — стабильная точка. */
+.eff-total__ai { align-self: flex-start; margin-left: auto; }
 
 /* ---------- нехватка данных ---------- */
 

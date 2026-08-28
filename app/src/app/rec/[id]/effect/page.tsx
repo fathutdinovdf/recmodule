@@ -22,6 +22,7 @@ import { дата, рубли, сутки, число, прирост } from '@/
 import { БлокБазы } from './baseline-block';
 import { СутРаскрытие } from './daily-collapsible';
 import { ГрафикФакт } from './fact-chart';
+import { ИИРезюме } from './ai-summary-popover';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,6 +85,11 @@ export default async function Page({ params, searchParams }: {
                     : `Итог предварительный: окно эффекта идёт, посчитано ${сутки(eff.elapsedDays)} из ${WINDOW_DAYS}.`}
               </span>
             </div>
+            {eff.economy && (
+              <div className="eff-total__ai">
+                <ИИРезюме cardId={card.id} />
+              </div>
+            )}
           </div>
         ) : (
           <ПочемуНеПосчитано problems={eff.problems} />
