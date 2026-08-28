@@ -47,6 +47,19 @@ export function ColumnsPanel({ groups, all, visible }: {
     return next;
   });
 
+  /* «Выбрать все» — по всем группам разом, а не по одной: колонок в реестре
+     тридцать с лишним на десяток групп, и раздельный переключатель на
+     каждую не избавил бы от расхода кликов, ради которого его заводят. */
+  const allKeys = React.useMemo(() => groups.flatMap((g) => g.keys), [groups]);
+  const allChecked = allKeys.length > 0 && allKeys.every((k) => checked.has(k));
+  const someChecked = allKeys.some((k) => checked.has(k));
+  const toggleAll = () => setChecked((prev) => {
+    const next = new Set(prev);
+    if (allChecked) allKeys.forEach((k) => next.delete(k));
+    else allKeys.forEach((k) => next.add(k));
+    return next;
+  });
+
   const применить = () => {
     document.cookie = `${ВИДИМЫЕ_КОЛОНКИ_COOKIE}=${[...checked].join(',')}; path=/; max-age=31536000; samesite=lax`;
     window.location.reload();
@@ -71,6 +84,13 @@ export function ColumnsPanel({ groups, all, visible }: {
         align="end"
       >
         <div className="popover__list" style={{ maxHeight: 360 }}>
+          <label className="popover__row popover__row--all">
+            <Checkbox
+              checked={allChecked ? true : someChecked ? 'indeterminate' : false}
+              onCheckedChange={toggleAll}
+            />
+            <span>Выбрать все</span>
+          </label>
           {groups.map((g) => (
             <React.Fragment key={g.label}>
               <div style={{

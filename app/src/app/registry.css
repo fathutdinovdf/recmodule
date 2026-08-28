@@ -379,19 +379,7 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 
 /* ------------------------------ таблица ------------------------------ */
 
-.tablewrap {
-  flex: 1 1 auto; overflow: auto; min-height: 0;
-  /* Тот же тонкий скроллбар, что в card-extra.css .thin-scroll — своего класса
-     тут нет ради него одного, а таскать весь файл карточки не стоит. */
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-divider-light) transparent;
-}
-.tablewrap::-webkit-scrollbar { width: 6px; height: 6px; }
-.tablewrap::-webkit-scrollbar-track { background: transparent; }
-.tablewrap::-webkit-scrollbar-thumb {
-  background: var(--border-divider-light);
-  border-radius: 999px;
-}
+.tablewrap { flex: 1 1 auto; overflow: auto; min-height: 0; }
 
 .tbl {
   table-layout: fixed;
@@ -603,6 +591,14 @@ body.is-resizing { cursor: col-resize; user-select: none; }
   cursor: pointer;
 }
 .popover__row:hover { background: var(--state-hover); }
+/* Строка «Выбрать все» отделяется от списка значений линией — иначе теряется
+ * среди обычных строк, а по смыслу она управляет ими всеми разом. */
+.popover__row--all {
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-divider-light);
+  padding-bottom: var(--item-padding-vertical-xs);
+  margin-bottom: var(--item-gap-vertical-xs);
+}
 /* Только прямой потомок, не любой вложенный span: у Checkbox своя разметка из
  * span-обёрток для анимации галочки, и общий селектор `.popover__row span`
  * резал их overflow'ом до размера коробки чекбокса независимо от размера

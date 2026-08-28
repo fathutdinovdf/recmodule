@@ -356,6 +356,19 @@ function FilterPopover({ col, filterOn, selected, отбор }: {
     return next;
   });
 
+  /* «Выбрать все» относится к тому, что сейчас видно в списке — то есть к
+     результату поиска по q, а не ко всем значениям колонки: иначе отметка по
+     отфильтрованной выдаче незаметно выбрала бы и то, что под поиск не
+     подошло и на экране не показано. */
+  const allChecked = visible.length > 0 && visible.every((o) => checked.has(o.value));
+  const someChecked = visible.some((o) => checked.has(o.value));
+  const toggleAll = () => setChecked((prev) => {
+    const next = new Set(prev);
+    if (allChecked) visible.forEach((o) => next.delete(o.value));
+    else visible.forEach((o) => next.add(o.value));
+    return next;
+  });
+
   const apply = () => {
     отбор((p) => {
       if (checked.size) p.set(col.key, [...checked].join('|'));
@@ -392,6 +405,15 @@ function FilterPopover({ col, filterOn, selected, отбор }: {
           ))}
           {options !== null && visible.length === 0 && (
             <div className="popover__row mark">Ничего не найдено</div>
+          )}
+          {options !== null && visible.length > 0 && (
+            <label className="popover__row popover__row--all">
+              <Checkbox
+                checked={allChecked ? true : someChecked ? 'indeterminate' : false}
+                onCheckedChange={toggleAll}
+              />
+              <span>Выбрать все</span>
+            </label>
           )}
           {visible.map((o) => (
             <label key={o.value} className="popover__row">
