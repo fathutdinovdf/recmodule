@@ -65,7 +65,9 @@ const НАВИГАЦИЯ: NavSection[] = [
   {
     title: 'Работа',
     items: [
-      { href: '/inbox', label: 'Мои задачи', badge: { text: '7', accent: true }, muted: true },
+      /* Бейдж не задаётся здесь: число дел «ход за мной» приходит пропом
+         значокИнбокса и подставляется при отрисовке — см. ниже. */
+      { href: '/inbox', label: 'Мои задачи' },
       { href: '/', label: 'Реестр рекомендаций' },
       { href: '/claims', label: 'Заявки Заказчика', badge: { text: '2' }, muted: true },
     ],
@@ -91,13 +93,16 @@ const НАВИГАЦИЯ: NavSection[] = [
 ];
 
 export function AppChrome({
-  children, user, users, уведомления,
+  children, user, users, уведомления, значокИнбокса,
 }: {
   children: React.ReactNode;
   /* Не `null`: до входа оболочка не рисуется вовсе — см. AppShell. */
   user: SessionUser;
   users: SessionUser[];
   уведомления: УведомлениеПропс[];
+  /** Число дел «ход за мной» для значка «Мои задачи»; null — у роли инбокса
+      нет (билдер не собран или администратор), значок не показывается. */
+  значокИнбокса: number | null;
 }) {
   const path = usePathname();
 
@@ -134,12 +139,18 @@ export function AppChrome({
                 const активен = пункт.href === path;
                 const классы = ['navitem', активен ? 'is-active' : '',
                   пункт.muted ? 'navitem--muted' : ''].filter(Boolean).join(' ');
+                /* Живой бейдж инбокса: только дела «ход за мной» (см.
+                   счётчикИнбокса). Ноль не показываем — пустой значок читался
+                   бы как «непонятно, сколько», а не как «дел нет». */
+                const бейдж = пункт.href === '/inbox'
+                  ? (значокИнбокса ? { text: String(значокИнбокса), accent: true } : undefined)
+                  : пункт.badge;
                 const внутри = (
                   <>
                     <span className="navitem__label">{пункт.label}</span>
-                    {пункт.badge && (
-                      <span className={`badge ${пункт.badge.accent ? 'badge--accent' : ''}`}>
-                        {пункт.badge.text}
+                    {бейдж && (
+                      <span className={`badge ${бейдж.accent ? 'badge--accent' : ''}`}>
+                        {бейдж.text}
                       </span>
                     )}
                   </>

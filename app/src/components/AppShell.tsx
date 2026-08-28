@@ -17,6 +17,7 @@ import { redirect } from 'next/navigation';
 import { AppChrome } from './AppChrome';
 import { currentUser, allUsers } from '@/lib/session';
 import { listNotifications } from '@/db/notifications';
+import { счётчикИнбокса } from '@/db/inbox';
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const [user, users, шапки] = await Promise.all([currentUser(), allUsers(), headers()]);
@@ -31,11 +32,19 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   /* Колокольчик читает уведомления здесь же, а не отдельным маршрутом: шапка
      оборачивает все страницы, и revalidatePath('/', 'layout') из
      notification-actions.ts уже перерисовывает именно этот компонент. */
-  const уведомления = (await listNotifications(user.id, 30)).map((n) => ({
+  const [уведомленияСырые, значокИнбокса] = await Promise.all([
+    listNotifications(user.id, 30),
+    счётчикИнбокса(user.role),
+  ]);
+  const уведомления = уведомленияСырые.map((n) => ({
     ...n,
     createdAt: n.createdAt.toISOString(),
     readAt: n.readAt ? n.readAt.toISOString() : null,
   }));
 
-  return <AppChrome user={user} users={users} уведомления={уведомления}>{children}</AppChrome>;
+  return (
+    <AppChrome user={user} users={users} уведомления={уведомления} значокИнбокса={значокИнбокса}>
+      {children}
+    </AppChrome>
+  );
 }

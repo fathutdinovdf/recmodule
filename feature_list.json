@@ -1,6 +1,6 @@
 {
   "_comment": "Машиночитаемый статус переноса экранов из макет/ в app/, по мотивам harness-паттерна «списки фич как примитивы». Обновляется вручную при переносе или значимой доработке экрана — прозы в BRIEF.md для этого недостаточно, она отстаёт от факта (см. BRIEF.md:708-711, там ещё считается непеределанным то, что уже сделано).",
-  "generated_at": "2026-08-22",
+  "generated_at": "2026-08-28",
   "source_of_truth_when_conflict": "фактическое состояние app/src/app — не этот файл и не BRIEF.md",
   "screens": [
     {
@@ -9,8 +9,14 @@
       "title": "Реестр рекомендаций",
       "route": "/",
       "status": "перенесён",
-      "app_files": ["app/src/app/page.tsx", "app/src/app/registry-tiles.tsx", "app/src/app/registry-head.tsx"],
-      "states_covered": ["занятое"],
+      "app_files": [
+        "app/src/app/page.tsx",
+        "app/src/app/registry-tiles.tsx",
+        "app/src/app/registry-head.tsx"
+      ],
+      "states_covered": [
+        "занятое"
+      ],
       "notes": "Пустое/отказ состояния явно не встречались в коде — проверить при следующей правке."
     },
     {
@@ -19,15 +25,47 @@
       "title": "Карточка рекомендации",
       "route": "/rec/[id]",
       "status": "перенесён",
-      "app_files": ["app/src/app/rec/[id]/page.tsx", "app/src/app/rec/[id]/layout.tsx", "app/src/app/rec/[id]/tabs.tsx"],
+      "app_files": [
+        "app/src/app/rec/[id]/page.tsx",
+        "app/src/app/rec/[id]/layout.tsx",
+        "app/src/app/rec/[id]/tabs.tsx"
+      ],
       "subtabs": [
-        {"id": "summary", "route": "/rec/[id]/summary", "status": "перенесён"},
-        {"id": "daily", "route": "/rec/[id]/daily", "status": "перенесён"},
-        {"id": "effect", "route": "/rec/[id]/effect", "status": "перенесён"},
-        {"id": "impl", "route": "/rec/[id]/impl", "status": "перенесён"},
-        {"id": "log", "route": "/rec/[id]/log", "status": "перенесён"},
-        {"id": "files", "route": "/rec/[id]/files", "status": "перенесён"},
-        {"id": "analogs", "route": "/rec/[id]/analogs", "status": "перенесён"}
+        {
+          "id": "summary",
+          "route": "/rec/[id]/summary",
+          "status": "перенесён"
+        },
+        {
+          "id": "daily",
+          "route": "/rec/[id]/daily",
+          "status": "перенесён"
+        },
+        {
+          "id": "effect",
+          "route": "/rec/[id]/effect",
+          "status": "перенесён"
+        },
+        {
+          "id": "impl",
+          "route": "/rec/[id]/impl",
+          "status": "перенесён"
+        },
+        {
+          "id": "log",
+          "route": "/rec/[id]/log",
+          "status": "перенесён"
+        },
+        {
+          "id": "files",
+          "route": "/rec/[id]/files",
+          "status": "перенесён"
+        },
+        {
+          "id": "analogs",
+          "route": "/rec/[id]/analogs",
+          "status": "перенесён"
+        }
       ],
       "notes": "Единственный экран макета, распавшийся на несколько маршрутов Next вместо одной страницы с JS-табами."
     },
@@ -37,7 +75,12 @@
       "title": "Мастер регистрации рекомендации",
       "route": "/rec/new",
       "status": "перенесён",
-      "app_files": ["app/src/app/rec/new/page.tsx", "app/src/app/rec/new/wizard.tsx", "app/src/app/rec/new/standalone.tsx", "app/src/app/registration-launcher.tsx"],
+      "app_files": [
+        "app/src/app/rec/new/page.tsx",
+        "app/src/app/rec/new/wizard.tsx",
+        "app/src/app/rec/new/standalone.tsx",
+        "app/src/app/registration-launcher.tsx"
+      ],
       "notes": "BRIEF.md:710 всё ещё числит мастер как план впереди — устарело, экран готов и в проде маршрутов."
     },
     {
@@ -46,17 +89,24 @@
       "title": "Пользователи и роли",
       "route": "/users",
       "status": "перенесён",
-      "app_files": ["app/src/app/users/page.tsx", "app/src/app/users/controls.tsx"],
+      "app_files": [
+        "app/src/app/users/page.tsx",
+        "app/src/app/users/controls.tsx"
+      ],
       "notes": "Пришёл вместе с веткой auth (роли, вход по паролю, серверные сессии), слитой 22.08.2026 — см. BRIEF.md:776."
     },
     {
       "id": "inbox",
       "макет": "inbox.html",
       "title": "Мои задачи",
-      "route": null,
-      "status": "не перенесён",
-      "app_files": [],
-      "notes": "Маршрута нет. Числится в плане BRIEF.md:711."
+      "route": "/inbox",
+      "status": "перенесён (только эксперт)",
+      "app_files": [
+        "app/src/app/inbox/page.tsx",
+        "app/src/app/inbox/inbox.css",
+        "app/src/db/inbox.ts"
+      ],
+      "notes": "28.08.2026: собран инбокс эксперта Исполнителя; expertLead/engineer/customerLead — заглушка, добавляются билдером в page.tsx. Живой значок навигации — счётчикИнбокса в db/inbox.ts."
     },
     {
       "id": "claims",
@@ -89,10 +139,14 @@
       "id": "economy",
       "макет": "economy.html",
       "title": "Экономическая модель",
-      "route": null,
-      "status": "не перенесён как экран",
-      "app_files": [],
-      "notes": "Ставки загружаются скриптом npm run db:load-economy и используются в services/effect-window, но экрана просмотра/редактирования модели нет."
+      "route": "/economy",
+      "status": "перенесён",
+      "app_files": [
+        "app/src/app/economy/page.tsx",
+        "app/src/app/economy/editor.tsx",
+        "app/src/app/economy/actions.ts"
+      ],
+      "notes": "Экран сделан (коммит 223068e, слит в master): одна таблица, режимы просмотр/правка, публикация редакцией. Запись про «не перенесён» устарела."
     }
   ],
   "extra_beyond_makeup": [
@@ -101,7 +155,10 @@
       "title": "Вход по паролю",
       "route": "/login",
       "status": "реализован",
-      "app_files": ["app/src/app/login/page.tsx", "app/src/app/login/form.tsx"],
+      "app_files": [
+        "app/src/app/login/page.tsx",
+        "app/src/app/login/form.tsx"
+      ],
       "notes": "Не было в макете. Пришло с веткой auth: rec.roles, role_key, rec.sessions."
     },
     {
@@ -109,7 +166,11 @@
       "title": "Заявки о проблемах (админ)",
       "route": "/problems",
       "status": "реализован",
-      "app_files": ["app/src/app/problems/page.tsx", "app/src/db/problem-reports.ts", "app/db/migrations/017_problem_reports.sql"],
+      "app_files": [
+        "app/src/app/problems/page.tsx",
+        "app/src/db/problem-reports.ts",
+        "app/db/migrations/017_problem_reports.sql"
+      ],
       "notes": "Кнопка «Сообщить о проблеме» в подвале доступна всем; список на /problems — только роли admin. Письмо через lib/mail.ts подключено условно (Yandex SMTP), при сбое заявка всё равно сохраняется."
     }
   ],
