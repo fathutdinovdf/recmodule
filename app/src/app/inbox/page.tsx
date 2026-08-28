@@ -45,7 +45,9 @@ import { Hint } from '@/components/ui/Hint';
 import {
   Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle,
 } from '@/components/ui/empty';
+import { инбоксРуководителяЭкспертов } from './builders/expert-lead';
 import './inbox.css';
+import './inbox-expert-lead.css';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,6 +96,12 @@ interface Блок {
   extra?: (r: InboxRow) => string;
   deep?: string;
   deepLabel?: string;
+  /** Дописать исполнителя в адресную строку задачи — у руководителей блок
+      сводит всю команду, и без имени строки неразличимы. */
+  showExecutor?: boolean;
+  /** Готовое содержимое вместо списка задач — сводная таблица руководителя.
+      rows при этом всё равно передаются: их число — значок блока. */
+  content?: ReactNode;
 }
 
 interface Плитка { n: number; l: string; href: string }
@@ -228,9 +236,12 @@ function инбоксЭксперта(все: InboxRow[], горизонтОкн
 /* Роль → сборка её инбокса. Остальные роли (expertLead, engineer,
    customerLead) добавляются сюда своими билдерами — состав блоков каждой
    расписан в макет/inbox.js; до тех пор они видят заглушку, а не пустой
-   экран. Администратора здесь не будет никогда (решение 82). */
-const БИЛДЕРЫ: Record<string, (все: InboxRow[], горизонт: number, now: Date) => Инбокс> = {
+   экран. Администратора здесь не будет никогда (решение 82). Билдер может
+   быть асинхронным: руководителю нужна другая выборка (весь реестр в границе
+   видимости, а не пять статусов эксперта), и он берёт её сам. */
+const БИЛДЕРЫ: Record<string, (все: InboxRow[], горизонт: number, now: Date) => Инбокс | Promise<Инбокс>> = {
   expert: инбоксЭксперта,
+  expertLead: инбоксРуководителяЭкспертов,
 };
 
 /* ------------------------------ строка задачи ------------------------------ */
@@ -293,6 +304,7 @@ function Строка({ r, b }: { r: InboxRow; b: Блок }) {
         <div className="task__r2">{r.problem || '—'}</div>
         <div className="task__r3">
           {r.fieldName} · куст {r.kust ?? '—'} · скв. <b>{r.wellNumber}</b> · {r.direction}
+          {b.showExecutor && r.executorName ? ` · ${r.executorName}` : ''}
         </div>
         {b.extra && <div className="task__r4">{b.extra(r)}</div>}
       </div>
@@ -311,10 +323,10 @@ function БлокЗадач({ b }: { b: Блок }) {
         {b.deep && <Link className="blk__deep" href={b.deep}>{b.deepLabel ?? 'в реестре'} →</Link>}
       </div>
       {b.why && <div className="blk__why">{b.why}</div>}
-      {показаны.length
+      {b.content ?? (показаны.length
         ? <div className="blk__list">{показаны.map((r) => <Строка key={r.id} r={r} b={b} />)}</div>
-        : <div className="blk__empty">{b.empty ?? 'Пусто — задач нет.'}</div>}
-      {b.rows.length > показаны.length && (
+        : <div className="blk__empty">{b.empty ?? 'Пусто — задач нет.'}</div>)}
+      {!b.content && b.rows.length > показаны.length && (
         <div className="blk__more">
           Показаны {показаны.length} из {b.rows.length}
           {b.deep && <> · <Link href={b.deep}>остальные в реестре</Link></>}
@@ -398,7 +410,7 @@ export default async function Page() {
     параметрМодуля('closingSoonDays'),
   ]);
   const now = new Date();
-  const { плитки, блоки } = билдер(все, горизонт, now);
+  const { плитки, блоки } = await билдер(все, горизонт, now);
 
   return (
     <main className="content content--inbox">

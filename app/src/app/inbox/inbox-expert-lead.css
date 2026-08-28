@@ -1,0 +1,16 @@
+/* Сводная таблица руководителя (перенос .sum из макет/inbox.css один в один).
+   Руководителю нужен свод, а не список задач, поэтому здесь табличный паттерн
+   реестра: тот же кегль 12/16 из .tbl, те же отступы и границы. Ширины не
+   фиксируем — колонок мало и они узкие. */
+.sum { table-layout: auto; width: 100%; }
+.sum thead th { position: static; white-space: normal; vertical-align: bottom; }
+.sum tbody td { vertical-align: middle; }
+.sum__n { font-variant-numeric: tabular-nums; }
+
+/* Итоговая строка: без нижней границы (она была бы краем блока) и приглушена —
+   это сумма, а не ещё один эксперт. */
+.sum tbody tr:last-child td {
+  border-bottom: 0;
+  border-top: 1px solid var(--border-table);
+  color: var(--text-secondary);
+}
