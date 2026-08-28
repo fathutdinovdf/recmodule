@@ -24,6 +24,18 @@
       "autoPort": false
     },
     {
+      "name": "inbox-app",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "./node_modules/next/dist/bin/next", "dev",
+        "C:/Работа/Оценка эффектов/wt/inbox-app/app",
+        "-p", "3104"
+      ],
+      "cwd": "app",
+      "port": 3104,
+      "autoPort": false
+    },
+    {
       "name": "data-source-manual",
       "runtimeExecutable": "node",
       "runtimeArgs": [

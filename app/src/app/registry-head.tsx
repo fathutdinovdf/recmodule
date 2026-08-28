@@ -45,8 +45,70 @@ function useОтбор() {
   }, [router, pathname, sp]);
 }
 
+/* Минимальная ширина колонки при перетаскивании — как в макете (MIN_COL_W). */
+const MIN_COL_W = 56;
+
+/* Перетаскивание границы колонки: перенесено из макета (app.js: startResize /
+   mousemove / mouseup), но там колонки жили в px без авто-растяжения, а тут
+   <col> держат проценты от суммы, чтобы таблица тянулась на всю ширину
+   контейнера (решение из "Реестр: таблица растягивается..."). При первом
+   ручном resize берём фактически отрисованные px каждого th, дальше держим
+   таблицу в px — то есть ручная правка ширины отключает авто-fit, это
+   ожидаемо: если человек сам подвинул колонку, авто-растяжение больше её не
+   трогает. */
+function useColumnResize(theadRef: React.RefObject<HTMLTableSectionElement | null>) {
+  const dragRef = React.useRef<{ key: string; startX: number; cols: { key: string; px: number }[] } | null>(null);
+
+  React.useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const rz = target.closest('[data-resize]') as HTMLElement | null;
+      if (!rz) return;
+      const table = theadRef.current?.closest('table');
+      if (!table) return;
+      const key = rz.dataset.resize!;
+      const ths = Array.from(table.querySelectorAll('thead th[data-col]')) as HTMLElement[];
+      const cols = ths.map((th) => ({ key: th.dataset.col!, px: th.getBoundingClientRect().width }));
+      dragRef.current = { key, startX: e.clientX, cols };
+      document.body.classList.add('is-resizing');
+      e.preventDefault();
+    };
+
+    const onMove = (e: MouseEvent) => {
+      const drag = dragRef.current;
+      if (!drag) return;
+      const table = theadRef.current?.closest('table') as HTMLTableElement | null;
+      if (!table) return;
+      const delta = e.clientX - drag.startX;
+      const widths = drag.cols.map((c) => (c.key === drag.key ? Math.max(MIN_COL_W, c.px + delta) : c.px));
+      const total = widths.reduce((s, w) => s + w, 0);
+      const colEls = Array.from(table.querySelectorAll('colgroup col')) as HTMLTableColElement[];
+      colEls.forEach((col, i) => { if (widths[i] != null) col.style.width = `${(widths[i] / total) * 100}%`; });
+      table.style.width = `${total}px`;
+      table.style.minWidth = `${total}px`;
+    };
+
+    const onUp = () => {
+      if (!dragRef.current) return;
+      dragRef.current = null;
+      document.body.classList.remove('is-resizing');
+    };
+
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+  }, [theadRef]);
+}
+
 export function RegistryHead({ state, columns }: { state: HeadState; columns: ColDef[] }) {
   const отбор = useОтбор();
+  const theadRef = React.useRef<HTMLTableSectionElement>(null);
+  useColumnResize(theadRef);
 
   const onSort = (key: string) => отбор((p) => {
     const first = firstDir(key);
@@ -57,7 +119,7 @@ export function RegistryHead({ state, columns }: { state: HeadState; columns: Co
   });
 
   return (
-    <thead>
+    <thead ref={theadRef}>
       <tr>
         {columns.map((c) => {
           const isSort = state.sort?.key === c.key;
@@ -112,7 +174,7 @@ export function RegistryHead({ state, columns }: { state: HeadState; columns: Co
                   <PeriodPopover filterOn={filterOn} value={state.period} отбор={отбор} />
                 )}
               </span>
-              <span className="resizer" />
+              <span className="resizer" data-resize={c.key} />
             </th>
           );
         })}

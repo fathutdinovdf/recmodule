@@ -338,7 +338,7 @@ export default async function Page({
               ровно в min-width процент даёт те же px, что в макете. */}
           <table className="tbl" style={{ width: '100%', minWidth: суммаКолонок }}>
             <colgroup>
-              {КОЛОНКИ.map((c) => <col key={c.key} style={{ width: `${(c.w / суммаКолонок) * 100}%` }} />)}
+              {КОЛОНКИ.map((c) => <col key={c.key} data-col={c.key} style={{ width: `${(c.w / суммаКолонок) * 100}%` }} />)}
             </colgroup>
             <RegistryHead
               columns={КОЛОНКИ}
