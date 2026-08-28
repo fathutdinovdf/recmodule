@@ -227,7 +227,21 @@ function КнопкаПроблемы() {
         </button>
       )}
     >
-      <form action={отправить}>
+      <form
+        action={отправить}
+        onPaste={(e) => {
+          /* Скриншот часто уже в буфере (Win+Shift+S) — вставка Ctrl+V работает
+             из любого места формы, не только над дропзоной. Текстовый paste
+             при этом не трогаем: среди clipboardData.items у него нет файлов. */
+          const картинки = Array.from(e.clipboardData.items)
+            .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+            .map((item) => item.getAsFile())
+            .filter((f): f is File => f !== null);
+          if (картинки.length === 0) return;
+          setОшибкаФайла(undefined);
+          syncФайлы([...файлы, ...картинки].slice(0, 3));
+        }}
+      >
         <input type="hidden" name="page" value={path} />
         <input ref={выбор} type="file" name="files" accept="image/*" multiple hidden
                onChange={(e) => syncФайлы([...файлы, ...Array.from(e.target.files ?? [])].slice(0, 3))} />
