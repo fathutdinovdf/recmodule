@@ -51,11 +51,10 @@ const MIN_COL_W = 56;
 /* Перетаскивание границы колонки: перенесено из макета (app.js: startResize /
    mousemove / mouseup), но там колонки жили в px без авто-растяжения, а тут
    <col> держат проценты от суммы, чтобы таблица тянулась на всю ширину
-   контейнера (решение из "Реестр: таблица растягивается..."). При первом
-   ручном resize берём фактически отрисованные px каждого th, дальше держим
-   таблицу в px — то есть ручная правка ширины отключает авто-fit, это
-   ожидаемо: если человек сам подвинул колонку, авто-растяжение больше её не
-   трогает. */
+   контейнера (решение из "Реестр: таблица растягивается..."). Ширина самой
+   <table> не трогается (остаётся 100% из разметки) — меняются только доли
+   колонок и min-width; иначе таблица зафиксировалась бы в px и переставала
+   бы тянуться на всю ширину контейнера при следующем изменении окна. */
 function useColumnResize(theadRef: React.RefObject<HTMLTableSectionElement | null>) {
   const dragRef = React.useRef<{ key: string; startX: number; cols: { key: string; px: number }[] } | null>(null);
 
@@ -84,7 +83,6 @@ function useColumnResize(theadRef: React.RefObject<HTMLTableSectionElement | nul
       const total = widths.reduce((s, w) => s + w, 0);
       const colEls = Array.from(table.querySelectorAll('colgroup col')) as HTMLTableColElement[];
       colEls.forEach((col, i) => { if (widths[i] != null) col.style.width = `${(widths[i] / total) * 100}%`; });
-      table.style.width = `${total}px`;
       table.style.minWidth = `${total}px`;
     };
 
