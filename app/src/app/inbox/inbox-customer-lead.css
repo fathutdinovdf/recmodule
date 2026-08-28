@@ -1,0 +1,17 @@
+/* Сводные таблицы руководителей — из макет/inbox.css один в один.
+   Отдельный файл, а не правка inbox.css: билдеры ролей идут параллельными
+   ветками, общие стили сведёт основная сессия при слиянии.
+
+   Руководителю нужен свод, а не список задач, поэтому здесь табличный паттерн
+   реестра (.tbl из registry.css): тот же кегль 12/16, те же отступы и границы.
+   Ширины не фиксируем — колонок мало и они узкие. */
+.sum { table-layout: auto; width: 100%; }
+.sum thead th { position: static; white-space: normal; vertical-align: bottom; }
+.sum tbody td { vertical-align: middle; }
+.sum__n { font-variant-numeric: tabular-nums; }
+/* Итоговая строка: отделена сверху и без нижней границы — она конец таблицы. */
+.sum tbody tr:last-child td {
+  border-bottom: 0;
+  border-top: 1px solid var(--border-table);
+  color: var(--text-secondary);
+}

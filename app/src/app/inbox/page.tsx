@@ -45,7 +45,9 @@ import { Hint } from '@/components/ui/Hint';
 import {
   Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle,
 } from '@/components/ui/empty';
+import { инбоксРуководителяЗаказчика } from './builders/customer-lead';
 import './inbox.css';
+import './inbox-customer-lead.css';
 
 export const dynamic = 'force-dynamic';
 
@@ -87,6 +89,13 @@ interface Блок {
   /** Зачем блок существует — процессный текст, выверен в макете. */
   why?: string;
   rows: InboxRow[];
+  /** Значок блока, когда он не равен числу строк (сводка руководителя
+      считает все видимые рекомендации, а строк у неё нет вовсе). */
+  count?: number;
+  /** Готовая разметка вместо списка строк — сводные таблицы руководителей. */
+  html?: ReactNode;
+  /** Показывать исполнителя в строке — ролям, читающим чужие рекомендации. */
+  showExecutor?: boolean;
   empty?: string;
   /** Куда ведёт строка; по умолчанию — сводка карточки. */
   href?: (r: InboxRow) => string;
@@ -228,9 +237,12 @@ function инбоксЭксперта(все: InboxRow[], горизонтОкн
 /* Роль → сборка её инбокса. Остальные роли (expertLead, engineer,
    customerLead) добавляются сюда своими билдерами — состав блоков каждой
    расписан в макет/inbox.js; до тех пор они видят заглушку, а не пустой
-   экран. Администратора здесь не будет никогда (решение 82). */
-const БИЛДЕРЫ: Record<string, (все: InboxRow[], горизонт: number, now: Date) => Инбокс> = {
+   экран. Администратора здесь не будет никогда (решение 82). Билдеры
+   руководителей асинхронные и читают базу сами: их срез (все объекты, другой
+   набор статусов, агрегаты) не совпадает с общим строкиИнбокса(). */
+const БИЛДЕРЫ: Record<string, (все: InboxRow[], горизонт: number, now: Date) => Инбокс | Promise<Инбокс>> = {
   expert: инбоксЭксперта,
+  customerLead: инбоксРуководителяЗаказчика,
 };
 
 /* ------------------------------ строка задачи ------------------------------ */
@@ -293,6 +305,7 @@ function Строка({ r, b }: { r: InboxRow; b: Блок }) {
         <div className="task__r2">{r.problem || '—'}</div>
         <div className="task__r3">
           {r.fieldName} · куст {r.kust ?? '—'} · скв. <b>{r.wellNumber}</b> · {r.direction}
+          {b.showExecutor && r.executorName ? ` · ${r.executorName}` : ''}
         </div>
         {b.extra && <div className="task__r4">{b.extra(r)}</div>}
       </div>
@@ -307,13 +320,13 @@ function БлокЗадач({ b }: { b: Блок }) {
     <section className={`blk blk--${b.tone}`} id={b.id}>
       <div className="blk__h">
         <h2 className="blk__t">{b.title}</h2>
-        <span className={`badge${b.tone === 'calm' ? '' : ' badge--accent'}`}>{b.rows.length}</span>
+        <span className={`badge${b.tone === 'calm' ? '' : ' badge--accent'}`}>{b.count ?? b.rows.length}</span>
         {b.deep && <Link className="blk__deep" href={b.deep}>{b.deepLabel ?? 'в реестре'} →</Link>}
       </div>
       {b.why && <div className="blk__why">{b.why}</div>}
-      {показаны.length
+      {b.html ?? (показаны.length
         ? <div className="blk__list">{показаны.map((r) => <Строка key={r.id} r={r} b={b} />)}</div>
-        : <div className="blk__empty">{b.empty ?? 'Пусто — задач нет.'}</div>}
+        : <div className="blk__empty">{b.empty ?? 'Пусто — задач нет.'}</div>)}
       {b.rows.length > показаны.length && (
         <div className="blk__more">
           Показаны {показаны.length} из {b.rows.length}
@@ -398,7 +411,7 @@ export default async function Page() {
     параметрМодуля('closingSoonDays'),
   ]);
   const now = new Date();
-  const { плитки, блоки } = билдер(все, горизонт, now);
+  const { плитки, блоки } = await билдер(все, горизонт, now);
 
   return (
     <main className="content content--inbox">
