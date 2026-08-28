@@ -6,8 +6,8 @@
  */
 
 import {
-  BadgeCheck, Ban, CircleHelp, Eye, FileCheck, FilePlus2, Gavel, Link2,
-  Lock, MessageSquare, Ruler, RotateCw, Scale, Send, Timer, Wrench, X,
+  BadgeCheck, Ban, CircleHelp, Eye, FileCheck, FilePlus2, Link2,
+  Lock, Ruler, RotateCw, Scale, Send, Timer, X,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/Button';
@@ -35,18 +35,53 @@ const ПО_СТАТУСУ: Record<string, typeof Send> = {
   draft: FilePlus2,
 };
 
+/* decision, fact, opened и talk сюда не входят: у первых трёх to_status
+   проставлен всегда (accept/reject/clarify → approved/rejected/clarify,
+   fact → windowOpen, opened → review — см. actions.ts и lifecycle.ts), и
+   иконка() выше выбирает их раньше, чем доходит до этой таблицы. talk
+   вообще не попадает в Событие — реплики рисует компонент Реплика. */
 const ПО_ВИДУ: Record<string, typeof Send> = {
-  talk: MessageSquare,
-  decision: Gavel,
-  fact: Wrench,
   dispute: Scale,
   link: Link2,
-  opened: Timer,
   baseline: Ruler,
 };
 
 const иконка = (e: FeedItem) =>
   (e.toStatus ? ПО_СТАТУСУ[e.toStatus] : undefined) ?? ПО_ВИДУ[e.kind] ?? BadgeCheck;
+
+/* Тон и заливка кружка — те же, что у кружка статуса в шапке карточки
+   (rec.statuses.tone/filled, миграция 004_status_tone.sql): цвет говорит,
+   чья сторона держит процесс, заливка — доведён ли шаг до конца. Своей
+   цветовой семантики лента не придумывает. У события без toStatus (спор,
+   связь, база) целевого статуса нет — кружок остаётся нейтральным. */
+const ТОН_СТАТУСА: Record<string, { tone: 'neutral' | 'wait' | 'work' | 'done' | 'reject'; filled: boolean }> = {
+  draft: { tone: 'neutral', filled: false },
+  registered: { tone: 'neutral', filled: true },
+  sent: { tone: 'wait', filled: false },
+  review: { tone: 'wait', filled: true },
+  clarify: { tone: 'neutral', filled: false },
+  approved: { tone: 'work', filled: false },
+  windowOpen: { tone: 'done', filled: false },
+  windowClosed: { tone: 'done', filled: true },
+  rejected: { tone: 'reject', filled: true },
+  cancelled: { tone: 'neutral', filled: false },
+};
+
+const ЦВЕТ_ТОНА: Record<string, [text: string, bg: string]> = {
+  neutral: ['var(--status-default-text)', 'var(--status-default-light-bg)'],
+  wait: ['var(--status-processing-text)', 'var(--status-processing-light-bg)'],
+  work: ['var(--status-warning-text)', 'var(--status-warning-light-bg)'],
+  done: ['var(--status-success-text)', 'var(--status-success-light-bg)'],
+  reject: ['var(--status-error-text)', 'var(--status-error-light-bg)'],
+};
+
+function стильКружка(e: FeedItem): React.CSSProperties {
+  const т = e.toStatus ? ТОН_СТАТУСА[e.toStatus] : undefined;
+  const [цвет, фон] = ЦВЕТ_ТОНА[т?.tone ?? 'neutral'];
+  return т?.filled
+    ? { background: фон, color: цвет, border: '1px solid transparent' }
+    : { background: 'var(--bg-card)', color: цвет, border: `1.5px solid ${цвет}` };
+}
 
 /* Нитка времени — псевдоэлемент, а не отдельный узел: у последней строки её
    быть не должно, и на CSS это одно правило вместо ветвления в разметке. */
@@ -63,7 +98,7 @@ export function Событие({ e, свежая }: { e: FeedItem; свежая?
   const Icon = иконка(e);
   return (
     <li className={`${СТРОКА} ${свежая ? ВЪЕЗД : ''}`} style={свежая ? ДВИЖЕНИЕ : undefined}>
-      <span className="relative z-10 flex size-6 items-center justify-center rounded-full border border-border bg-background text-muted-foreground">
+      <span className="relative z-10 flex size-6 items-center justify-center rounded-full" style={стильКружка(e)}>
         <Icon className="size-3.5" />
       </span>
       <div className="min-w-0">
