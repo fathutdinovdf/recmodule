@@ -8,7 +8,9 @@
  * Заглушка повторяет разметку страницы вплоть до ширин колонок: они заданы
  * числами в `КОЛОНКИ`, таблица с `table-layout: fixed` растягивается по их
  * сумме, и заглушка обязана считать ту же сумму — иначе при появлении данных
- * таблица прыгнет по горизонтали.
+ * таблица прыгнет по горизонтали. Механика ширины та же, что в page.tsx:
+ * width:100% + min-width — сумма колонок, <col> в процентах от суммы,
+ * чтобы излишек ширины делился пропорционально, а не поровну.
  */
 
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,6 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton';
    значило бы тащить в заглушку весь модуль страницы вместе с обращениями к
    базе, а заглушка обязана отрисоваться раньше любого запроса. */
 const КОЛОНКИ = [100, 136, 172, 152, 110, 230, 114, 94, 150, 148, 130];
+const СУММА = КОЛОНКИ.reduce((s, w) => s + w, 0);
 const СТРОК = 12;
 
 export default function Loading() {
@@ -47,8 +50,8 @@ export default function Loading() {
 
       <section className="panel" aria-hidden>
         <div className="tablewrap">
-          <table className="tbl" style={{ width: КОЛОНКИ.reduce((s, w) => s + w, 0) }}>
-            <colgroup>{КОЛОНКИ.map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>
+          <table className="tbl" style={{ width: '100%', minWidth: СУММА }}>
+            <colgroup>{КОЛОНКИ.map((w, i) => <col key={i} style={{ width: `${(w / СУММА) * 100}%` }} />)}</colgroup>
             <thead>
               <tr>
                 {КОЛОНКИ.map((_, i) => (

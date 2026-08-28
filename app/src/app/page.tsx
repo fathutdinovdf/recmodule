@@ -302,6 +302,7 @@ export default async function Page({
   const cookieКолонок = (await cookies()).get(ВИДИМЫЕ_КОЛОНКИ_COOKIE)?.value;
   const видимые = cookieКолонок ? new Set(cookieКолонок.split(',').filter(Boolean)) : null;
   const КОЛОНКИ = видимыеКолонки(видимые);
+  const суммаКолонок = КОЛОНКИ.reduce((s, c) => s + c.w, 0);
 
   return (
     <main className="content">
@@ -325,12 +326,19 @@ export default async function Page({
 
       <section className="panel">
         <div className="tablewrap">
-          {/* Ширина таблицы — сумма колонок, как в макете: при table-layout
-              fixed без неё браузер растягивает колонки по содержимому и
-              заданные ширины перестают действовать. */}
-          <table className="tbl" style={{ width: КОЛОНКИ.reduce((s, c) => s + c.w, 0) }}>
+          {/* Сумма колонок — нижняя граница ширины (min-width), а не сама ширина:
+              при урезанном составе колонок (настройка видимости) сумма меньше
+              контейнера, и таблица с жёсткой шириной оставляла бы справа пустую
+              полосу. width:100% дотягивает её до правого края, min-width при
+              полном составе оставляет горизонтальную прокрутку как раньше.
+              Ширины <col> — в процентах от суммы, а не в px: излишек ширины
+              браузер при table-layout:fixed делит между px-колонками поровну,
+              и узкие колонки («Куст») распухали бы наравне с широкими
+              («Мероприятие»); проценты делят его пропорционально. При таблице
+              ровно в min-width процент даёт те же px, что в макете. */}
+          <table className="tbl" style={{ width: '100%', minWidth: суммаКолонок }}>
             <colgroup>
-              {КОЛОНКИ.map((c) => <col key={c.key} style={{ width: c.w }} />)}
+              {КОЛОНКИ.map((c) => <col key={c.key} style={{ width: `${(c.w / суммаКолонок) * 100}%` }} />)}
             </colgroup>
             <RegistryHead
               columns={КОЛОНКИ}
