@@ -56,6 +56,7 @@ function DropdownMenuContent({
   className,
   sideOffset = 4,
   transition = { type: 'spring', stiffness: 300, damping: 25, bounce: 0 },
+  children,
   ...props
 }: DropdownMenuContentProps) {
   const { isOpen } = useDropdownMenu();
@@ -80,7 +81,9 @@ function DropdownMenuContent({
                 "z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md",
                 className
               )}
-            />
+            >
+              {children}
+            </motion.div>
           </DropdownMenuPrimitive.Content>
         </DropdownMenuPrimitive.Portal>
       )}

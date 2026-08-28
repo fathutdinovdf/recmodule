@@ -40,8 +40,11 @@ DialogContentProps & { showCloseButton?: boolean }) {
       <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
         <DialogContentPrimitive
           className={cn(
-            'pointer-events-auto grid w-full max-w-[480px]',
-            'gap-4 rounded-xl border border-border bg-background p-6 shadow-lg',
+            'pointer-events-auto grid w-full max-w-[480px] max-h-[85dvh]',
+            /* Длинные формы (расчёт эффекта, база с обоснованием) раньше
+               просто вылезали за экран без возможности прокрутки — скролл
+               ограничиваем самим окном, а не страницей под ним. */
+            'gap-4 overflow-y-auto rounded-xl border border-border bg-background p-6 shadow-lg',
             className,
           )}
           {...props}

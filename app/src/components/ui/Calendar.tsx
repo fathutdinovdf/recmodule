@@ -85,9 +85,9 @@ export function Calendar({
         dropdown: cn('sr-only', defaults.dropdown),
         caption_label: cn('text-sm font-medium capitalize text-foreground', defaults.caption_label),
         month_grid: cn('w-full border-collapse', defaults.month_grid),
-        weekdays: cn('flex', defaults.weekdays),
+        weekdays: cn('flex gap-1', defaults.weekdays),
         weekday: cn('w-8 text-center text-xs font-normal text-muted-foreground', defaults.weekday),
-        week: cn('mt-1 flex w-full', defaults.week),
+        week: cn('mt-1 flex w-full gap-1', defaults.week),
         day: cn('relative size-8 p-0 text-center', defaults.day),
         day_button: cn(
           'inline-flex size-8 appearance-none items-center justify-center rounded-md border border-transparent bg-transparent text-sm font-normal text-foreground shadow-none outline-none hover:bg-accent focus-visible:shadow-[var(--focus-component)]',
