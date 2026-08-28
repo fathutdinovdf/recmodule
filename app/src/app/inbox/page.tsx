@@ -38,6 +38,7 @@ import { Inbox as InboxIcon } from 'lucide-react';
 import { currentUser, type SessionUser } from '@/lib/session';
 import { этоАдминистратор } from '@/lib/access';
 import { строкиИнбокса, параметрМодуля, type InboxRow } from '@/db/inbox';
+import { инбоксИнженера } from './builders/engineer';
 import { дата, сутки } from '@/lib/format';
 import { control, fmtDur, toWindow } from '@/domain/workhours';
 import { Icon } from '@/components/Icons';
@@ -229,8 +230,11 @@ function инбоксЭксперта(все: InboxRow[], горизонтОкн
    customerLead) добавляются сюда своими билдерами — состав блоков каждой
    расписан в макет/inbox.js; до тех пор они видят заглушку, а не пустой
    экран. Администратора здесь не будет никогда (решение 82). */
-const БИЛДЕРЫ: Record<string, (все: InboxRow[], горизонт: number, now: Date) => Инбокс> = {
+/* Билдер может быть асинхронным: ролям Заказчика нужны строки, которых в
+   строкиИнбокса() нет (sent/review), и дочитывают они их сами. */
+const БИЛДЕРЫ: Record<string, (все: InboxRow[], горизонт: number, now: Date) => Инбокс | Promise<Инбокс>> = {
   expert: инбоксЭксперта,
+  engineer: инбоксИнженера,
 };
 
 /* ------------------------------ строка задачи ------------------------------ */
@@ -398,7 +402,7 @@ export default async function Page() {
     параметрМодуля('closingSoonDays'),
   ]);
   const now = new Date();
-  const { плитки, блоки } = билдер(все, горизонт, now);
+  const { плитки, блоки } = await билдер(все, горизонт, now);
 
   return (
     <main className="content content--inbox">
