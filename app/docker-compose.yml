@@ -20,7 +20,10 @@ services:
       # нужна: в справочниках кириллица, и latin1 сломает её молча.
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
     ports:
-      - "5433:5432"
+      # Только loopback: наружу порт торчать не должен — Docker публикует
+      # порты через свои iptables-правила в обход ufw, так что "5433:5432"
+      # был бы виден снаружи VM даже при активном файрволе.
+      - "127.0.0.1:5433:5432"
     volumes:
       - recmodule-data:/var/lib/postgresql/data
     healthcheck:
